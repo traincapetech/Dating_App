@@ -1,0 +1,17 @@
+export const AppRoute = {
+  OnboardingIntro: 'OnboardingIntro',
+  SignUp: 'SignUp',
+  SignIn: 'SignIn',
+  PhoneInput: 'PhoneInput',
+  Verification: 'Verification',
+  EmailCapture: 'EmailCapture',
+  ProfileBasics: 'ProfileBasics',
+  Preferences: 'Preferences',
+  Lifestyle: 'Lifestyle',
+  Prompts: 'Prompts',
+  MediaUpload: 'MediaUpload',
+  SubscriptionUpsell: 'SubscriptionUpsell',
+  HomeTabs: 'HomeTabs',
+  Messages: 'Messages',
+  Settings: 'Settings',
+};
