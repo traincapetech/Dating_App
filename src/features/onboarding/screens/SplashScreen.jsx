@@ -6,6 +6,8 @@ import {
   Pressable,
   StatusBar,
   Dimensions,
+  Image,
+  ImageBackground,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Animated, {
@@ -14,70 +16,108 @@ import Animated, {
   useSharedValue,
   withDelay,
   withRepeat,
+  withSequence,
   withTiming,
+  interpolate,
 } from 'react-native-reanimated';
-import LottieView from 'lottie-react-native';
 import {colors, spacing, typography} from '../../../theme';
 import {AppRoute} from '../../../constants/routes';
 
-const {width} = Dimensions.get('window');
+const {width, height} = Dimensions.get('window');
 
 const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
+const AnimatedImageBackground =
+  Animated.createAnimatedComponent(ImageBackground);
 
 const SplashScreen = ({navigation}) => {
-  const glowScale = useSharedValue(1);
-  const heroTranslate = useSharedValue(40);
+  // Animation values
+  const imageScale = useSharedValue(1);
+  const imageOpacity = useSharedValue(0);
+  const overlayOpacity = useSharedValue(0.4);
+  const heroTranslate = useSharedValue(50);
   const heroOpacity = useSharedValue(0);
-  const cardTranslate = useSharedValue(60);
+  const cardTranslate = useSharedValue(80);
   const cardOpacity = useSharedValue(0);
-  const backgroundShift = useSharedValue(0);
+  const buttonScale = useSharedValue(0.9);
+  const pulseScale = useSharedValue(1);
 
   useEffect(() => {
-    glowScale.value = withRepeat(
-      withTiming(1.12, {
-        duration: 2400,
-        easing: Easing.inOut(Easing.ease),
-      }),
+    // Image entrance animation
+    imageOpacity.value = withTiming(1, {
+      duration: 1200,
+      easing: Easing.out(Easing.cubic),
+    });
+    imageScale.value = withTiming(1.1, {
+      duration: 15000,
+      easing: Easing.inOut(Easing.ease),
+    });
+
+    // Overlay pulse
+    overlayOpacity.value = withRepeat(
+      withSequence(
+        withTiming(0.5, {duration: 2000, easing: Easing.inOut(Easing.ease)}),
+        withTiming(0.4, {duration: 2000, easing: Easing.inOut(Easing.ease)}),
+      ),
       -1,
-      true,
+      false,
     );
 
+    // Hero text animation
     heroTranslate.value = withTiming(0, {
-      duration: 900,
+      duration: 1000,
       easing: Easing.out(Easing.cubic),
     });
-    heroOpacity.value = withTiming(1, {
-      duration: 900,
-      easing: Easing.out(Easing.cubic),
-    });
+    heroOpacity.value = withDelay(
+      300,
+      withTiming(1, {
+        duration: 800,
+        easing: Easing.out(Easing.cubic),
+      }),
+    );
 
+    // Card animation
     cardTranslate.value = withDelay(
-      250,
+      600,
       withTiming(0, {
-        duration: 900,
+        duration: 1000,
         easing: Easing.out(Easing.cubic),
       }),
     );
     cardOpacity.value = withDelay(
-      250,
+      600,
       withTiming(1, {
-        duration: 900,
+        duration: 1000,
         easing: Easing.out(Easing.cubic),
       }),
     );
 
-    backgroundShift.value = withRepeat(
+    // Button scale animation
+    buttonScale.value = withDelay(
+      900,
       withTiming(1, {
-        duration: 4000,
-        easing: Easing.inOut(Easing.quad),
+        duration: 500,
+        easing: Easing.out(Easing.back(1.5)),
       }),
-      -1,
-      true,
     );
-  }, [glowScale, heroTranslate, heroOpacity, cardTranslate, cardOpacity, backgroundShift]);
 
-  const glowStyle = useAnimatedStyle(() => ({
-    transform: [{scale: glowScale.value}],
+    // Pulse animation for accent
+    pulseScale.value = withRepeat(
+      withSequence(
+        withTiming(1.05, {duration: 2000, easing: Easing.inOut(Easing.ease)}),
+        withTiming(1, {duration: 2000, easing: Easing.inOut(Easing.ease)}),
+      ),
+      -1,
+      false,
+    );
+  }, []);
+
+  const imageStyle = useAnimatedStyle(() => ({
+    opacity: imageOpacity.value,
+    transform: [{scale: imageScale.value}],
+  }));
+
+  const overlayStyle = useAnimatedStyle(() => ({
+    opacity: overlayOpacity.value,
   }));
 
   const heroStyle = useAnimatedStyle(() => ({
@@ -90,12 +130,12 @@ const SplashScreen = ({navigation}) => {
     transform: [{translateY: cardTranslate.value}],
   }));
 
-  const gradientStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        translateX: backgroundShift.value * width * 0.3,
-      },
-    ],
+  const buttonStyle = useAnimatedStyle(() => ({
+    transform: [{scale: buttonScale.value}],
+  }));
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{scale: pulseScale.value}],
   }));
 
   const handleCreateAccount = () => {
@@ -106,72 +146,112 @@ const SplashScreen = ({navigation}) => {
     navigation?.navigate(AppRoute.SignIn);
   };
 
+  // Placeholder image URL - Replace this with your own image/video
+  // For video, you can use react-native-video component instead
+  const backgroundImageUri =
+    'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80';
+
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      <LinearGradient
-        colors={['#ff4d9e', '#ff7593', '#ffb081']}
-        start={{x: 0, y: 0}}
-        end={{x: 1, y: 1}}
-        style={StyleSheet.absoluteFillObject}
-      />
+      <StatusBar barStyle="light-content" translucent />
 
-      <AnimatedLinearGradient
-        colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0)']}
-        start={{x: 0, y: 0}}
-        end={{x: 1, y: 1}}
-        style={[styles.gradientGlow, gradientStyle]}
-      />
-
-      <Animated.View style={[styles.glowOrb, glowStyle]} />
-
-      <LottieView
-        source={{
-          uri: 'https://lottie.host/76c4dbb2-5e7a-4b21-b5c7-4b673a4182f1/I31pjvD8QZ.json',
-        }}
-        autoPlay
-        loop
-        style={styles.lottieBackground}
-      />
-
-      <Animated.View style={[styles.heroContainer, heroStyle]}>
-        <Text style={styles.appName}>Pryvo</Text>
-        <Text style={styles.tagline}>
-          Real connections begin with a vibe. Find the people who feel like your
-          next great story.
-        </Text>
+      {/* Background Image */}
+      <Animated.View style={[StyleSheet.absoluteFillObject, imageStyle]}>
+        <Image
+          source={{uri: backgroundImageUri}}
+          style={styles.backgroundImage}
+          resizeMode="cover"
+        />
       </Animated.View>
 
-      <Animated.View style={[styles.card, cardStyle]}>
-        <Text style={styles.cardHeading}>Match by energy</Text>
-        <Text style={styles.cardBody}>
-          Swipe through cinematic profiles, love prompts, and stories that bring
-          personalities to life.
-        </Text>
-        <View style={styles.ctaContainer}>
-          <Pressable style={styles.primaryButton} onPress={handleCreateAccount}>
-            <Text style={styles.primaryButtonText}>Create Account</Text>
-          </Pressable>
+      {/* Gradient Overlay */}
+      <AnimatedLinearGradient
+        colors={[
+          'rgba(0,0,0,0.7)',
+          'rgba(254,60,114,0.6)',
+          'rgba(254,60,114,0.8)',
+        ]}
+        start={{x: 0, y: 0}}
+        end={{x: 0, y: 1}}
+        style={[StyleSheet.absoluteFillObject, overlayStyle]}
+      />
+
+      {/* Animated accent circles */}
+      <Animated.View style={[styles.accentCircle1, pulseStyle]} />
+      <Animated.View style={styles.accentCircle2} />
+
+      {/* Content */}
+      <View style={styles.content}>
+        {/* Hero Section */}
+        <Animated.View style={[styles.heroSection, heroStyle]}>
+          <View style={styles.logoContainer}>
+            <Text style={styles.appName}>Pryvo</Text>
+            <View style={styles.logoUnderline} />
+          </View>
+          <Text style={styles.tagline}>Real connections begin with a vibe</Text>
+          <Text style={styles.subTagline}>
+            Find the people who feel like your next great story
+          </Text>
+        </Animated.View>
+
+        {/* Action Card */}
+        <Animated.View style={[styles.actionCard, cardStyle]}>
+          <Text style={styles.cardTitle}>Start Your Journey</Text>
+          <Text style={styles.cardDescription}>
+            Join thousands finding meaningful connections through authentic
+            profiles and real conversations.
+          </Text>
+
+          <Animated.View style={buttonStyle}>
+            <Pressable
+              style={styles.primaryButton}
+              onPress={handleCreateAccount}>
+              <LinearGradient
+                colors={[colors.primary, colors.primaryDark]}
+                start={{x: 0, y: 0}}
+                end={{x: 1, y: 0}}
+                style={styles.buttonGradient}>
+                <Text style={styles.primaryButtonText}>Create Account</Text>
+              </LinearGradient>
+            </Pressable>
+          </Animated.View>
+
           <Pressable style={styles.secondaryButton} onPress={handleSignIn}>
             <Text style={styles.secondaryButtonText}>Sign In</Text>
           </Pressable>
-        </View>
-        <View style={styles.inlineHighlights}>
-          <View style={styles.highlightPill}>
-            <Text style={styles.highlightText}>Curated Matches</Text>
+
+          {/* Feature Pills */}
+          <View style={styles.featuresContainer}>
+            <View style={styles.featurePill}>
+              <Text style={styles.featureIcon}>✨</Text>
+              <Text style={styles.featureText}>Curated Matches</Text>
+            </View>
+            <View style={styles.featurePill}>
+              <Text style={styles.featureIcon}>✓</Text>
+              <Text style={styles.featureText}>Verified</Text>
+            </View>
+            <View style={styles.featurePill}>
+              <Text style={styles.featureIcon}>🎬</Text>
+              <Text style={styles.featureText}>Video Prompts</Text>
+            </View>
           </View>
-          <View style={styles.highlightPill}>
-            <Text style={styles.highlightText}>Verified Profiles</Text>
-          </View>
-          <View style={styles.highlightPill}>
-            <Text style={styles.highlightText}>Video Prompts</Text>
-          </View>
-        </View>
-        <Text style={styles.disclaimer}>
-          By continuing, you agree to our Terms of Service and acknowledge our
-          Privacy Policy.
-        </Text>
-      </Animated.View>
+
+          <Text style={styles.disclaimer}>
+            By continuing, you agree to our{' '}
+            <Text
+              style={styles.linkText}
+              onPress={() => navigation.navigate(AppRoute.Terms)}>
+              Terms of Service
+            </Text>{' '}
+            and{' '}
+            <Text
+              style={styles.linkText}
+              onPress={() => navigation.navigate(AppRoute.Privacy)}>
+              Privacy Policy
+            </Text>
+          </Text>
+        </Animated.View>
+      </View>
     </View>
   );
 };
@@ -179,124 +259,176 @@ const SplashScreen = ({navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xxxl,
-    paddingBottom: spacing.xxxl,
-    justifyContent: 'space-between',
     backgroundColor: colors.primary,
   },
-  gradientGlow: {
-    position: 'absolute',
-    top: -180,
-    left: -100,
-    width: width * 1.6,
-    height: width * 1.1,
-    opacity: 0.55,
+  backgroundImage: {
+    width: '100%',
+    height: '100%',
   },
-  glowOrb: {
-    position: 'absolute',
-    bottom: -120,
-    right: -80,
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+  content: {
+    flex: 1,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xxxl + 20,
+    paddingBottom: spacing.xxl,
+    justifyContent: 'space-between',
   },
-  lottieBackground: {
+  accentCircle1: {
     position: 'absolute',
-    top: spacing.xxxl,
-    alignSelf: 'center',
-    width: width * 0.9,
-    height: width * 0.9,
-    opacity: 0.85,
+    top: -100,
+    right: -100,
+    width: 300,
+    height: 300,
+    borderRadius: 150,
+    backgroundColor: 'rgba(255,255,255,0.1)',
   },
-  heroContainer: {
-    marginTop: spacing.xxxl,
+  accentCircle2: {
+    position: 'absolute',
+    bottom: -150,
+    left: -150,
+    width: 400,
+    height: 400,
+    borderRadius: 200,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  heroSection: {
+    alignItems: 'center',
+    marginTop: spacing.xxl,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: spacing.lg,
   },
   appName: {
     fontFamily: typography.fontFamilyBold,
-    fontSize: typography.headings.h1 + 12,
-    color: colors.surface,
-    letterSpacing: 2,
+    fontSize: 52,
+    color: colors.textInverse,
+    letterSpacing: 3,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: {width: 0, height: 2},
+    textShadowRadius: 8,
+  },
+  logoUnderline: {
+    width: 60,
+    height: 4,
+    backgroundColor: colors.textInverse,
+    borderRadius: 2,
+    marginTop: spacing.xs,
   },
   tagline: {
-    marginTop: spacing.lg,
-    fontSize: typography.body.large,
-    lineHeight: 30,
-    color: colors.surface,
-    opacity: 0.96,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 34,
-    paddingVertical: spacing.xxl,
-    paddingHorizontal: spacing.xxl,
-    shadowColor: '#2a0b19',
-    shadowOffset: {width: 0, height: 20},
-    shadowOpacity: 0.25,
-    shadowRadius: 40,
-    elevation: 22,
-  },
-  cardHeading: {
+    fontSize: typography.headings.h2,
     fontFamily: typography.fontFamilyBold,
-    fontSize: typography.headings.h3,
-    color: colors.textPrimary,
-  },
-  cardBody: {
-    marginTop: spacing.sm,
-    fontSize: typography.body.medium,
-    lineHeight: 24,
-    color: colors.textSecondary,
-  },
-  ctaContainer: {
+    color: colors.textInverse,
+    textAlign: 'center',
     marginTop: spacing.xl,
-    gap: spacing.md,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: {width: 0, height: 1},
+    textShadowRadius: 6,
+  },
+  subTagline: {
+    fontSize: typography.body.large,
+    fontFamily: typography.fontFamilyRegular,
+    color: colors.textInverse,
+    textAlign: 'center',
+    marginTop: spacing.md,
+    opacity: 0.95,
+    paddingHorizontal: spacing.xl,
+    lineHeight: 24,
+  },
+  actionCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 32,
+    padding: spacing.xxl,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 20},
+    shadowOpacity: 0.3,
+    shadowRadius: 40,
+    elevation: 25,
+  },
+  cardTitle: {
+    fontSize: typography.headings.h3,
+    fontFamily: typography.fontFamilyBold,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  cardDescription: {
+    fontSize: typography.body.medium,
+    fontFamily: typography.fontFamilyRegular,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: spacing.xl,
   },
   primaryButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.md,
-    borderRadius: 18,
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: spacing.md,
+    shadowColor: colors.primary,
+    shadowOffset: {width: 0, height: 8},
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  buttonGradient: {
+    paddingVertical: spacing.md + 4,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   primaryButtonText: {
-    color: colors.surface,
+    color: colors.textInverse,
     fontFamily: typography.fontFamilyBold,
     fontSize: typography.body.large,
+    letterSpacing: 0.5,
   },
   secondaryButton: {
-    borderWidth: 1,
+    borderWidth: 2,
     borderColor: colors.primary,
-    paddingVertical: spacing.md,
-    borderRadius: 18,
+    paddingVertical: spacing.md + 4,
+    borderRadius: 20,
     alignItems: 'center',
+    marginBottom: spacing.lg,
+    backgroundColor: 'transparent',
   },
   secondaryButtonText: {
     color: colors.primary,
-    fontFamily: typography.fontFamilyMedium,
-    fontSize: typography.body.large,
+    fontFamily: typography.fontFamilyBold,
+    fontSize: typography.body.medium,
   },
-  inlineHighlights: {
+  featuresContainer: {
     flexDirection: 'row',
+    justifyContent: 'center',
     flexWrap: 'wrap',
     gap: spacing.sm,
-    marginTop: spacing.lg,
+    marginBottom: spacing.lg,
   },
-  highlightPill: {
-    backgroundColor: colors.background,
-    borderRadius: 999,
-    paddingVertical: 6,
+  featurePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.backgroundSecondary,
+    paddingVertical: spacing.xs + 2,
     paddingHorizontal: spacing.md,
+    borderRadius: 20,
+    gap: spacing.xs,
   },
-  highlightText: {
-    fontSize: typography.caption,
-    color: colors.textSecondary,
+  featureIcon: {
+    fontSize: 16,
+  },
+  featureText: {
+    fontSize: typography.caption + 1,
     fontFamily: typography.fontFamilyMedium,
+    color: colors.textPrimary,
   },
   disclaimer: {
-    marginTop: spacing.md,
     fontSize: typography.caption,
-    color: colors.textSecondary,
+    fontFamily: typography.fontFamilyRegular,
+    color: colors.textTertiary,
     textAlign: 'center',
+    lineHeight: 16,
+  },
+  linkText: {
+    color: colors.primary,
+    fontFamily: typography.fontFamilyMedium,
+    textDecorationLine: 'underline',
   },
 });
 

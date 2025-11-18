@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "327819775040",
+    "project_id": "pryvo-cb521",
+    "storage_bucket": "pryvo-cb521.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:327819775040:android:5a67174a378cfb2c12a3a5",
+        "android_client_info": {
+          "package_name": "com.pryvo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAlDOYRy5_OkqVjqmf8cPt49Zvvb8S50kg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -14,6 +14,9 @@ if linkage != nil
   use_frameworks! :linkage => linkage.to_sym
 end
 
+# Enable modular headers globally for Firebase compatibility
+use_modular_headers!
+
 target 'Pryvo' do
   config = use_native_modules!
 
@@ -36,5 +39,14 @@ target 'Pryvo' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+    
+    # Enable modular headers for Firebase dependencies
+    installer.pods_project.targets.each do |target|
+      if ['GoogleUtilities', 'FirebaseCoreInternal', 'FirebaseCore', 'FirebaseMessaging'].include?(target.name)
+        target.build_configurations.each do |config|
+          config.build_settings['DEFINES_MODULE'] = 'YES'
+        end
+      end
+    end
   end
 end

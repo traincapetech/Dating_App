@@ -71,16 +71,8 @@ const SignUpScreen = () => {
         phone: form.phone.trim(),
         password: form.password,
       });
-      Alert.alert(
-        'Account created',
-        'Welcome to Pryvo! Continue by signing in.',
-        [
-          {
-            text: 'Go to Sign In',
-            onPress: () => navigation.navigate(AppRoute.SignIn),
-          },
-        ],
-      );
+      // Navigate to phone input for verification
+      navigation.navigate(AppRoute.PhoneInput);
     } catch (error) {
       const message = error?.message || 'Failed to create your account.';
       setErrors(prev => ({...prev, api: message}));
@@ -244,13 +236,13 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: colors.neutralLight,
+    borderColor: colors.border,
     borderRadius: 14,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     fontSize: typography.body.medium,
     color: colors.textPrimary,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.inputBackground,
   },
   inputError: {
     borderColor: colors.error,

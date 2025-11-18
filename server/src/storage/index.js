@@ -40,4 +40,6 @@ export const storage = {
 };
 
 export default storage;
+export {localDriver} from './drivers/local.js';
+export {r2Driver} from './drivers/r2.js';
 

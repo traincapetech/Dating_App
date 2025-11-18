@@ -48,12 +48,9 @@ const SignInScreen = () => {
         email: form.email.trim().toLowerCase(),
         password: form.password,
       });
-      Alert.alert('Signed in', 'You are now authenticated.', [
-        {
-          text: 'Continue',
-          onPress: () => navigation.navigate(AppRoute.PhoneInput),
-        },
-      ]);
+      // Navigate to onboarding flow or home based on profile completion
+      // For now, navigate to welcome screen to continue onboarding
+      navigation.navigate(AppRoute.Welcome);
     } catch (error) {
       const message = error?.message || 'Unable to sign you in right now.';
       setErrors(prev => ({...prev, api: message}));
@@ -173,13 +170,13 @@ const styles = StyleSheet.create({
   },
   input: {
     borderWidth: 1,
-    borderColor: colors.neutralLight,
+    borderColor: colors.border,
     borderRadius: 14,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     fontSize: typography.body.medium,
     color: colors.textPrimary,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.inputBackground,
   },
   inputError: {
     borderColor: colors.error,
