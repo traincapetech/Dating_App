@@ -18,6 +18,7 @@ import LifestyleScreen from '../features/onboarding/screens/LifestyleScreen.jsx'
 import ProfilePromptsScreen from '../features/onboarding/screens/ProfilePromptsScreen.jsx';
 import MediaUploadScreen from '../features/onboarding/screens/MediaUploadScreen.jsx';
 import SubscriptionUpsellScreen from '../features/subscription/screens/SubscriptionUpsellScreen.jsx';
+import HomeScreen from '../features/discovery/screens/HomeScreen.jsx';
 import {colors, typography} from '../theme';
 
 const Stack = createNativeStackNavigator();
@@ -79,7 +80,7 @@ const AppNavigator = () => {
           name={AppRoute.SubscriptionUpsell}
           component={SubscriptionUpsellScreen}
         />
-        <Stack.Screen name={AppRoute.HomeTabs} component={PlaceholderScreen} />
+        <Stack.Screen name={AppRoute.HomeTabs} component={HomeScreen} />
         <Stack.Screen name={AppRoute.Messages} component={PlaceholderScreen} />
         <Stack.Screen name={AppRoute.Settings} component={PlaceholderScreen} />
       </Stack.Navigator>

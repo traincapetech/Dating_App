@@ -9,6 +9,13 @@
     "start": "react-native start",
     "test": "jest"
   },
+  "react-native": {
+    "project": {
+      "android": {
+        "packageName": "com.pryvo"
+      }
+    }
+  },
   "dependencies": {
     "@react-native-async-storage/async-storage": "^2.2.0",
     "@react-native-firebase/app": "^23.5.0",
@@ -23,6 +30,7 @@
     "react-native-google-places-autocomplete": "^2.5.7",
     "react-native-image-picker": "^8.2.1",
     "react-native-linear-gradient": "^2.8.3",
+    "react-native-phone-number-input": "^2.1.0",
     "react-native-reanimated": "^3.19.4",
     "react-native-safe-area-context": "^5.6.2",
     "react-native-screens": "^4.18.0",
@@ -32,7 +40,7 @@
     "@babel/core": "^7.25.2",
     "@babel/preset-env": "^7.25.3",
     "@babel/runtime": "^7.25.0",
-    "@react-native-community/cli": "^15.0.1",
+    "@react-native-community/cli": "^20.0.2",
     "@react-native-community/cli-platform-android": "^15.0.1",
     "@react-native-community/cli-platform-ios": "^15.0.1",
     "@react-native/babel-preset": "0.78.3",

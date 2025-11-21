@@ -1,4 +1,4 @@
-import React, {useEffect} from 'react';
+import React from 'react';
 import {
   View,
   Text,
@@ -7,137 +7,14 @@ import {
   StatusBar,
   Dimensions,
   Image,
-  ImageBackground,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import Animated, {
-  Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withRepeat,
-  withSequence,
-  withTiming,
-  interpolate,
-} from 'react-native-reanimated';
 import {colors, spacing, typography} from '../../../theme';
 import {AppRoute} from '../../../constants/routes';
 
 const {width, height} = Dimensions.get('window');
 
-const AnimatedLinearGradient = Animated.createAnimatedComponent(LinearGradient);
-const AnimatedImageBackground =
-  Animated.createAnimatedComponent(ImageBackground);
-
 const SplashScreen = ({navigation}) => {
-  // Animation values
-  const imageScale = useSharedValue(1);
-  const imageOpacity = useSharedValue(0);
-  const overlayOpacity = useSharedValue(0.4);
-  const heroTranslate = useSharedValue(50);
-  const heroOpacity = useSharedValue(0);
-  const cardTranslate = useSharedValue(80);
-  const cardOpacity = useSharedValue(0);
-  const buttonScale = useSharedValue(0.9);
-  const pulseScale = useSharedValue(1);
-
-  useEffect(() => {
-    // Image entrance animation
-    imageOpacity.value = withTiming(1, {
-      duration: 1200,
-      easing: Easing.out(Easing.cubic),
-    });
-    imageScale.value = withTiming(1.1, {
-      duration: 15000,
-      easing: Easing.inOut(Easing.ease),
-    });
-
-    // Overlay pulse
-    overlayOpacity.value = withRepeat(
-      withSequence(
-        withTiming(0.5, {duration: 2000, easing: Easing.inOut(Easing.ease)}),
-        withTiming(0.4, {duration: 2000, easing: Easing.inOut(Easing.ease)}),
-      ),
-      -1,
-      false,
-    );
-
-    // Hero text animation
-    heroTranslate.value = withTiming(0, {
-      duration: 1000,
-      easing: Easing.out(Easing.cubic),
-    });
-    heroOpacity.value = withDelay(
-      300,
-      withTiming(1, {
-        duration: 800,
-        easing: Easing.out(Easing.cubic),
-      }),
-    );
-
-    // Card animation
-    cardTranslate.value = withDelay(
-      600,
-      withTiming(0, {
-        duration: 1000,
-        easing: Easing.out(Easing.cubic),
-      }),
-    );
-    cardOpacity.value = withDelay(
-      600,
-      withTiming(1, {
-        duration: 1000,
-        easing: Easing.out(Easing.cubic),
-      }),
-    );
-
-    // Button scale animation
-    buttonScale.value = withDelay(
-      900,
-      withTiming(1, {
-        duration: 500,
-        easing: Easing.out(Easing.back(1.5)),
-      }),
-    );
-
-    // Pulse animation for accent
-    pulseScale.value = withRepeat(
-      withSequence(
-        withTiming(1.05, {duration: 2000, easing: Easing.inOut(Easing.ease)}),
-        withTiming(1, {duration: 2000, easing: Easing.inOut(Easing.ease)}),
-      ),
-      -1,
-      false,
-    );
-  }, []);
-
-  const imageStyle = useAnimatedStyle(() => ({
-    opacity: imageOpacity.value,
-    transform: [{scale: imageScale.value}],
-  }));
-
-  const overlayStyle = useAnimatedStyle(() => ({
-    opacity: overlayOpacity.value,
-  }));
-
-  const heroStyle = useAnimatedStyle(() => ({
-    opacity: heroOpacity.value,
-    transform: [{translateY: heroTranslate.value}],
-  }));
-
-  const cardStyle = useAnimatedStyle(() => ({
-    opacity: cardOpacity.value,
-    transform: [{translateY: cardTranslate.value}],
-  }));
-
-  const buttonStyle = useAnimatedStyle(() => ({
-    transform: [{scale: buttonScale.value}],
-  }));
-
-  const pulseStyle = useAnimatedStyle(() => ({
-    transform: [{scale: pulseScale.value}],
-  }));
-
   const handleCreateAccount = () => {
     navigation?.navigate(AppRoute.SignUp);
   };
@@ -146,8 +23,6 @@ const SplashScreen = ({navigation}) => {
     navigation?.navigate(AppRoute.SignIn);
   };
 
-  // Placeholder image URL - Replace this with your own image/video
-  // For video, you can use react-native-video component instead
   const backgroundImageUri =
     'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80';
 
@@ -156,16 +31,19 @@ const SplashScreen = ({navigation}) => {
       <StatusBar barStyle="light-content" translucent />
 
       {/* Background Image */}
-      <Animated.View style={[StyleSheet.absoluteFillObject, imageStyle]}>
+      <View style={StyleSheet.absoluteFillObject}>
         <Image
           source={{uri: backgroundImageUri}}
           style={styles.backgroundImage}
           resizeMode="cover"
+          onError={(error) => {
+            console.log('Background image failed to load:', error);
+          }}
         />
-      </Animated.View>
+      </View>
 
       {/* Gradient Overlay */}
-      <AnimatedLinearGradient
+      <LinearGradient
         colors={[
           'rgba(0,0,0,0.7)',
           'rgba(254,60,114,0.6)',
@@ -173,17 +51,13 @@ const SplashScreen = ({navigation}) => {
         ]}
         start={{x: 0, y: 0}}
         end={{x: 0, y: 1}}
-        style={[StyleSheet.absoluteFillObject, overlayStyle]}
+        style={StyleSheet.absoluteFillObject}
       />
-
-      {/* Animated accent circles */}
-      <Animated.View style={[styles.accentCircle1, pulseStyle]} />
-      <Animated.View style={styles.accentCircle2} />
 
       {/* Content */}
       <View style={styles.content}>
         {/* Hero Section */}
-        <Animated.View style={[styles.heroSection, heroStyle]}>
+        <View style={styles.heroSection}>
           <View style={styles.logoContainer}>
             <Text style={styles.appName}>Pryvo</Text>
             <View style={styles.logoUnderline} />
@@ -192,29 +66,27 @@ const SplashScreen = ({navigation}) => {
           <Text style={styles.subTagline}>
             Find the people who feel like your next great story
           </Text>
-        </Animated.View>
+        </View>
 
         {/* Action Card */}
-        <Animated.View style={[styles.actionCard, cardStyle]}>
+        <View style={styles.actionCard}>
           <Text style={styles.cardTitle}>Start Your Journey</Text>
           <Text style={styles.cardDescription}>
             Join thousands finding meaningful connections through authentic
             profiles and real conversations.
           </Text>
 
-          <Animated.View style={buttonStyle}>
-            <Pressable
-              style={styles.primaryButton}
-              onPress={handleCreateAccount}>
-              <LinearGradient
-                colors={[colors.primary, colors.primaryDark]}
-                start={{x: 0, y: 0}}
-                end={{x: 1, y: 0}}
-                style={styles.buttonGradient}>
-                <Text style={styles.primaryButtonText}>Create Account</Text>
-              </LinearGradient>
-            </Pressable>
-          </Animated.View>
+          <Pressable
+            style={styles.primaryButton}
+            onPress={handleCreateAccount}>
+            <LinearGradient
+              colors={[colors.primary, colors.primaryDark]}
+              start={{x: 0, y: 0}}
+              end={{x: 1, y: 0}}
+              style={styles.buttonGradient}>
+              <Text style={styles.primaryButtonText}>Create Account</Text>
+            </LinearGradient>
+          </Pressable>
 
           <Pressable style={styles.secondaryButton} onPress={handleSignIn}>
             <Text style={styles.secondaryButtonText}>Sign In</Text>
@@ -250,7 +122,7 @@ const SplashScreen = ({navigation}) => {
               Privacy Policy
             </Text>
           </Text>
-        </Animated.View>
+        </View>
       </View>
     </View>
   );
@@ -271,24 +143,6 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xxxl + 20,
     paddingBottom: spacing.xxl,
     justifyContent: 'space-between',
-  },
-  accentCircle1: {
-    position: 'absolute',
-    top: -100,
-    right: -100,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  accentCircle2: {
-    position: 'absolute',
-    bottom: -150,
-    left: -150,
-    width: 400,
-    height: 400,
-    borderRadius: 200,
-    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   heroSection: {
     alignItems: 'center',

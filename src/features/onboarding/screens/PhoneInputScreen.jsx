@@ -20,18 +20,16 @@ const PhoneInputScreen = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleVerify = async () => {
+  const handleContinue = async () => {
     if (!phoneNumber.trim()) {
       return;
     }
     setIsSubmitting(true);
-    // Simulate API call
+    // Just collect phone number and proceed - no OTP verification
     setTimeout(() => {
       setIsSubmitting(false);
-      navigation.navigate(AppRoute.OTPVerification, {
-        phone: `${countryCode}${phoneNumber}`,
-      });
-    }, 1000);
+      navigation.navigate(AppRoute.Welcome);
+    }, 500);
   };
 
   return (
@@ -44,7 +42,7 @@ const PhoneInputScreen = () => {
         <View style={styles.header}>
           <Text style={styles.title}>What's your phone number?</Text>
           <Text style={styles.subtitle}>
-            We'll send you a verification code to confirm your number.
+            We'll use this to help you connect with others.
           </Text>
         </View>
 
@@ -61,7 +59,7 @@ const PhoneInputScreen = () => {
             style={styles.phoneInput}
             placeholderTextColor={colors.textSecondary}
             returnKeyType="done"
-            onSubmitEditing={handleVerify}
+            onSubmitEditing={handleContinue}
           />
         </View>
 
@@ -70,12 +68,12 @@ const PhoneInputScreen = () => {
             styles.primaryButton,
             (!phoneNumber.trim() || isSubmitting) && styles.primaryButtonDisabled,
           ]}
-          onPress={handleVerify}
+          onPress={handleContinue}
           disabled={!phoneNumber.trim() || isSubmitting}>
           {isSubmitting ? (
             <ActivityIndicator color={colors.surface} />
           ) : (
-            <Text style={styles.primaryButtonText}>Verify</Text>
+            <Text style={styles.primaryButtonText}>Continue</Text>
           )}
         </Pressable>
       </ScrollView>

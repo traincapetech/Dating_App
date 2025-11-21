@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:scaleX="0.65"
+        android:scaleY="0.65"
+        android:translateX="18.9"
+        android:translateY="18.9">
+        <!-- Stylized "P" letter for Pryvo -->
+        <path
+            android:fillColor="#FFFFFF"
+            android:pathData="M25,15L25,65L48,65C58.49,65 67,56.49 67,46C67,35.51 58.49,27 48,27L35,27L35,15L25,15Z"/>
+        <path
+            android:fillColor="#6200EE"
+            android:pathData="M35,37L48,37C52.97,37 57,41.03 57,46C57,50.97 52.97,55 48,55L35,55L35,37Z"/>
+    </group>
+</vector>
+

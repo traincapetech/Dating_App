@@ -8,6 +8,7 @@ import {
   Image,
   Alert,
   Platform,
+  PermissionsAndroid,
 } from 'react-native';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
 import {useNavigation} from '@react-navigation/native';
@@ -49,7 +50,39 @@ const MediaUploadScreen = () => {
     );
   };
 
-  const handleCamera = index => {
+  const requestCameraPermission = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.CAMERA,
+          {
+            title: 'Camera Permission',
+            message: 'Pryvo needs access to your camera to take photos and videos',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          },
+        );
+        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+          return true;
+        } else {
+          Alert.alert('Permission Denied', 'Camera permission is required to take photos');
+          return false;
+        }
+      } catch (err) {
+        console.warn(err);
+        return false;
+      }
+    }
+    return true; // iOS handles permissions automatically
+  };
+
+  const handleCamera = async index => {
+    const hasPermission = await requestCameraPermission();
+    if (!hasPermission) {
+      return;
+    }
+
     const options = {
       mediaType: 'mixed', // 'photo' or 'video' or 'mixed'
       includeBase64: false,

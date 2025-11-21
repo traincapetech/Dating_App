@@ -44,13 +44,16 @@ const SignInScreen = () => {
     }
     setIsSubmitting(true);
     try {
-      await signIn({
+      const response = await signIn({
         email: form.email.trim().toLowerCase(),
         password: form.password,
       });
-      // Navigate to onboarding flow or home based on profile completion
-      // For now, navigate to welcome screen to continue onboarding
-      navigation.navigate(AppRoute.Welcome);
+      // Navigate directly to home screen for existing users
+      // They've already completed onboarding during sign up
+      navigation.reset({
+        index: 0,
+        routes: [{name: AppRoute.HomeTabs}],
+      });
     } catch (error) {
       const message = error?.message || 'Unable to sign you in right now.';
       setErrors(prev => ({...prev, api: message}));
