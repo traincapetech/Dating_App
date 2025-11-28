@@ -25,6 +25,8 @@ class MainApplication : Application(), ReactApplication {
               add(com.BV.LinearGradient.LinearGradientPackage())
               add(com.swmansion.rnscreens.RNScreensPackage())
               add(com.reactnativecommunity.asyncstorage.AsyncStoragePackage())
+              // Image picker package
+              add(com.imagepicker.ImagePickerPackage())
             }
 
         override fun getJSMainModuleName(): String = "index"

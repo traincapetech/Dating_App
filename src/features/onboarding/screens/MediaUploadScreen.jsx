@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -9,15 +9,35 @@ import {
   Alert,
   Platform,
   PermissionsAndroid,
+  ActivityIndicator,
 } from 'react-native';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
 import {useNavigation} from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
+import {uploadProfileImage} from '../../../services/profile/profileService';
 
 const MediaUploadScreen = () => {
   const navigation = useNavigation();
   const [media, setMedia] = useState(Array(6).fill(null));
+  const [uploading, setUploading] = useState(false);
+
+  // Verify image picker module is available
+  useEffect(() => {
+    console.log('[MediaUpload] Component mounted');
+    console.log('[MediaUpload] launchCamera available:', typeof launchCamera === 'function');
+    console.log('[MediaUpload] launchImageLibrary available:', typeof launchImageLibrary === 'function');
+    
+    if (typeof launchCamera !== 'function' || typeof launchImageLibrary !== 'function') {
+      console.error('[MediaUpload] ERROR: Image picker functions are not available!');
+      Alert.alert(
+        'Configuration Error',
+        'Image picker module is not properly configured. Please rebuild the app.',
+        [{text: 'OK'}]
+      );
+    }
+  }, []);
 
   const mediaTypes = [
     'Headshot',
@@ -35,11 +55,21 @@ const MediaUploadScreen = () => {
       [
         {
           text: 'Camera',
-          onPress: () => handleCamera(index),
+          onPress: () => {
+            // Longer delay to ensure Alert is fully closed and UI is ready
+            setTimeout(() => {
+              handleCamera(index);
+            }, 300);
+          },
         },
         {
           text: 'Gallery',
-          onPress: () => handleGallery(index),
+          onPress: () => {
+            // Longer delay to ensure Alert is fully closed and UI is ready
+            setTimeout(() => {
+              handleGallery(index);
+            }, 300);
+          },
         },
         {
           text: 'Cancel',
@@ -50,27 +80,68 @@ const MediaUploadScreen = () => {
     );
   };
 
-  const requestCameraPermission = async () => {
+  const checkCameraPermission = async () => {
     if (Platform.OS === 'android') {
       try {
-        const granted = await PermissionsAndroid.request(
+        // Check if permission is already granted
+        const checkResult = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.CAMERA,
+        );
+        
+        if (checkResult) {
+          return true; // Already granted
+        }
+        
+        // Request camera permission
+        const cameraGranted = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.CAMERA,
           {
             title: 'Camera Permission',
-            message: 'Pryvo needs access to your camera to take photos and videos',
+            message: 'Pryvo needs access to your camera to take photos',
             buttonNeutral: 'Ask Me Later',
             buttonNegative: 'Cancel',
             buttonPositive: 'OK',
           },
         );
-        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-          return true;
-        } else {
-          Alert.alert('Permission Denied', 'Camera permission is required to take photos');
-          return false;
-        }
+        
+        return cameraGranted === PermissionsAndroid.RESULTS.GRANTED;
       } catch (err) {
-        console.warn(err);
+        console.error('Camera permission error:', err);
+        return false;
+      }
+    }
+    return true; // iOS handles permissions automatically
+  };
+
+  const checkStoragePermission = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        let permission;
+        if (Platform.Version >= 33) {
+          permission = PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES;
+        } else {
+          permission = PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE;
+        }
+        
+        // Check if permission is already granted
+        const checkResult = await PermissionsAndroid.check(permission);
+        
+        if (checkResult) {
+          return true; // Already granted
+        }
+        
+        // Request storage permission
+        const storageGranted = await PermissionsAndroid.request(permission, {
+          title: 'Storage Permission',
+          message: 'Pryvo needs access to your photos to select images',
+          buttonNeutral: 'Ask Me Later',
+          buttonNegative: 'Cancel',
+          buttonPositive: 'OK',
+        });
+        
+        return storageGranted === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (err) {
+        console.error('Storage permission error:', err);
         return false;
       }
     }
@@ -78,83 +149,215 @@ const MediaUploadScreen = () => {
   };
 
   const handleCamera = async index => {
-    const hasPermission = await requestCameraPermission();
-    if (!hasPermission) {
-      return;
-    }
-
-    const options = {
-      mediaType: 'mixed', // 'photo' or 'video' or 'mixed'
-      includeBase64: false,
-      maxHeight: 2000,
-      maxWidth: 2000,
-      quality: 0.8,
-      videoQuality: 'high',
-      durationLimit: 60, // 60 seconds max for video
-      saveToPhotos: true,
-    };
-
-    launchCamera(options, response => {
-      if (response.didCancel) {
+    try {
+      console.log('[Camera] Starting camera handler for index:', index);
+      
+      // Verify function exists
+      if (typeof launchCamera !== 'function') {
+        console.error('[Camera] ERROR: launchCamera is not a function!');
+        Alert.alert('Error', 'Camera module is not available. Please rebuild the app.');
         return;
-      } else if (response.errorMessage) {
-        Alert.alert('Error', response.errorMessage);
+      }
+      
+      const hasPermission = await checkCameraPermission();
+      if (!hasPermission) {
+        console.log('[Camera] Permission denied');
+        Alert.alert('Permission Denied', 'Camera permission is required to take photos');
         return;
       }
 
-      if (response.assets && response.assets[0]) {
-        const asset = response.assets[0];
-        const mediaUri = asset.uri;
-        const mediaType = asset.type?.startsWith('video/') ? 'video' : 'photo';
+      const options = {
+        mediaType: 'photo',
+        includeBase64: true,
+        maxHeight: 2000,
+        maxWidth: 2000,
+        quality: 0.8,
+        saveToPhotos: true,
+      };
 
-        setMedia(prev => {
-          const newMedia = [...prev];
-          newMedia[index] = {
-            uri: mediaUri,
-            type: mediaType,
-            fileName: asset.fileName || `media_${index}.${mediaType === 'video' ? 'mp4' : 'jpg'}`,
-          };
-          return newMedia;
+      console.log('[Camera] Launching camera with options:', JSON.stringify(options));
+      console.log('[Camera] launchCamera function type:', typeof launchCamera);
+      
+      // Ensure we're calling launchCamera correctly - wrap in try-catch
+      try {
+        console.log('[Camera] About to call launchCamera...');
+        const result = launchCamera(options, response => {
+          console.log('[Camera] Callback invoked!');
+        console.log('[Camera] Response:', {
+          didCancel: response.didCancel,
+          errorMessage: response.errorMessage,
+          hasAssets: !!response.assets,
         });
+        
+        if (response.didCancel) {
+          console.log('[Camera] User cancelled');
+          return;
+        }
+        
+        if (response.errorMessage) {
+          console.error('[Camera] Error:', response.errorMessage);
+          Alert.alert('Camera Error', response.errorMessage);
+          return;
+        }
+
+        if (response.assets && response.assets[0]) {
+          const asset = response.assets[0];
+          console.log('[Camera] Asset selected:', {
+            uri: asset.uri,
+            type: asset.type,
+            hasBase64: !!asset.base64,
+          });
+          
+          // Fix 3: Validate URI to prevent crashes
+          const mediaUri = asset.uri || asset.fileName || (asset.base64 ? 'base64://' : null);
+          if (!mediaUri) {
+            Alert.alert('Error', 'Failed to get image data. Please try again.');
+            return;
+          }
+          
+          // Fix 4: Validate media type - prevent video uploads
+          const mediaType = asset.type?.startsWith('video/') ? 'video' : 'photo';
+          if (mediaType === 'video') {
+            Alert.alert('Videos not supported', 'Please pick an image instead.');
+            return;
+          }
+          
+          // Fix 5: Add proper base64 header
+          const base64Data = asset.base64 
+            ? `data:${asset.type || 'image/jpeg'};base64,${asset.base64}`
+            : null;
+
+          setMedia(prev => {
+            const newMedia = [...prev];
+            newMedia[index] = {
+              uri: mediaUri,
+              type: mediaType,
+              fileName: asset.fileName || `media_${index}.jpg`,
+              base64: base64Data,
+              asset: asset,
+            };
+            return newMedia;
+          });
+        } else {
+          console.warn('[Camera] No assets in response');
+        }
+        });
+        console.log('[Camera] launchCamera called, result:', result);
+      } catch (launchError) {
+        console.error('[Camera] Launch error:', launchError);
+        console.error('[Camera] Error stack:', launchError.stack);
+        Alert.alert('Error', `Failed to launch camera: ${launchError.message || launchError.toString()}`);
       }
-    });
+    } catch (error) {
+      console.error('[Camera] Exception:', error);
+      Alert.alert('Error', 'Failed to open camera. Please try again.');
+    }
   };
 
-  const handleGallery = index => {
-    const options = {
-      mediaType: 'mixed', // 'photo' or 'video' or 'mixed'
-      includeBase64: false,
-      maxHeight: 2000,
-      maxWidth: 2000,
-      quality: 0.8,
-      videoQuality: 'high',
-      selectionLimit: 1,
-    };
-
-    launchImageLibrary(options, response => {
-      if (response.didCancel) {
+  const handleGallery = async index => {
+    try {
+      console.log('[Gallery] Starting gallery handler for index:', index);
+      
+      // Verify function exists
+      if (typeof launchImageLibrary !== 'function') {
+        console.error('[Gallery] ERROR: launchImageLibrary is not a function!');
+        Alert.alert('Error', 'Gallery module is not available. Please rebuild the app.');
         return;
-      } else if (response.errorMessage) {
-        Alert.alert('Error', response.errorMessage);
+      }
+      
+      const hasPermission = await checkStoragePermission();
+      if (!hasPermission) {
+        console.log('[Gallery] Permission denied');
+        Alert.alert('Permission Denied', 'Storage permission is required to select photos');
         return;
       }
 
-      if (response.assets && response.assets[0]) {
-        const asset = response.assets[0];
-        const mediaUri = asset.uri;
-        const mediaType = asset.type?.startsWith('video/') ? 'video' : 'photo';
+      const options = {
+        mediaType: 'photo',
+        includeBase64: true,
+        maxHeight: 2000,
+        maxWidth: 2000,
+        quality: 0.8,
+        selectionLimit: 1,
+      };
 
-        setMedia(prev => {
-          const newMedia = [...prev];
-          newMedia[index] = {
-            uri: mediaUri,
-            type: mediaType,
-            fileName: asset.fileName || `media_${index}.${mediaType === 'video' ? 'mp4' : 'jpg'}`,
-          };
-          return newMedia;
+      console.log('[Gallery] Launching image library with options:', JSON.stringify(options));
+      console.log('[Gallery] launchImageLibrary function type:', typeof launchImageLibrary);
+      
+      // Ensure we're calling launchImageLibrary correctly - wrap in try-catch
+      try {
+        console.log('[Gallery] About to call launchImageLibrary...');
+        const result = launchImageLibrary(options, response => {
+          console.log('[Gallery] Callback invoked!');
+        console.log('[Gallery] Response:', {
+          didCancel: response.didCancel,
+          errorMessage: response.errorMessage,
+          hasAssets: !!response.assets,
         });
+        
+        if (response.didCancel) {
+          console.log('[Gallery] User cancelled');
+          return;
+        }
+        
+        if (response.errorMessage) {
+          console.error('[Gallery] Error:', response.errorMessage);
+          Alert.alert('Gallery Error', response.errorMessage);
+          return;
+        }
+
+        if (response.assets && response.assets[0]) {
+          const asset = response.assets[0];
+          console.log('[Gallery] Asset selected:', {
+            uri: asset.uri,
+            type: asset.type,
+            hasBase64: !!asset.base64,
+          });
+          
+          // Fix 3: Validate URI to prevent crashes
+          const mediaUri = asset.uri || asset.fileName || (asset.base64 ? 'base64://' : null);
+          if (!mediaUri) {
+            Alert.alert('Error', 'Failed to get image data. Please try again.');
+            return;
+          }
+          
+          // Fix 4: Validate media type - prevent video uploads
+          const mediaType = asset.type?.startsWith('video/') ? 'video' : 'photo';
+          if (mediaType === 'video') {
+            Alert.alert('Videos not supported', 'Please pick an image instead.');
+            return;
+          }
+          
+          // Fix 5: Add proper base64 header
+          const base64Data = asset.base64 
+            ? `data:${asset.type || 'image/jpeg'};base64,${asset.base64}`
+            : null;
+
+          setMedia(prev => {
+            const newMedia = [...prev];
+            newMedia[index] = {
+              uri: mediaUri,
+              type: mediaType,
+              fileName: asset.fileName || asset.uri?.split('/').pop() || `media_${index}.jpg`,
+              base64: base64Data,
+              asset: asset,
+            };
+            return newMedia;
+          });
+        } else {
+          console.warn('[Gallery] No assets in response');
+        }
+        });
+        console.log('[Gallery] launchImageLibrary called, result:', result);
+      } catch (launchError) {
+        console.error('[Gallery] Launch error:', launchError);
+        console.error('[Gallery] Error stack:', launchError.stack);
+        Alert.alert('Error', `Failed to launch gallery: ${launchError.message || launchError.toString()}`);
       }
-    });
+    } catch (error) {
+      console.error('[Gallery] Exception:', error);
+      Alert.alert('Error', 'Failed to open gallery. Please try again.');
+    }
   };
 
   const handleMediaSelect = index => {
@@ -186,8 +389,70 @@ const MediaUploadScreen = () => {
     );
   };
 
-  const handleContinue = () => {
-    navigation.navigate(AppRoute.SubscriptionUpsell);
+  const handleContinue = async () => {
+    // Get user ID from storage (stored during signup/login)
+    try {
+      const userData = await AsyncStorage.getItem('@pryvo_user');
+      let userId = null;
+      
+      if (userData) {
+        const user = JSON.parse(userData);
+        userId = user.id;
+      } else {
+        // Try to get from token (decode JWT)
+        const token = await AsyncStorage.getItem('@pryvo/token');
+        if (token) {
+          // Simple JWT decode (just get payload)
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            userId = payload.userId || payload.id;
+          } catch (e) {
+            console.error('Failed to decode token:', e);
+          }
+        }
+      }
+
+      if (!userId) {
+        Alert.alert('Error', 'User ID not found. Please sign in again.');
+        return;
+      }
+
+      // Filter out null media items
+      const mediaToUpload = media.filter(item => item !== null);
+      
+      if (mediaToUpload.length === 0) {
+        Alert.alert('No Media', 'Please add at least one photo before continuing.');
+        return;
+      }
+
+      setUploading(true);
+      
+      // Upload all images
+      const uploadPromises = mediaToUpload.map((item, index) => {
+        // Prefer asset object (which includes base64), then base64, then URI
+        if (item.asset) {
+          return uploadProfileImage(userId, item.asset, item.fileName);
+        } else if (item.base64) {
+          return uploadProfileImage(userId, item.base64, item.fileName);
+        } else {
+          return uploadProfileImage(userId, item.uri, item.fileName);
+        }
+      });
+
+      await Promise.all(uploadPromises);
+      
+      Alert.alert('Success', 'Images uploaded successfully!', [
+        {
+          text: 'OK',
+          onPress: () => navigation.navigate(AppRoute.SubscriptionUpsell),
+        },
+      ]);
+    } catch (error) {
+      console.error('Upload error:', error);
+      Alert.alert('Upload Failed', error.message || 'Failed to upload images. Please try again.');
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -253,8 +518,15 @@ const MediaUploadScreen = () => {
         </Text>
       </View>
 
-      <Pressable style={styles.primaryButton} onPress={handleContinue}>
-        <Text style={styles.primaryButtonText}>Fill out your profile</Text>
+      <Pressable 
+        style={[styles.primaryButton, uploading && styles.primaryButtonDisabled]} 
+        onPress={handleContinue}
+        disabled={uploading}>
+        {uploading ? (
+          <ActivityIndicator color={colors.surface} />
+        ) : (
+          <Text style={styles.primaryButtonText}>Upload & Continue</Text>
+        )}
       </Pressable>
     </ScrollView>
   );
@@ -388,6 +660,9 @@ const styles = StyleSheet.create({
     color: colors.surface,
     fontFamily: typography.fontFamilyBold,
     fontSize: typography.body.large,
+  },
+  primaryButtonDisabled: {
+    opacity: 0.6,
   },
 });
 

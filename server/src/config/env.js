@@ -20,9 +20,14 @@ export const config = {
     publicBaseUrl: process.env.CLOUDFLARE_R2_PUBLIC_BASE_URL || '',
   },
   email: {
+    provider: process.env.EMAIL_PROVIDER || 'smtp', // 'smtp' (EmailJS doesn't support server-side)
+    // SMTP configuration
     host: process.env.EMAIL_HOST || 'smtp.hostinger.com',
     port: Number.parseInt(process.env.EMAIL_PORT || '465', 10),
-    secure: process.env.EMAIL_SECURE !== 'false', // true for 465, false for 587
+    // Auto-detect secure: true for 465, false for 587 (STARTTLS)
+    secure: process.env.EMAIL_SECURE !== undefined 
+      ? process.env.EMAIL_SECURE !== 'false'
+      : Number.parseInt(process.env.EMAIL_PORT || '465', 10) === 465,
     user: process.env.EMAIL_USER || 'sales@traincapetech.in',
     password: process.env.EMAIL_PASSWORD || 'Canada@1212',
     from: process.env.EMAIL_FROM || 'Pryvo <sales@traincapetech.in>',

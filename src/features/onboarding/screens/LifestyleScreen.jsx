@@ -5,10 +5,14 @@ import {
   StyleSheet,
   Pressable,
   ScrollView,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
+import {saveLifestyle} from '../../../services/profile/profileService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const LifestyleScreen = () => {
   const navigation = useNavigation();
@@ -20,6 +24,7 @@ const LifestyleScreen = () => {
     politicalBeliefs: '',
     religiousBeliefs: '',
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const yesNoOptions = ['Yes', 'Sometimes', 'No', 'Prefer Not to say'];
 
@@ -45,8 +50,49 @@ const LifestyleScreen = () => {
     'Prefer not to say',
   ];
 
-  const handleContinue = () => {
-    navigation.navigate(AppRoute.ProfilePrompts);
+  const handleContinue = async () => {
+    setIsSubmitting(true);
+    try {
+      // Get user ID from storage
+      const userData = await AsyncStorage.getItem('@pryvo_user');
+      let userId = null;
+      
+      if (userData) {
+        const user = JSON.parse(userData);
+        userId = user.id;
+      } else {
+        // Try to get from token (decode JWT)
+        const token = await AsyncStorage.getItem('@pryvo/token');
+        if (token) {
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            userId = payload.userId || payload.id;
+          } catch (e) {
+            console.error('Failed to decode token:', e);
+          }
+        }
+      }
+
+      if (!userId) {
+        Alert.alert('Error', 'User ID not found. Please sign in again.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Save lifestyle to backend
+      await saveLifestyle(lifestyle);
+      
+      console.log('Lifestyle saved successfully');
+      navigation.navigate(AppRoute.ProfilePrompts);
+    } catch (error) {
+      console.error('Error saving lifestyle:', error);
+      Alert.alert(
+        'Error',
+        error?.message || 'Failed to save lifestyle. Please try again.',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const renderQuestion = (title, field, options) => (
@@ -98,8 +144,15 @@ const LifestyleScreen = () => {
         religiousOptions,
       )}
 
-      <Pressable style={styles.primaryButton} onPress={handleContinue}>
-        <Text style={styles.primaryButtonText}>Continue</Text>
+      <Pressable 
+        style={[styles.primaryButton, isSubmitting && styles.primaryButtonDisabled]} 
+        onPress={handleContinue}
+        disabled={isSubmitting}>
+        {isSubmitting ? (
+          <ActivityIndicator color={colors.surface} />
+        ) : (
+          <Text style={styles.primaryButtonText}>Continue</Text>
+        )}
       </Pressable>
     </ScrollView>
   );
@@ -162,6 +215,9 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     marginTop: spacing.xl,
+  },
+  primaryButtonDisabled: {
+    opacity: 0.6,
   },
   primaryButtonText: {
     color: colors.surface,

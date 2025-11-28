@@ -1,4 +1,4 @@
-import React, {useState, useRef} from 'react';
+import React, {useState, useRef, useEffect} from 'react';
 import {
   View,
   Text,
@@ -8,9 +8,13 @@ import {
   Pressable,
   StatusBar,
   Animated,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import {colors, typography, spacing} from '../../../theme';
 import LinearGradient from 'react-native-linear-gradient';
+import {getDiscoverProfiles} from '../../../services/profile/profileService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - spacing.xl * 2;
@@ -20,49 +24,65 @@ const SWIPE_THRESHOLD = 120;
 const HomeScreen = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [photoIndex, setPhotoIndex] = useState({});
+  const [profiles, setProfiles] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState(null);
   
   const translateX = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(0)).current;
   const rotate = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(1)).current;
 
-  // Mock profiles data
-  const profiles = [
-    {
-      id: '1',
-      name: 'Emma',
-      age: 25,
-      distance: 2,
-      bio: 'Love hiking, coffee, and good conversations ☕🏔️',
-      interests: ['Travel', 'Photography', 'Yoga'],
-      photos: [
-        'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
-        'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400',
-      ],
-    },
-    {
-      id: '2',
-      name: 'Sophia',
-      age: 27,
-      distance: 5,
-      bio: 'Foodie | Adventurer | Dog Mom 🐕',
-      interests: ['Cooking', 'Music', 'Fitness'],
-      photos: [
-        'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=400',
-      ],
-    },
-    {
-      id: '3',
-      name: 'Olivia',
-      age: 24,
-      distance: 3,
-      bio: 'Artist seeking someone to explore the city with 🎨',
-      interests: ['Art', 'Movies', 'Dancing'],
-      photos: [
-        'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=400',
-      ],
-    },
-  ];
+  useEffect(() => {
+    loadProfiles();
+  }, []);
+
+  const loadProfiles = async () => {
+    try {
+      setLoading(true);
+      
+      // Get current user ID
+      const userData = await AsyncStorage.getItem('@pryvo_user');
+      let excludeUserId = null;
+      if (userData) {
+        const user = JSON.parse(userData);
+        excludeUserId = user.id;
+        setCurrentUserId(user.id);
+      }
+      
+      // Use matching algorithm with options
+      const response = await getDiscoverProfiles(excludeUserId, {
+        useMatching: true, // Enable matching algorithm
+        minScore: 30, // Minimum 30% compatibility
+        sortBy: 'score', // Sort by match score (highest first)
+        // maxDistance: 50, // Optional: max 50km distance
+      });
+      
+      if (response?.profiles) {
+        // Transform API response to match component format
+        const transformedProfiles = response.profiles.map(profile => ({
+          id: profile.id || profile.userId,
+          userId: profile.userId,
+          name: profile.name || 'Unknown',
+          age: profile.age || profile.personalDetails?.age || null,
+          distance: profile.distance || profile.matchDetails?.distance || null,
+          bio: profile.bio || profile.profilePrompts?.bio || '',
+          interests: profile.interests || profile.lifestyle?.interests || [],
+          photos: profile.photos || [],
+          matchPercentage: profile.matchPercentage || null,
+          matchScore: profile.matchScore || null,
+        })).filter(profile => profile.photos.length > 0); // Only show profiles with photos
+        
+        console.log(`Loaded ${transformedProfiles.length} matched profiles`);
+        setProfiles(transformedProfiles);
+      }
+    } catch (error) {
+      console.error('Error loading profiles:', error);
+      Alert.alert('Error', 'Failed to load profiles. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const currentProfile = profiles[currentIndex];
 
@@ -102,6 +122,17 @@ const HomeScreen = () => {
     outputRange: ['-15deg', '0deg', '15deg'],
   });
 
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <View style={styles.emptyContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={styles.emptySubtitle}>Loading profiles...</Text>
+        </View>
+      </View>
+    );
+  }
+
   if (!currentProfile) {
     return (
       <View style={styles.container}>
@@ -133,7 +164,7 @@ const HomeScreen = () => {
       {/* Card Stack */}
       <View style={styles.cardContainer}>
         {/* Next card (background) */}
-        {currentIndex < profiles.length - 1 && (
+        {currentIndex < profiles.length - 1 && profiles[currentIndex + 1]?.photos?.[0] && (
           <View style={[styles.card, styles.nextCard]}>
             <Image
               source={{uri: profiles[currentIndex + 1].photos[0]}}
@@ -156,11 +187,13 @@ const HomeScreen = () => {
                 opacity,
               },
             ]}>
-            <Image
-              source={{uri: currentProfile.photos[photoIndex[currentIndex] || 0]}}
-              style={styles.cardImage}
-              resizeMode="cover"
-            />
+            {currentProfile.photos && currentProfile.photos.length > 0 && (
+              <Image
+                source={{uri: currentProfile.photos[photoIndex[currentIndex] || 0]}}
+                style={styles.cardImage}
+                resizeMode="cover"
+              />
+            )}
             
             {/* Photo indicator */}
             {currentProfile.photos.length > 1 && (

@@ -34,9 +34,9 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
 	<key>NSCameraUsageDescription</key>
-	<string>We need access to your camera to take photos and videos for your profile.</string>
+	<string>We need access to your camera to take photos.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>We need access to your photo library to select photos and videos for your profile.</string>
+	<string>We need access to your gallery to select photos.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>We need access to save photos and videos to your library.</string>
 	<key>UIBackgroundModes</key>

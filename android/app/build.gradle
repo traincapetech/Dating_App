@@ -93,4 +93,5 @@ dependencies {
     implementation(project(":react-native-linear-gradient"))
     implementation(project(":react-native-screens"))
     implementation(project(":react-native-async-storage_async-storage"))
+    implementation(project(":react-native-image-picker"))
 }

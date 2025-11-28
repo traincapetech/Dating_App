@@ -22,6 +22,8 @@ import {
   disableNotifications,
   checkNotificationPermission,
 } from '../../../services/notifications';
+import {saveBasicInfo} from '../../../services/profile/profileService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BasicInfoScreen = () => {
   const navigation = useNavigation();
@@ -135,11 +137,59 @@ const BasicInfoScreen = () => {
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
-    // Simulate API call
-    setTimeout(() => {
-      setIsSubmitting(false);
+    try {
+      // Get user ID from storage
+      const userData = await AsyncStorage.getItem('@pryvo_user');
+      let userId = null;
+      
+      if (userData) {
+        const user = JSON.parse(userData);
+        userId = user.id;
+      } else {
+        // Try to get from token (decode JWT)
+        const token = await AsyncStorage.getItem('@pryvo/token');
+        if (token) {
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            userId = payload.userId || payload.id;
+          } catch (e) {
+            console.error('Failed to decode token:', e);
+          }
+        }
+      }
+
+      if (!userId) {
+        Alert.alert('Error', 'User ID not found. Please sign in again.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Prepare basic info data
+      const basicInfoData = {
+        firstName: form.firstName.trim(),
+        lastName: form.lastName.trim(),
+        email: form.email.trim(),
+        location: form.location.trim(),
+        locationDetails: form.locationDetails,
+        gender: form.gender,
+        showGenderOnProfile: form.showGenderOnProfile,
+        notificationsEnabled: form.notificationsEnabled,
+      };
+
+      // Save to backend
+      await saveBasicInfo(basicInfoData);
+      
+      console.log('Basic info saved successfully');
       navigation.navigate(AppRoute.DatingPreferences);
-    }, 500);
+    } catch (error) {
+      console.error('Error saving basic info:', error);
+      Alert.alert(
+        'Error',
+        error?.message || 'Failed to save basic info. Please try again.',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const canProceed = () => {

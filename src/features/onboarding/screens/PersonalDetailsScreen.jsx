@@ -6,10 +6,14 @@ import {
   Pressable,
   TextInput,
   ScrollView,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
+import {savePersonalDetails} from '../../../services/profile/profileService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const PersonalDetailsScreen = () => {
   const navigation = useNavigation();
@@ -24,6 +28,7 @@ const PersonalDetailsScreen = () => {
     school: '',
     educationLevel: '',
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const familyPlansOptions = [
     "Don't want children",
@@ -64,8 +69,49 @@ const PersonalDetailsScreen = () => {
     'Prefer not to say',
   ];
 
-  const handleContinue = () => {
-    navigation.navigate(AppRoute.Lifestyle);
+  const handleContinue = async () => {
+    setIsSubmitting(true);
+    try {
+      // Get user ID from storage
+      const userData = await AsyncStorage.getItem('@pryvo_user');
+      let userId = null;
+      
+      if (userData) {
+        const user = JSON.parse(userData);
+        userId = user.id;
+      } else {
+        // Try to get from token (decode JWT)
+        const token = await AsyncStorage.getItem('@pryvo/token');
+        if (token) {
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            userId = payload.userId || payload.id;
+          } catch (e) {
+            console.error('Failed to decode token:', e);
+          }
+        }
+      }
+
+      if (!userId) {
+        Alert.alert('Error', 'User ID not found. Please sign in again.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Save personal details to backend
+      await savePersonalDetails(details);
+      
+      console.log('Personal details saved successfully');
+      navigation.navigate(AppRoute.Lifestyle);
+    } catch (error) {
+      console.error('Error saving personal details:', error);
+      Alert.alert(
+        'Error',
+        error?.message || 'Failed to save personal details. Please try again.',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -240,8 +286,15 @@ const PersonalDetailsScreen = () => {
         ))}
       </View>
 
-      <Pressable style={styles.primaryButton} onPress={handleContinue}>
-        <Text style={styles.primaryButtonText}>Continue</Text>
+      <Pressable 
+        style={[styles.primaryButton, isSubmitting && styles.primaryButtonDisabled]} 
+        onPress={handleContinue}
+        disabled={isSubmitting}>
+        {isSubmitting ? (
+          <ActivityIndicator color={colors.surface} />
+        ) : (
+          <Text style={styles.primaryButtonText}>Continue</Text>
+        )}
       </Pressable>
     </ScrollView>
   );
@@ -341,6 +394,9 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     marginTop: spacing.xl,
+  },
+  primaryButtonDisabled: {
+    opacity: 0.6,
   },
   primaryButtonText: {
     color: colors.surface,

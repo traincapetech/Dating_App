@@ -6,10 +6,14 @@ import {
   Pressable,
   TextInput,
   ScrollView,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
+import {saveProfilePrompts} from '../../../services/profile/profileService';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const ProfilePromptsScreen = () => {
   const navigation = useNavigation();
@@ -19,6 +23,7 @@ const ProfilePromptsScreen = () => {
     selfCare: {prompt: '', answer: ''},
     gettingPersonal: {prompt: '', answer: ''},
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const promptCategories = {
     aboutMe: {
@@ -81,8 +86,57 @@ const ProfilePromptsScreen = () => {
     }));
   };
 
-  const handleContinue = () => {
-    navigation.navigate(AppRoute.MediaUpload);
+  const handleContinue = async () => {
+    setIsSubmitting(true);
+    try {
+      // Get user ID from storage
+      const userData = await AsyncStorage.getItem('@pryvo_user');
+      let userId = null;
+      
+      if (userData) {
+        const user = JSON.parse(userData);
+        userId = user.id;
+      } else {
+        // Try to get from token (decode JWT)
+        const token = await AsyncStorage.getItem('@pryvo/token');
+        if (token) {
+          try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            userId = payload.userId || payload.id;
+          } catch (e) {
+            console.error('Failed to decode token:', e);
+          }
+        }
+      }
+
+      if (!userId) {
+        Alert.alert('Error', 'User ID not found. Please sign in again.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Format prompts data for backend
+      // Backend expects the same structure: aboutMe, selfCare, gettingPersonal
+      const promptsData = {
+        aboutMe: selectedPrompts.aboutMe,
+        selfCare: selectedPrompts.selfCare,
+        gettingPersonal: selectedPrompts.gettingPersonal,
+      };
+
+      // Save profile prompts to backend
+      await saveProfilePrompts(promptsData);
+      
+      console.log('Profile prompts saved successfully');
+      navigation.navigate(AppRoute.MediaUpload);
+    } catch (error) {
+      console.error('Error saving profile prompts:', error);
+      Alert.alert(
+        'Error',
+        error?.message || 'Failed to save profile prompts. Please try again.',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -157,8 +211,15 @@ const ProfilePromptsScreen = () => {
         </View>
       )}
 
-      <Pressable style={styles.primaryButton} onPress={handleContinue}>
-        <Text style={styles.primaryButtonText}>Continue</Text>
+      <Pressable 
+        style={[styles.primaryButton, isSubmitting && styles.primaryButtonDisabled]} 
+        onPress={handleContinue}
+        disabled={isSubmitting}>
+        {isSubmitting ? (
+          <ActivityIndicator color={colors.surface} />
+        ) : (
+          <Text style={styles.primaryButtonText}>Continue</Text>
+        )}
       </Pressable>
     </ScrollView>
   );
@@ -269,6 +330,9 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     alignItems: 'center',
     marginTop: spacing.xl,
+  },
+  primaryButtonDisabled: {
+    opacity: 0.6,
   },
   primaryButtonText: {
     color: colors.surface,
