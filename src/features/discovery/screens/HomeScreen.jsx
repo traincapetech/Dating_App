@@ -10,28 +10,37 @@ import {
   Animated,
   ActivityIndicator,
   Alert,
+  PanResponder,
 } from 'react-native';
 import {colors, typography, spacing} from '../../../theme';
 import LinearGradient from 'react-native-linear-gradient';
 import {getDiscoverProfiles} from '../../../services/profile/profileService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import MatchPopup from '../../../components/profile/MatchPopup.js';
+// import { likeUser, passUser } from "../../../services/swipeActions";
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - spacing.xl * 2;
 const CARD_HEIGHT = SCREEN_HEIGHT * 0.7;
 const SWIPE_THRESHOLD = 120;
 
-const HomeScreen = () => {
+const HomeScreen = ({navigation}) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [photoIndex, setPhotoIndex] = useState({});
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState(null);
-  
+
   const translateX = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(0)).current;
-  const rotate = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(1)).current;
+
+  const [matchPopup, setMatchPopup] = useState({
+    visible: false,
+    myPhoto: null,
+    theirPhoto: null,
+    matchId: null,
+  });
 
   useEffect(() => {
     loadProfiles();
@@ -40,7 +49,7 @@ const HomeScreen = () => {
   const loadProfiles = async () => {
     try {
       setLoading(true);
-      
+
       // Get current user ID
       const userData = await AsyncStorage.getItem('@pryvo_user');
       let excludeUserId = null;
@@ -49,32 +58,47 @@ const HomeScreen = () => {
         excludeUserId = user.id;
         setCurrentUserId(user.id);
       }
-      
-      // Use matching algorithm with options
+
+      // Fetch profiles from backend
       const response = await getDiscoverProfiles(excludeUserId, {
-        useMatching: true, // Enable matching algorithm
-        minScore: 30, // Minimum 30% compatibility
-        sortBy: 'score', // Sort by match score (highest first)
-        // maxDistance: 50, // Optional: max 50km distance
+        useMatching: false,
+        // useMatching: true,
+        // minScore: 30,
+        // sortBy: 'score',
       });
-      
+
+      console.log(
+        '[HomeScreen] API Response:',
+        JSON.stringify(response, null, 2),
+      );
+
       if (response?.profiles) {
-        // Transform API response to match component format
-        const transformedProfiles = response.profiles.map(profile => ({
-          id: profile.id || profile.userId,
-          userId: profile.userId,
-          name: profile.name || 'Unknown',
-          age: profile.age || profile.personalDetails?.age || null,
-          distance: profile.distance || profile.matchDetails?.distance || null,
-          bio: profile.bio || profile.profilePrompts?.bio || '',
-          interests: profile.interests || profile.lifestyle?.interests || [],
-          photos: profile.photos || [],
-          matchPercentage: profile.matchPercentage || null,
-          matchScore: profile.matchScore || null,
-        })).filter(profile => profile.photos.length > 0); // Only show profiles with photos
-        
-        console.log(`Loaded ${transformedProfiles.length} matched profiles`);
+        const transformedProfiles = response.profiles
+          .map(profile => ({
+            id: profile.userId || profile.id,
+            userId: profile.userId,
+            name: profile.name || 'Unknown',
+            age: profile.age || null,
+            distance: profile.distance
+              ? `${Math.round(profile.distance)}`
+              : null,
+            bio: profile.bio || '',
+            interests: profile.interests || [],
+            photos: profile.photos || [],
+            matchPercentage: profile.matchScore
+              ? Math.round(profile.matchScore)
+              : null,
+            matchScore: profile.matchScore || null,
+          }))
+          .filter(profile => profile.photos && profile.photos.length > 0);
+
+        console.log(
+          `[HomeScreen] Loaded ${transformedProfiles.length} profiles`,
+        );
         setProfiles(transformedProfiles);
+      } else {
+        console.warn('[HomeScreen] No profiles in response:', response);
+        setProfiles([]);
       }
     } catch (error) {
       console.error('Error loading profiles:', error);
@@ -86,15 +110,60 @@ const HomeScreen = () => {
 
   const currentProfile = profiles[currentIndex];
 
-  const handleSwipe = direction => {
+  const resetCardPosition = () => {
+    Animated.parallel([
+      Animated.spring(translateX, {
+        toValue: 0,
+        useNativeDriver: true,
+      }),
+      Animated.spring(translateY, {
+        toValue: 0,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const goToNextProfile = () => {
+    setCurrentIndex(prev => prev + 1);
+    translateX.setValue(0);
+    translateY.setValue(0);
+    opacity.setValue(1);
+  };
+
+  const processSwipe = async direction => {
+    if (!currentProfile || !currentUserId) return;
+
+    const likedUserId = currentProfile.userId;
+    const myPhoto = profiles[currentIndex]?.photos?.[0];
+    const theirPhoto = currentProfile.photos?.[0];
+
+    try {
+      if (direction === 'right') {
+        const result = await likeUser(currentUserId, likedUserId); // POST /like
+
+        if (result?.isMatch && result?.match) {
+          setMatchPopup({
+            visible: true,
+            myPhoto,
+            theirPhoto,
+            matchId: result.match._id,
+          });
+        }
+      } else if (direction === 'left') {
+        await passUser(currentUserId, likedUserId); // POST /pass
+      }
+    } catch (err) {
+      console.error('Error in swipe action:', err);
+    }
+
     Animated.parallel([
       Animated.timing(translateX, {
         toValue: direction === 'right' ? SCREEN_WIDTH : -SCREEN_WIDTH,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(rotate, {
-        toValue: direction === 'right' ? 1 : -1,
         duration: 200,
         useNativeDriver: true,
       }),
@@ -104,21 +173,40 @@ const HomeScreen = () => {
         useNativeDriver: true,
       }),
     ]).start(() => {
-      setCurrentIndex(prev => prev + 1);
-      translateX.setValue(0);
-      translateY.setValue(0);
-      rotate.setValue(0);
-      opacity.setValue(1);
-
-      if (currentIndex >= profiles.length - 1) {
-        // No more profiles
-        console.log('No more profiles');
-      }
+      goToNextProfile();
     });
   };
 
-  const rotateInterpolate = rotate.interpolate({
-    inputRange: [-1, 0, 1],
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        const {dx, dy} = gestureState;
+        return Math.abs(dx) > 10 || Math.abs(dy) > 10;
+      },
+      onPanResponderMove: Animated.event(
+        [
+          null,
+          {
+            dx: translateX,
+            dy: translateY,
+          },
+        ],
+        {useNativeDriver: false},
+      ),
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dx > SWIPE_THRESHOLD) {
+          processSwipe('right');
+        } else if (gestureState.dx < -SWIPE_THRESHOLD) {
+          processSwipe('left');
+        } else {
+          resetCardPosition();
+        }
+      },
+    }),
+  ).current;
+
+  const rotateInterpolate = translateX.interpolate({
+    inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
     outputRange: ['-15deg', '0deg', '15deg'],
   });
 
@@ -149,97 +237,98 @@ const HomeScreen = () => {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
-      
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable style={styles.headerButton}>
-          <Text style={styles.headerIcon}>🔥</Text>
-        </Pressable>
-        <Text style={styles.headerTitle}>Pryvo</Text>
-        <Pressable style={styles.headerButton}>
-          <Text style={styles.headerIcon}>💬</Text>
-        </Pressable>
-      </View>
 
       {/* Card Stack */}
       <View style={styles.cardContainer}>
         {/* Next card (background) */}
-        {currentIndex < profiles.length - 1 && profiles[currentIndex + 1]?.photos?.[0] && (
-          <View style={[styles.card, styles.nextCard]}>
-            <Image
-              source={{uri: profiles[currentIndex + 1].photos[0]}}
-              style={styles.cardImage}
-              resizeMode="cover"
-            />
-          </View>
-        )}
-
-        {/* Current card */}
-          <Animated.View
-            style={[
-              styles.card,
-              {
-                transform: [
-                  {translateX},
-                  {translateY},
-                  {rotate: rotateInterpolate},
-                ],
-                opacity,
-              },
-            ]}>
-            {currentProfile.photos && currentProfile.photos.length > 0 && (
+        {currentIndex < profiles.length - 1 &&
+          profiles[currentIndex + 1]?.photos?.[0] && (
+            <View style={[styles.card, styles.nextCard]}>
               <Image
-                source={{uri: currentProfile.photos[photoIndex[currentIndex] || 0]}}
+                source={{uri: profiles[currentIndex + 1].photos[0]}}
                 style={styles.cardImage}
                 resizeMode="cover"
               />
-            )}
-            
-            {/* Photo indicator */}
-            {currentProfile.photos.length > 1 && (
-              <Pressable
-                style={styles.photoIndicator}
-                onPress={() => {
-                  const currentPhotoIndex = photoIndex[currentIndex] || 0;
-                  const nextIndex = (currentPhotoIndex + 1) % currentProfile.photos.length;
-                  setPhotoIndex(prev => ({...prev, [currentIndex]: nextIndex}));
-                }}>
-                {currentProfile.photos.map((_, index) => {
-                  const currentPhotoIndex = photoIndex[currentIndex] || 0;
-                  return (
-                    <View
-                      key={index}
-                      style={[
-                        styles.indicatorDot,
-                        index === currentPhotoIndex && styles.indicatorDotActive,
-                      ]}
-                    />
-                  );
-                })}
-              </Pressable>
-            )}
+            </View>
+          )}
 
-            {/* Gradient overlay */}
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.8)']}
-              style={styles.gradientOverlay}>
-              <View style={styles.cardContent}>
-                <View style={styles.nameRow}>
-                  <Text style={styles.name}>
-                    {currentProfile.name}, {currentProfile.age}
-                  </Text>
+        {/* Current card (swipeable) */}
+        <Animated.View
+          {...panResponder.panHandlers}
+          style={[
+            styles.card,
+            {
+              transform: [
+                {translateX},
+                {translateY},
+                {rotate: rotateInterpolate},
+              ],
+              opacity,
+            },
+          ]}>
+          {currentProfile.photos && currentProfile.photos.length > 0 && (
+            <Image
+              source={{
+                uri: currentProfile.photos[photoIndex[currentIndex] || 0],
+              }}
+              style={styles.cardImage}
+              resizeMode="cover"
+            />
+          )}
+
+          {/* Photo indicator */}
+          {currentProfile.photos.length > 1 && (
+            <Pressable
+              style={styles.photoIndicator}
+              onPress={() => {
+                const currentPhotoIndex = photoIndex[currentIndex] || 0;
+                const nextIndex =
+                  (currentPhotoIndex + 1) % currentProfile.photos.length;
+                setPhotoIndex(prev => ({
+                  ...prev,
+                  [currentIndex]: nextIndex,
+                }));
+              }}>
+              {currentProfile.photos.map((_, index) => {
+                const currentPhotoIndex = photoIndex[currentIndex] || 0;
+                return (
+                  <View
+                    key={index}
+                    style={[
+                      styles.indicatorDot,
+                      index === currentPhotoIndex && styles.indicatorDotActive,
+                    ]}
+                  />
+                );
+              })}
+            </Pressable>
+          )}
+
+          {/* Gradient overlay */}
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.8)']}
+            style={styles.gradientOverlay}>
+            <View style={styles.cardContent}>
+              <View style={styles.nameRow}>
+                <Text style={styles.name}>
+                  {currentProfile.name}
+                  {currentProfile.age ? `, ${currentProfile.age}` : ''}
+                </Text>
+                {currentProfile.distance && (
                   <Text style={styles.distance}>
                     {currentProfile.distance} km away
                   </Text>
-                </View>
-                
-                {currentProfile.bio && (
-                  <Text style={styles.bio} numberOfLines={2}>
-                    {currentProfile.bio}
-                  </Text>
                 )}
+              </View>
 
-                {currentProfile.interests && currentProfile.interests.length > 0 && (
+              {currentProfile.bio && (
+                <Text style={styles.bio} numberOfLines={2}>
+                  {currentProfile.bio}
+                </Text>
+              )}
+
+              {currentProfile.interests &&
+                currentProfile.interests.length > 0 && (
                   <View style={styles.interestsContainer}>
                     {currentProfile.interests.map((interest, index) => (
                       <View key={index} style={styles.interestTag}>
@@ -248,28 +337,34 @@ const HomeScreen = () => {
                     ))}
                   </View>
                 )}
-              </View>
-            </LinearGradient>
-          </Animated.View>
+            </View>
+          </LinearGradient>
+        </Animated.View>
       </View>
 
-      {/* Action Buttons */}
-      <View style={styles.actionButtons}>
-        <Pressable
-          style={[styles.actionButton, styles.passButton]}
-          onPress={() => handleSwipe('left')}>
-          <Text style={styles.actionButtonIcon}>✕</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.actionButton, styles.superLikeButton]}>
-          <Text style={styles.actionButtonIcon}>⭐</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.actionButton, styles.likeButton]}
-          onPress={() => handleSwipe('right')}>
-          <Text style={styles.actionButtonIcon}>♥</Text>
-        </Pressable>
-      </View>
+      {/* Tinder-style Match Popup */}
+      <MatchPopup
+        visible={matchPopup.visible}
+        profileA={matchPopup.myPhoto}
+        profileB={matchPopup.theirPhoto}
+        onContinue={() =>
+          setMatchPopup(prev => ({
+            ...prev,
+            visible: false,
+          }))
+        }
+        onMessage={() => {
+          const matchId = matchPopup.matchId;
+          const theirId = currentProfile?.userId;
+          setMatchPopup(prev => ({
+            ...prev,
+            visible: false,
+          }));
+          if (matchId && theirId) {
+            navigation.navigate('ChatScreen', {matchId, theirId});
+          }
+        }}
+      />
     </View>
   );
 };
@@ -278,29 +373,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-  },
-  headerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerIcon: {
-    fontSize: 24,
-  },
-  headerTitle: {
-    fontSize: typography.headings.h2,
-    fontFamily: typography.fontFamilyBold,
-    color: colors.primary,
   },
   cardContainer: {
     flex: 1,
@@ -312,7 +384,7 @@ const styles = StyleSheet.create({
     height: CARD_HEIGHT,
     borderRadius: 24,
     backgroundColor: colors.surface,
-    shadowColor: '#000',
+    shadowColor: '#DB2D0B',
     shadowOffset: {width: 0, height: 10},
     shadowOpacity: 0.3,
     shadowRadius: 20,
@@ -396,42 +468,6 @@ const styles = StyleSheet.create({
     fontSize: typography.body.small,
     fontFamily: typography.fontFamilyMedium,
     color: colors.textInverse,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.lg,
-    gap: spacing.lg,
-  },
-  actionButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  passButton: {
-    backgroundColor: colors.surface,
-  },
-  likeButton: {
-    backgroundColor: colors.primary,
-  },
-  superLikeButton: {
-    backgroundColor: colors.accent,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-  },
-  actionButtonIcon: {
-    fontSize: 32,
-    color: colors.surface,
   },
   emptyContainer: {
     flex: 1,

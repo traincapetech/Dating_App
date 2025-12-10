@@ -1,35 +1,6 @@
 #!/usr/bin/env node
 
-const config = require('../react-native.config.js');
+const path = require('path');
+const config = require(path.join(process.cwd(), 'react-native.config.js'));
 
-const output = {
-  project: {
-    android: {
-      packageName: config.project.android.packageName,
-    },
-  },
-};
-
-console.log(JSON.stringify(output, null, 2));
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+console.log(JSON.stringify(config, null, 2));

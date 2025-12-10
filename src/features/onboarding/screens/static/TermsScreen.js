@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, StatusBar } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { colors, spacing, typography } from '../../../../theme';
+import { colors, typography, spacing } from '../../../../theme';
 
 const TermsScreen = () => {
   return (

@@ -118,6 +118,7 @@ const ProfilePromptsScreen = () => {
       // Format prompts data for backend
       // Backend expects the same structure: aboutMe, selfCare, gettingPersonal
       const promptsData = {
+        userId: userId, // Include userId for server authentication
         aboutMe: selectedPrompts.aboutMe,
         selfCare: selectedPrompts.selfCare,
         gettingPersonal: selectedPrompts.gettingPersonal,
@@ -127,7 +128,7 @@ const ProfilePromptsScreen = () => {
       await saveProfilePrompts(promptsData);
       
       console.log('Profile prompts saved successfully');
-      navigation.navigate(AppRoute.MediaUpload);
+    navigation.navigate(AppRoute.MediaUpload);
     } catch (error) {
       console.error('Error saving profile prompts:', error);
       Alert.alert(
@@ -218,7 +219,7 @@ const ProfilePromptsScreen = () => {
         {isSubmitting ? (
           <ActivityIndicator color={colors.surface} />
         ) : (
-          <Text style={styles.primaryButtonText}>Continue</Text>
+        <Text style={styles.primaryButtonText}>Continue</Text>
         )}
       </Pressable>
     </ScrollView>

@@ -88,10 +88,10 @@ const DatingPreferencesScreen = () => {
       }
 
       // Save dating preferences to backend
-      await saveDatingPreferences(preferences);
+      await saveDatingPreferences({...preferences, userId});
       
       console.log('Dating preferences saved successfully');
-      navigation.navigate(AppRoute.PersonalDetails);
+    navigation.navigate(AppRoute.PersonalDetails);
     } catch (error) {
       console.error('Error saving dating preferences:', error);
       Alert.alert(
@@ -230,7 +230,7 @@ const DatingPreferencesScreen = () => {
         {isSubmitting ? (
           <ActivityIndicator color={colors.surface} />
         ) : (
-          <Text style={styles.primaryButtonText}>Continue</Text>
+        <Text style={styles.primaryButtonText}>Continue</Text>
         )}
       </Pressable>
     </ScrollView>

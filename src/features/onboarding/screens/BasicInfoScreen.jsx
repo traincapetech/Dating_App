@@ -11,8 +11,9 @@ import {
   Switch,
   ActivityIndicator,
   Alert,
+  PermissionsAndroid,
 } from 'react-native';
-import {GooglePlacesAutocomplete} from 'react-native-google-places-autocomplete';
+import Geolocation from 'react-native-geolocation-service';
 import {useNavigation} from '@react-navigation/native';
 import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
@@ -39,16 +40,143 @@ const BasicInfoScreen = () => {
     gender: '',
     showGenderOnProfile: true,
   });
-  const [useSimpleInput, setUseSimpleInput] = useState(true); // Start with simple input to prevent crashes
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [emailOTP, setEmailOTP] = useState(['', '', '', '', '', '']);
   const [isSendingOTP, setIsSendingOTP] = useState(false);
   const [isVerifyingOTP, setIsVerifyingOTP] = useState(false);
   const [showOTPInput, setShowOTPInput] = useState(false);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
   const otpInputRefs = React.useRef([]);
 
   const handleChange = (field, value) => {
     setForm(prev => ({...prev, [field]: value}));
+  };
+
+  // Request location permission
+  const requestLocationPermission = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: 'Location Permission',
+            message: 'Pryvo needs access to your location to show you matches nearby.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          },
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (err) {
+        console.warn('Location permission error:', err);
+        return false;
+      }
+    }
+    // iOS handles permissions automatically via Info.plist
+    return true;
+  };
+
+  // Get current location using GPS
+  const getCurrentLocation = async () => {
+    const hasPermission = await requestLocationPermission();
+    if (!hasPermission) {
+      Alert.alert(
+        'Permission Denied',
+        'Location permission is required to find matches nearby. Please enable it in your device settings.',
+      );
+      return;
+    }
+
+    setIsGettingLocation(true);
+    try {
+      const position = await new Promise((resolve, reject) => {
+        Geolocation.getCurrentPosition(
+          resolve,
+          reject,
+          {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 10000,
+          },
+        );
+      });
+
+      const {latitude, longitude, accuracy} = position.coords;
+      
+      // Store GPS coordinates
+      const locationData = {
+        lat: latitude,
+        lng: longitude,
+        accuracy: accuracy,
+        timestamp: position.timestamp,
+        source: 'gps',
+      };
+
+      // Get city name using reverse geocoding (optional)
+      try {
+        const cityName = await reverseGeocode(latitude, longitude);
+        if (cityName) {
+          locationData.city = cityName;
+          locationData.description = cityName;
+          handleChange('location', cityName);
+        } else {
+          handleChange('location', `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+        }
+      } catch (geocodeError) {
+        console.warn('Reverse geocoding failed:', geocodeError);
+        // Use coordinates as fallback
+        handleChange('location', `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+      }
+
+      handleChange('locationDetails', locationData);
+      Alert.alert('Location Found', 'Your location has been detected successfully!');
+    } catch (error) {
+      console.error('Location error:', error);
+      Alert.alert(
+        'Location Error',
+        error.message || 'Failed to get your location. Please make sure GPS is enabled and try again.',
+      );
+    } finally {
+      setIsGettingLocation(false);
+    }
+  };
+
+  // Reverse geocoding to get city name from coordinates
+  const reverseGeocode = async (lat, lng) => {
+    try {
+      // Using Google Geocoding API for reverse geocoding
+      const apiKey = 'AIzaSyDD9uRgqIVB8roh8-ob-AZiiXoFocAExvY';
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}&language=en`;
+      
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data.status === 'OK' && data.results.length > 0) {
+        // Extract city/locality from results
+        const result = data.results[0];
+        const addressComponents = result.address_components;
+        
+        // Find city/locality
+        let city = null;
+        for (const component of addressComponents) {
+          if (component.types.includes('locality') || component.types.includes('administrative_area_level_1')) {
+            city = component.long_name;
+            break;
+          }
+        }
+        
+        // Fallback to formatted address
+        if (!city) {
+          city = result.formatted_address.split(',')[0];
+        }
+        
+        return city;
+      }
+      return null;
+    } catch (error) {
+      console.error('Reverse geocoding error:', error);
+      return null;
+    }
   };
 
   const handleSendEmailOTP = async () => {
@@ -160,12 +288,13 @@ const BasicInfoScreen = () => {
 
       if (!userId) {
         Alert.alert('Error', 'User ID not found. Please sign in again.');
-        setIsSubmitting(false);
+      setIsSubmitting(false);
         return;
       }
 
       // Prepare basic info data
       const basicInfoData = {
+        userId: userId, // Include userId for server authentication
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         email: form.email.trim(),
@@ -201,7 +330,8 @@ const BasicInfoScreen = () => {
       case 3:
         return true; // Notifications is optional
       case 4:
-        return form.location.trim();
+        // Require GPS coordinates
+        return form.locationDetails && form.locationDetails.lat && form.locationDetails.lng && form.locationDetails.source === 'gps';
       case 5:
         return form.gender.trim();
       default:
@@ -375,100 +505,51 @@ const BasicInfoScreen = () => {
         return (
           <View>
             <Text style={styles.subtitle}>
-              Only the neighborhood name will appear on your profile.
+              We'll use your device's GPS to detect your location. This helps us show you matches nearby.
             </Text>
-            {useSimpleInput ? (
-              <TextInput
-                style={styles.input}
-                placeholder="Enter your location"
-                placeholderTextColor={colors.textSecondary}
-                value={form.location}
-                onChangeText={(text) => handleChange('location', text)}
-                autoCapitalize="words"
-              />
-            ) : (
-              <View style={styles.placesWrapper}>
-                <GooglePlacesAutocomplete
-                  placeholder="Search for your location"
-                  predefinedPlaces={[]}
-                  onPress={(data) => {
-                    try {
-                      if (data && data.description) {
-                        handleChange('location', data.description);
-                        handleChange('locationDetails', {
-                          placeId: data.place_id || '',
-                          description: data.description,
-                          structured_formatting: data.structured_formatting || {},
-                        });
-                      }
-                    } catch (error) {
-                      console.error('Error handling place selection:', error);
-                    }
-                  }}
-                  query={{
-                    key: 'AIzaSyDD9uRgqIVB8roh8-ob-AZiiXoFocAExvY',
-                    language: 'en',
-                  }}
-                  fetchDetails={false}
-                  styles={{
-                    container: {
-                      flex: 0,
-                    },
-                    textInputContainer: {
-                      marginTop: spacing.md,
-                    },
-                    textInput: {
-                      ...styles.input,
-                      marginTop: 0,
-                    },
-                    listView: {
-                      backgroundColor: colors.surface,
-                      borderRadius: 14,
-                      borderWidth: 1,
-                      borderColor: colors.border,
-                      marginTop: spacing.sm,
-                      maxHeight: 200,
-                    },
-                    row: {
-                      padding: spacing.md,
-                      borderBottomWidth: 1,
-                      borderBottomColor: colors.borderLight,
-                    },
-                    description: {
-                      fontFamily: typography.fontFamilyRegular,
-                      fontSize: typography.body.medium,
-                      color: colors.textPrimary,
-                    },
-                  }}
-                  textInputProps={{
-                    placeholderTextColor: colors.textSecondary,
-                    returnKeyType: 'search',
-                    onFocus: () => {
-                      // Prevent crashes on focus
-                    },
-                  }}
-                  enablePoweredByContainer={false}
-                  debounce={500}
-                  minLength={2}
-                  onFail={() => {
-                    setUseSimpleInput(true);
-                  }}
-                />
-              </View>
-            )}
-            {useSimpleInput && (
-              <Pressable
-                style={styles.linkButton}
-                onPress={() => setUseSimpleInput(false)}>
-                <Text style={styles.linkText}>
-                  Try autocomplete again
-                </Text>
+            
+            <Pressable
+              style={[
+                styles.locationButton,
+                isGettingLocation && styles.locationButtonDisabled,
+              ]}
+              onPress={getCurrentLocation}
+              disabled={isGettingLocation}>
+              {isGettingLocation ? (
+                <>
+                  <ActivityIndicator color={colors.primary} size="small" />
+                  <Text style={styles.locationButtonText}>Detecting location...</Text>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.locationIcon}>📍</Text>
+                  <Text style={styles.locationButtonText}>Get My Location</Text>
+                </>
+              )}
               </Pressable>
-            )}
-            {form.location && (
+
+            {form.location && form.locationDetails && (
               <View style={styles.selectedLocation}>
                 <Text style={styles.selectedLocationText}>
-                  Selected: {form.location}
+                  ✓ Location: {form.location}
+                </Text>
+                {form.locationDetails.lat && form.locationDetails.lng && (
+                  <Text style={styles.locationCoordsText}>
+                    Coordinates: {form.locationDetails.lat.toFixed(6)}, {form.locationDetails.lng.toFixed(6)}
+                  </Text>
+                )}
+                {form.locationDetails.accuracy && (
+                  <Text style={styles.locationAccuracyText}>
+                    Accuracy: ±{Math.round(form.locationDetails.accuracy)}m
+                  </Text>
+                )}
+              </View>
+            )}
+
+            {!form.locationDetails && (
+              <View style={styles.infoBox}>
+                <Text style={styles.infoBoxText}>
+                  💡 Make sure your GPS is enabled and you're in an area with good signal.
                 </Text>
               </View>
             )}
@@ -516,7 +597,6 @@ const BasicInfoScreen = () => {
     }
   };
 
-  // For location step, we can't use ScrollView because GooglePlacesAutocomplete uses FlatList
   const isLocationStep = step === 4;
 
   const content = (
@@ -762,6 +842,67 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamilyMedium,
     fontSize: typography.body.small,
     color: colors.primary,
+  },
+  locationCoordsText: {
+    fontFamily: typography.fontFamilyRegular,
+    fontSize: typography.body.small,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  warningLocation: {
+    marginTop: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.warning + '20',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.warning,
+  },
+  warningLocationText: {
+    fontFamily: typography.fontFamilyMedium,
+    fontSize: typography.body.small,
+    color: colors.warning || colors.error,
+  },
+  locationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: 14,
+    marginTop: spacing.md,
+    gap: spacing.sm,
+  },
+  locationButtonDisabled: {
+    opacity: 0.6,
+  },
+  locationIcon: {
+    fontSize: 24,
+  },
+  locationButtonText: {
+    fontFamily: typography.fontFamilyBold,
+    fontSize: typography.body.medium,
+    color: colors.surface,
+  },
+  locationAccuracyText: {
+    fontFamily: typography.fontFamilyRegular,
+    fontSize: typography.body.small,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+  },
+  infoBox: {
+    marginTop: spacing.lg,
+    padding: spacing.md,
+    backgroundColor: colors.secondary,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  infoBoxText: {
+    fontFamily: typography.fontFamilyRegular,
+    fontSize: typography.body.small,
+    color: colors.textSecondary,
+    lineHeight: 20,
   },
   optionButton: {
     borderWidth: 1,

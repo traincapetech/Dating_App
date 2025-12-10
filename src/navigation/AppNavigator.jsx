@@ -18,7 +18,11 @@ import LifestyleScreen from '../features/onboarding/screens/LifestyleScreen.jsx'
 import ProfilePromptsScreen from '../features/onboarding/screens/ProfilePromptsScreen.jsx';
 import MediaUploadScreen from '../features/onboarding/screens/MediaUploadScreen.jsx';
 import SubscriptionUpsellScreen from '../features/subscription/screens/SubscriptionUpsellScreen.jsx';
-import HomeScreen from '../features/discovery/screens/HomeScreen.jsx';
+import HelpCentreScreen from '../features/settings/screens/HelpCentreScreen.jsx';
+import ReportProblemScreen from '../features/settings/screens/ReportProblemScreen.jsx';
+import TabNavigator from './TabNavigator';
+import ChatsScreen from '../features/messages/screens/ChatsScreen.jsx';
+import ChatScreen from '../features/messages/screens/ChatScreen.jsx';
 import {colors, typography} from '../theme';
 
 const Stack = createNativeStackNavigator();
@@ -80,9 +84,12 @@ const AppNavigator = () => {
           name={AppRoute.SubscriptionUpsell}
           component={SubscriptionUpsellScreen}
         />
-        <Stack.Screen name={AppRoute.HomeTabs} component={HomeScreen} />
-        <Stack.Screen name={AppRoute.Messages} component={PlaceholderScreen} />
+        <Stack.Screen name={AppRoute.HomeTabs} component={TabNavigator} />
+        <Stack.Screen name={AppRoute.Messages} component={ChatsScreen} />
+        <Stack.Screen name={AppRoute.Chat} component={ChatScreen} />
         <Stack.Screen name={AppRoute.Settings} component={PlaceholderScreen} />
+        <Stack.Screen name={AppRoute.HelpCentre} component={HelpCentreScreen} />
+        <Stack.Screen name={AppRoute.ReportProblem} component={ReportProblemScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

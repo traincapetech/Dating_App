@@ -4,6 +4,13 @@ apply plugin: "com.facebook.react"
 // Add the Google services Gradle plugin
 apply plugin: "com.google.gms.google-services"
 
+// Keep autolinking disabled
+project.afterEvaluate {
+    tasks.named("generateAutolinkingPackageList").configure {
+        enabled = false
+    }
+}
+
 /**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
@@ -13,8 +20,8 @@ react {
     root = file("../../")
     reactNativeDir = file("../../node_modules/react-native")
     
-    /* Autolinking */
-    autolinkLibrariesWithApp()
+    /* Autolinking - Disabled, but core modules are registered via DefaultReactNativeHost */
+    // autolinkLibrariesWithApp()
 }
 
 /**
@@ -94,4 +101,6 @@ dependencies {
     implementation(project(":react-native-screens"))
     implementation(project(":react-native-async-storage_async-storage"))
     implementation(project(":react-native-image-picker"))
+    implementation(project(":react-native-masked-view_masked-view"))
+    implementation(project(":react-native-geolocation-service"))
 }

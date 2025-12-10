@@ -169,9 +169,9 @@ const MediaUploadScreen = () => {
       const options = {
         mediaType: 'photo',
         includeBase64: true,
-        maxHeight: 2000,
-        maxWidth: 2000,
-        quality: 0.8,
+        maxHeight: 1200, // Reduced to reduce file size
+        maxWidth: 1200,  // Reduced to reduce file size
+        quality: 0.7,    // Reduced to reduce file size
         saveToPhotos: true,
       };
 
@@ -275,9 +275,9 @@ const MediaUploadScreen = () => {
       const options = {
         mediaType: 'photo',
         includeBase64: true,
-        maxHeight: 2000,
-        maxWidth: 2000,
-        quality: 0.8,
+        maxHeight: 1200, // Reduced from 2000 to reduce file size
+        maxWidth: 1200,  // Reduced from 2000 to reduce file size
+        quality: 0.7,    // Reduced from 0.8 to reduce file size
         selectionLimit: 1,
       };
 
@@ -427,29 +427,72 @@ const MediaUploadScreen = () => {
 
       setUploading(true);
       
-      // Upload all images
-      const uploadPromises = mediaToUpload.map((item, index) => {
+      // Upload images one by one to handle errors better
+      const uploadResults = [];
+      const uploadErrors = [];
+      
+      for (let index = 0; index < mediaToUpload.length; index++) {
+        const item = mediaToUpload[index];
+        try {
+          console.log(`[MediaUpload] Uploading image ${index + 1}/${mediaToUpload.length}`);
+          
+          let result;
         // Prefer asset object (which includes base64), then base64, then URI
         if (item.asset) {
-          return uploadProfileImage(userId, item.asset, item.fileName);
+            result = await uploadProfileImage(userId, item.asset, item.fileName);
         } else if (item.base64) {
-          return uploadProfileImage(userId, item.base64, item.fileName);
+            result = await uploadProfileImage(userId, item.base64, item.fileName);
         } else {
-          return uploadProfileImage(userId, item.uri, item.fileName);
+            result = await uploadProfileImage(userId, item.uri, item.fileName);
         }
-      });
+          
+          uploadResults.push({index, success: true, result});
+          console.log(`[MediaUpload] Image ${index + 1} uploaded successfully`);
+        } catch (error) {
+          console.error(`[MediaUpload] Error uploading image ${index + 1}:`, error);
+          uploadErrors.push({index, error: error.message || 'Upload failed'});
+          // Continue with next image even if one fails
+        }
+      }
 
-      await Promise.all(uploadPromises);
-      
-      Alert.alert('Success', 'Images uploaded successfully!', [
+      // Show results
+      if (uploadResults.length > 0) {
+        if (uploadErrors.length === 0) {
+          // All successful
+          Alert.alert('Success', `All ${uploadResults.length} images uploaded successfully!`, [
         {
           text: 'OK',
           onPress: () => navigation.navigate(AppRoute.SubscriptionUpsell),
         },
       ]);
+        } else {
+          // Partial success
+          Alert.alert(
+            'Partial Success',
+            `${uploadResults.length} images uploaded successfully, ${uploadErrors.length} failed. Continue anyway?`,
+            [
+              {
+                text: 'Cancel',
+                style: 'cancel',
+              },
+              {
+                text: 'Continue',
+                onPress: () => navigation.navigate(AppRoute.SubscriptionUpsell),
+              },
+            ]
+          );
+        }
+      } else {
+        // All failed
+        Alert.alert(
+          'Upload Failed',
+          `Failed to upload images. ${uploadErrors.length > 0 ? uploadErrors[0].error : 'Please try again.'}`,
+          [{text: 'OK'}]
+        );
+      }
     } catch (error) {
-      console.error('Upload error:', error);
-      Alert.alert('Upload Failed', error.message || 'Failed to upload images. Please try again.');
+      console.error('[MediaUpload] Unexpected error:', error);
+      Alert.alert('Error', error.message || 'An unexpected error occurred. Please try again.');
     } finally {
       setUploading(false);
     }

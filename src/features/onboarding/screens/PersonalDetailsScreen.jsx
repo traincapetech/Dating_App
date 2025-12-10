@@ -99,10 +99,10 @@ const PersonalDetailsScreen = () => {
       }
 
       // Save personal details to backend
-      await savePersonalDetails(details);
+      await savePersonalDetails({...details, userId});
       
       console.log('Personal details saved successfully');
-      navigation.navigate(AppRoute.Lifestyle);
+    navigation.navigate(AppRoute.Lifestyle);
     } catch (error) {
       console.error('Error saving personal details:', error);
       Alert.alert(
@@ -293,7 +293,7 @@ const PersonalDetailsScreen = () => {
         {isSubmitting ? (
           <ActivityIndicator color={colors.surface} />
         ) : (
-          <Text style={styles.primaryButtonText}>Continue</Text>
+        <Text style={styles.primaryButtonText}>Continue</Text>
         )}
       </Pressable>
     </ScrollView>

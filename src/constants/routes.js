@@ -17,4 +17,6 @@ export const AppRoute = {
   HomeTabs: 'HomeTabs',
   Messages: 'Messages',
   Settings: 'Settings',
+  HelpCentre: 'HelpCentre',
+  ReportProblem: 'ReportProblem',
 };

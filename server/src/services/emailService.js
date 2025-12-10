@@ -60,24 +60,46 @@ export async function sendEmailOTP(email) {
   `;
 
   try {
-    // Use SMTP to send email
+    // Use SMTP to send email via Hostinger
     const transporter = getEmailTransporter();
-    const mailOptions = {
-      from: config.email.from,
-      to: email,
-      subject: 'Verify your email - Pryvo',
-      html: emailHtml,
-      text: emailText,
-    };
-
-    // Add timeout to prevent hanging
-    const sendPromise = transporter.sendMail(mailOptions);
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Email send timeout')), 15000)
-    );
     
-    await Promise.race([sendPromise, timeoutPromise]);
-    console.log(`Email OTP sent successfully via SMTP to ${email}`);
+    // Format sender - if EMAIL_FROM contains <email>, parse it, otherwise use just the name
+    let fromAddress = config.email.user; // Default to SMTP user
+    let fromName = 'Pryvo';
+    
+    if (config.email.from) {
+      // Check if it's in format "Name <email>" or just "Name"
+      const fromMatch = config.email.from.match(/^(.+?)\s*<(.+?)>$/);
+      if (fromMatch) {
+        fromName = fromMatch[1].trim();
+        fromAddress = fromMatch[2].trim();
+    } else {
+        // Just a name, use SMTP user email
+        fromName = config.email.from.trim();
+        fromAddress = config.email.user;
+      }
+    }
+    
+      const mailOptions = {
+      from: {
+        name: fromName,
+        address: fromAddress,
+      },
+      // Don't set replyTo - users shouldn't reply to OTP emails
+        to: email,
+        subject: 'Verify your email - Pryvo',
+        html: emailHtml,
+        text: emailText,
+      };
+
+      // Add timeout to prevent hanging
+      const sendPromise = transporter.sendMail(mailOptions);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Email send timeout')), 15000)
+      );
+      
+      await Promise.race([sendPromise, timeoutPromise]);
+      console.log(`Email OTP sent successfully via SMTP to ${email}`);
 
     return {
       success: true,
@@ -90,7 +112,7 @@ export async function sendEmailOTP(email) {
     
     // Log SMTP configuration status for debugging
     console.error('[DEBUG] SMTP configuration check:');
-    console.error(`  - Provider: ${config.email.provider}`);
+      console.error(`  - Provider: ${config.email.provider}`);
     console.error(`  - Host: ${config.email.host || 'NOT SET'}`);
     console.error(`  - Port: ${config.email.port || 'NOT SET'}`);
     console.error(`  - User: ${config.email.user ? 'Set' : 'NOT SET'}`);

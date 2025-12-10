@@ -80,10 +80,10 @@ const LifestyleScreen = () => {
       }
 
       // Save lifestyle to backend
-      await saveLifestyle(lifestyle);
+      await saveLifestyle({...lifestyle, userId});
       
       console.log('Lifestyle saved successfully');
-      navigation.navigate(AppRoute.ProfilePrompts);
+    navigation.navigate(AppRoute.ProfilePrompts);
     } catch (error) {
       console.error('Error saving lifestyle:', error);
       Alert.alert(
@@ -151,7 +151,7 @@ const LifestyleScreen = () => {
         {isSubmitting ? (
           <ActivityIndicator color={colors.surface} />
         ) : (
-          <Text style={styles.primaryButtonText}>Continue</Text>
+        <Text style={styles.primaryButtonText}>Continue</Text>
         )}
       </Pressable>
     </ScrollView>

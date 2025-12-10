@@ -17,10 +17,28 @@ async function request(path, {method = 'GET', body, headers = {}, token} = {}) {
   });
 
   const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  let data = null;
+  
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch (parseError) {
+    // If response is not JSON, use the text as message
+    console.warn('[API Client] Failed to parse response as JSON:', parseError);
+  }
 
   if (!response.ok) {
-    const error = new Error(data?.message || 'Something went wrong');
+    // Handle specific error cases
+    let errorMessage = data?.message || data?.error || 'Something went wrong';
+    
+    if (response.status === 413 || errorMessage.includes('entity too large') || errorMessage.includes('too large')) {
+      errorMessage = 'Image is too large. Please try a smaller image or reduce quality.';
+    } else if (response.status === 401) {
+      errorMessage = 'Authentication failed. Please sign in again.';
+    } else if (response.status >= 500) {
+      errorMessage = 'Server error. Please try again later.';
+    }
+    
+    const error = new Error(errorMessage);
     error.status = response.status;
     error.data = data;
     throw error;

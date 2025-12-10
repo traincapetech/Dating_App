@@ -1,29 +1,40 @@
-import React, {useState} from 'react';
+import React, {useRef, useState} from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  Pressable,
-  TextInput,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   ActivityIndicator,
+  Alert,
+  Pressable,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
+import PhoneInput from 'react-native-phone-number-input';
 import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
 
 const PhoneInputScreen = () => {
   const navigation = useNavigation();
-  const [countryCode, setCountryCode] = useState('+1');
-  const [phoneNumber, setPhoneNumber] = useState('');
+  const phoneInput = useRef(null);
+  const [value, setValue] = useState('');
+  const [formattedValue, setFormattedValue] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleContinue = async () => {
-    if (!phoneNumber.trim()) {
+    if (!value.trim()) {
+      Alert.alert('Required', 'Please enter your phone number');
       return;
     }
+    
+    // Validate phone number using the library
+    const isValid = phoneInput.current?.isValidNumber(value);
+    if (!isValid) {
+      Alert.alert('Invalid', 'Please enter a valid phone number');
+      return;
+    }
+    
     setIsSubmitting(true);
     // Just collect phone number and proceed - no OTP verification
     setTimeout(() => {
@@ -47,29 +58,39 @@ const PhoneInputScreen = () => {
         </View>
 
         <View style={styles.phoneContainer}>
-          <Pressable style={styles.countryCodeButton}>
-            <Text style={styles.countryCodeText}>{countryCode}</Text>
-            <Text style={styles.dropdownIcon}>▼</Text>
-          </Pressable>
-          <TextInput
-            value={phoneNumber}
-            onChangeText={setPhoneNumber}
-            placeholder="Phone number"
-            keyboardType="phone-pad"
-            style={styles.phoneInput}
-            placeholderTextColor={colors.textSecondary}
-            returnKeyType="done"
-            onSubmitEditing={handleContinue}
+          <PhoneInput
+            ref={phoneInput}
+            defaultValue={value}
+            defaultCode="US"
+            layout="first"
+            onChangeText={setValue}
+            onChangeFormattedText={text => {
+              setFormattedValue(text);
+            }}
+            withDarkTheme={false}
+            withShadow={false}
+            autoFocus={false}
+            containerStyle={styles.phoneInputContainer}
+            textContainerStyle={styles.phoneInputTextContainer}
+            textInputStyle={styles.phoneInputText}
+            codeTextStyle={styles.phoneInputCodeText}
+            flagButtonStyle={styles.phoneInputFlagButton}
+            textInputProps={{
+              placeholder: 'Phone number',
+              placeholderTextColor: colors.textSecondary,
+              returnKeyType: 'done',
+              onSubmitEditing: handleContinue,
+            }}
           />
         </View>
 
         <Pressable
           style={[
             styles.primaryButton,
-            (!phoneNumber.trim() || isSubmitting) && styles.primaryButtonDisabled,
+            (!value.trim() || isSubmitting) && styles.primaryButtonDisabled,
           ]}
           onPress={handleContinue}
-          disabled={!phoneNumber.trim() || isSubmitting}>
+          disabled={!value.trim() || isSubmitting}>
           {isSubmitting ? (
             <ActivityIndicator color={colors.surface} />
           ) : (
@@ -105,41 +126,34 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
   },
   phoneContainer: {
-    flexDirection: 'row',
-    gap: spacing.md,
     marginBottom: spacing.xl,
   },
-  countryCodeButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  phoneInputContainer: {
+    width: '100%',
+    backgroundColor: colors.inputBackground,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 14,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.inputBackground,
-    minWidth: 80,
+    paddingVertical: 0,
   },
-  countryCodeText: {
+  phoneInputTextContainer: {
+    backgroundColor: 'transparent',
+    paddingVertical: 0,
+    borderRadius: 14,
+  },
+  phoneInputText: {
+    fontFamily: typography.fontFamilyRegular,
+    fontSize: typography.body.medium,
+    color: colors.textPrimary,
+    height: 50,
+  },
+  phoneInputCodeText: {
     fontFamily: typography.fontFamilyMedium,
     fontSize: typography.body.medium,
     color: colors.textPrimary,
-    marginRight: spacing.xs,
   },
-  dropdownIcon: {
-    fontSize: 10,
-    color: colors.textSecondary,
-  },
-  phoneInput: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 14,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    fontSize: typography.body.medium,
-    color: colors.textPrimary,
-    backgroundColor: colors.inputBackground,
+  phoneInputFlagButton: {
+    backgroundColor: 'transparent',
   },
   primaryButton: {
     backgroundColor: colors.primary,
