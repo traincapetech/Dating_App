@@ -42,3 +42,6 @@ if (typeof globalThis !== 'undefined' && !globalThis.ErrorUtils) {
   globalThis.ErrorUtils = g.ErrorUtils;
 }
 
+// Export a default value to ensure Metro recognizes this as a valid module
+export default {};
+

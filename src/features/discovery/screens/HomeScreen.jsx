@@ -17,7 +17,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import {getDiscoverProfiles} from '../../../services/profile/profileService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MatchPopup from '../../../components/profile/MatchPopup.js';
-// import { likeUser, passUser } from "../../../services/swipeActions";
+import { likeUser, passUser } from '../../../services/swipeActions';
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - spacing.xl * 2;

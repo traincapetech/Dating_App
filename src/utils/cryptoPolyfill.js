@@ -26,3 +26,6 @@ if (typeof global.crypto.getRandomValues === 'undefined') {
   };
 }
 
+// Export a default value to ensure Metro recognizes this as a valid module
+export default {};
+

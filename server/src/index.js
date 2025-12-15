@@ -3,20 +3,18 @@ import mongoose from "mongoose";
 import app from "./app.js";
 import { config } from "./config/env.js";
 import { verifyEmailConnection } from "./utils/emailTransporter.js";
-import { initSocket } from "./socket/socket.js";
-
+import { initSocketServer } from "./services/socketService.js";
 
 // Create Server
 const server = http.createServer(app);
 
 // Initialize Socket.IO
-initSocket(server);
+initSocketServer(server);
 
 const startServer = async () => {
   try {
     // Connect DB first
     await mongoose.connect(config.mongoUri);
-
 
     console.log("📌 MongoDB Connected Successfully");
 

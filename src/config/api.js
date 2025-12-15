@@ -11,11 +11,13 @@ import {Platform} from 'react-native';
 // For production:
 // Replace with your deployed backend URL (e.g., 'https://pryvo-server.onrender.com')
 const PRODUCTION_API_URL = 'https://dating-app-backend-19lb.onrender.com/api';
+const PRODUCTION_SOCKET_URL = 'https://dating-app-backend-19lb.onrender.com';
 
 // For local development - replace with your computer's IP address
 // Example: 'http://192.168.1.100:3000/api'
 // Auto-detected IP: 192.168.1.210 (update if this is incorrect)
 const LOCAL_API_URL = 'http://192.168.1.210:3000/api';
+const LOCAL_SOCKET_URL = 'http://192.168.1.210:3000';
 
 // Set to true for production, false for local development
 const IS_PRODUCTION = true;
@@ -35,10 +37,24 @@ const getApiBaseUrl = () => {
   return LOCAL_API_URL;
 };
 
+const getSocketUrl = () => {
+  if (IS_PRODUCTION) {
+    return PRODUCTION_SOCKET_URL;
+  }
+
+  // For Android emulator, use 10.0.2.2
+  if (Platform.OS === 'android' && LOCAL_SOCKET_URL.includes('YOUR_COMPUTER_IP')) {
+    return 'http://10.0.2.2:3000';
+  }
+
+  return LOCAL_SOCKET_URL;
+};
+
 export const API_BASE_URL = getApiBaseUrl();
+export const SOCKET_URL = getSocketUrl();
 
 export default {
   API_BASE_URL,
+  SOCKET_URL,
   IS_PRODUCTION,
 };
-

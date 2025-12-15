@@ -2,7 +2,7 @@ import React from 'react';
 import {View, Text, StyleSheet} from 'react-native';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
-import {AppRoute} from '../constants/routes';
+// Use literal route names to avoid undefined values
 import SplashScreen from '../features/onboarding/screens/SplashScreen.jsx';
 import SignUpScreen from '../features/auth/screens/SignUpScreen.jsx';
 import SignInScreen from '../features/auth/screens/SignInScreen.jsx';
@@ -40,56 +40,56 @@ const AppNavigator = () => {
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName={AppRoute.OnboardingIntro}
+        initialRouteName="OnboardingIntro"
         screenOptions={{headerShown: false}}>
         <Stack.Screen
-          name={AppRoute.OnboardingIntro}
+          name="OnboardingIntro"
           component={SplashScreen}
         />
-        <Stack.Screen name={AppRoute.SignUp} component={SignUpScreen} />
-        <Stack.Screen name={AppRoute.SignIn} component={SignInScreen} />
-        <Stack.Screen name={AppRoute.Terms} component={TermsScreen} />
-        <Stack.Screen name={AppRoute.Privacy} component={PrivacyScreen} />  
+        <Stack.Screen name="SignUp" component={SignUpScreen} />
+        <Stack.Screen name="SignIn" component={SignInScreen} />
+        <Stack.Screen name="Terms" component={TermsScreen} />
+        <Stack.Screen name="Privacy" component={PrivacyScreen} />  
         <Stack.Screen
-          name={AppRoute.PhoneInput}
+          name="PhoneInput"
           component={PhoneInputScreen}
         />
         <Stack.Screen
-          name={AppRoute.OTPVerification}
+          name="OTPVerification"
           component={OTPVerificationScreen}
         />
-        <Stack.Screen name={AppRoute.Welcome} component={WelcomeScreen} />
+        <Stack.Screen name="Welcome" component={WelcomeScreen} />
         <Stack.Screen
-          name={AppRoute.BasicInfo}
+          name="BasicInfo"
           component={BasicInfoScreen}
         />
         <Stack.Screen
-          name={AppRoute.DatingPreferences}
+          name="DatingPreferences"
           component={DatingPreferencesScreen}
         />
         <Stack.Screen
-          name={AppRoute.PersonalDetails}
+          name="PersonalDetails"
           component={PersonalDetailsScreen}
         />
-        <Stack.Screen name={AppRoute.Lifestyle} component={LifestyleScreen} />
+        <Stack.Screen name="Lifestyle" component={LifestyleScreen} />
         <Stack.Screen
-          name={AppRoute.ProfilePrompts}
+          name="ProfilePrompts"
           component={ProfilePromptsScreen}
         />
         <Stack.Screen
-          name={AppRoute.MediaUpload}
+          name="MediaUpload"
           component={MediaUploadScreen}
         />
         <Stack.Screen
-          name={AppRoute.SubscriptionUpsell}
+          name="SubscriptionUpsell"
           component={SubscriptionUpsellScreen}
         />
-        <Stack.Screen name={AppRoute.HomeTabs} component={TabNavigator} />
-        <Stack.Screen name={AppRoute.Messages} component={ChatsScreen} />
-        <Stack.Screen name={AppRoute.Chat} component={ChatScreen} />
-        <Stack.Screen name={AppRoute.Settings} component={PlaceholderScreen} />
-        <Stack.Screen name={AppRoute.HelpCentre} component={HelpCentreScreen} />
-        <Stack.Screen name={AppRoute.ReportProblem} component={ReportProblemScreen} />
+        <Stack.Screen name="HomeTabs" component={TabNavigator} />
+        <Stack.Screen name="Messages" component={ChatsScreen} />
+        <Stack.Screen name="ChatScreen" component={ChatScreen} />
+        <Stack.Screen name="Settings" component={PlaceholderScreen} />
+        <Stack.Screen name="HelpCentre" component={HelpCentreScreen} />
+        <Stack.Screen name="ReportProblem" component={ReportProblemScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

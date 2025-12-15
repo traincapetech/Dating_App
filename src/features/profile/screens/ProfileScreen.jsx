@@ -13,7 +13,6 @@ import {useNavigation} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {colors, typography, spacing} from '../../../theme';
 import {getProfile} from '../../../services/profile/profileService';
-import LinearGradient from 'react-native-linear-gradient';
 
 const ProfileScreen = () => {
   const navigation = useNavigation();
@@ -56,8 +55,12 @@ const ProfileScreen = () => {
         return;
       }
 
-      const profileData = await getProfile(currentUserId);
-      console.log('[ProfileScreen] Profile data loaded:', JSON.stringify(profileData, null, 2));
+      const response = await getProfile(currentUserId);
+      console.log('[ProfileScreen] Profile response:', JSON.stringify(response, null, 2));
+      
+      // API returns {profile: data} or just data
+      const profileData = response?.profile || response;
+      
       if (!profileData) {
         Alert.alert('No Profile', 'Profile not found. Please complete your profile setup.');
         return;
@@ -73,7 +76,7 @@ const ProfileScreen = () => {
 
   if (loading) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, styles.centerContent]}>
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
@@ -81,21 +84,35 @@ const ProfileScreen = () => {
 
   if (!profile) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, styles.centerContent]}>
         <Text style={styles.emptyText}>No profile found</Text>
+        <Pressable 
+          style={[styles.actionButton, {marginTop: spacing.lg, paddingHorizontal: spacing.xl}]}
+          onPress={() => navigation.navigate('BasicInfo')}>
+          <Text style={styles.actionButtonText}>Complete Profile</Text>
+        </Pressable>
       </View>
     );
   }
 
   // Use enriched fields from backend, with fallbacks to original structure
   const photos = profile.photos || profile.media?.media?.map(m => m.url).filter(Boolean) || [];
-  const name = profile.name || 
-    (profile.basicInfo?.firstName && profile.basicInfo?.lastName
-      ? `${profile.basicInfo.firstName} ${profile.basicInfo.lastName}`
-      : profile.basicInfo?.firstName || 'Unknown');
+  
+  // Build name from available fields
+  const firstName = profile.name || profile.basicInfo?.firstName || profile.basicInfo?.name || '';
+  const lastName = profile.basicInfo?.lastName || '';
+  const name = firstName 
+    ? (lastName ? `${firstName} ${lastName}` : firstName)
+    : 'Complete Your Profile';
+  
   const age = profile.age || profile.personalDetails?.age || profile.basicInfo?.age || null;
   const bio = profile.bio || profile.profilePrompts?.bio || profile.basicInfo?.bio || '';
   const interests = profile.interests || profile.lifestyle?.interests || [];
+  
+  // Get other profile details
+  const location = profile.basicInfo?.location || profile.location || null;
+  const occupation = profile.personalDetails?.occupation || profile.occupation || null;
+  const education = profile.personalDetails?.education || profile.education || null;
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -113,9 +130,14 @@ const ProfileScreen = () => {
       </View>
 
       {/* Profile Photo */}
-      {photos.length > 0 && (
+      {photos.length > 0 ? (
         <View style={styles.photoContainer}>
           <Image source={{uri: photos[0]}} style={styles.mainPhoto} resizeMode="cover" />
+        </View>
+      ) : (
+        <View style={styles.photoPlaceholder}>
+          <Text style={styles.photoPlaceholderText}>📷</Text>
+          <Text style={styles.photoPlaceholderLabel}>Add a photo</Text>
         </View>
       )}
 
@@ -124,13 +146,25 @@ const ProfileScreen = () => {
         <Text style={styles.name}>
           {name}{age ? `, ${age}` : ''}
         </Text>
+        {(location || occupation) && (
+          <View style={styles.infoRow}>
+            {location && <Text style={styles.infoText}>📍 {location}</Text>}
+            {occupation && <Text style={styles.infoText}>💼 {occupation}</Text>}
+          </View>
+        )}
       </View>
 
       {/* Bio */}
-      {bio && (
+      {bio ? (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>About Me</Text>
           <Text style={styles.bio}>{bio}</Text>
+        </View>
+      ) : (
+        <View style={styles.section}>
+          <View style={styles.emptySection}>
+            <Text style={styles.emptySectionText}>Add a bio to tell others about yourself</Text>
+          </View>
         </View>
       )}
 
@@ -152,7 +186,7 @@ const ProfileScreen = () => {
       )}
 
       {/* Interests */}
-      {interests.length > 0 && (
+      {interests.length > 0 ? (
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Interests</Text>
           <View style={styles.interestsContainer}>
@@ -163,15 +197,20 @@ const ProfileScreen = () => {
             ))}
           </View>
         </View>
+      ) : (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Interests</Text>
+          <View style={styles.emptySection}>
+            <Text style={styles.emptySectionText}>Add interests to find better matches</Text>
+          </View>
+        </View>
       )}
 
       {/* Action Buttons */}
       <View style={styles.actionsContainer}>
         <Pressable
           style={styles.actionButton}
-          onPress={() => {
-            Alert.alert('Subscription', 'Subscription options coming soon');
-          }}>
+          onPress={() => navigation.navigate('SubscriptionUpsell')}>
           <Text style={styles.actionButtonText}>💎 Upgrade to Premium</Text>
         </Pressable>
       </View>
@@ -183,6 +222,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -217,6 +260,24 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  photoPlaceholder: {
+    width: '100%',
+    height: 300,
+    backgroundColor: colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  photoPlaceholderText: {
+    fontSize: 64,
+    marginBottom: spacing.sm,
+  },
+  photoPlaceholderLabel: {
+    fontSize: typography.body.medium,
+    fontFamily: typography.fontFamilyMedium,
+    color: colors.textSecondary,
+  },
   nameContainer: {
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
@@ -225,6 +286,32 @@ const styles = StyleSheet.create({
     fontSize: typography.headings.h2,
     fontFamily: typography.fontFamilyBold,
     color: colors.textPrimary,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
+    marginTop: spacing.xs,
+  },
+  infoText: {
+    fontSize: typography.body.medium,
+    fontFamily: typography.fontFamilyRegular,
+    color: colors.textSecondary,
+  },
+  emptySection: {
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderStyle: 'dashed',
+  },
+  emptySectionText: {
+    fontSize: typography.body.medium,
+    fontFamily: typography.fontFamilyRegular,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
   section: {
     paddingHorizontal: spacing.lg,
