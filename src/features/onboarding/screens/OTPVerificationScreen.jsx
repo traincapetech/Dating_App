@@ -65,11 +65,17 @@ const OTPVerificationScreen = () => {
       return;
     }
     setIsSubmitting(true);
-    // Simulate API call
+    // For phone verification, accept any 6-digit code (no SMS service yet)
+    // TODO: Implement actual phone OTP verification when SMS service is added
     setTimeout(() => {
       setIsSubmitting(false);
       navigation.navigate(AppRoute.Welcome);
-    }, 1000);
+    }, 500);
+  };
+
+  const handleSkip = () => {
+    // Skip OTP verification for phone numbers (no SMS service yet)
+    navigation.navigate(AppRoute.Welcome);
   };
 
   const isOtpComplete = otp.every(digit => digit !== '');
@@ -120,9 +126,16 @@ const OTPVerificationScreen = () => {
           )}
         </Pressable>
 
-        <Pressable style={styles.resendButton}>
-          <Text style={styles.resendText}>Resend code</Text>
-        </Pressable>
+        {phone && (
+          <Pressable style={styles.resendButton} onPress={handleSkip}>
+            <Text style={styles.resendText}>Skip verification</Text>
+          </Pressable>
+        )}
+        {!phone && (
+          <Pressable style={styles.resendButton}>
+            <Text style={styles.resendText}>Resend code</Text>
+          </Pressable>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );

@@ -23,6 +23,8 @@ import ReportProblemScreen from '../features/settings/screens/ReportProblemScree
 import TabNavigator from './TabNavigator';
 import ChatsScreen from '../features/messages/screens/ChatsScreen.jsx';
 import ChatScreen from '../features/messages/screens/ChatScreen.jsx';
+import ProfileDetailsScreen from '../features/profile/screens/ProfileDetailsScreen.jsx';
+import SettingsScreen from '../features/settings/screens/SettingsScreen.jsx';
 import {colors, typography} from '../theme';
 
 const Stack = createNativeStackNavigator();
@@ -87,7 +89,8 @@ const AppNavigator = () => {
         <Stack.Screen name="HomeTabs" component={TabNavigator} />
         <Stack.Screen name="Messages" component={ChatsScreen} />
         <Stack.Screen name="ChatScreen" component={ChatScreen} />
-        <Stack.Screen name="Settings" component={PlaceholderScreen} />
+        <Stack.Screen name="ProfileDetails" component={ProfileDetailsScreen} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="HelpCentre" component={HelpCentreScreen} />
         <Stack.Screen name="ReportProblem" component={ReportProblemScreen} />
       </Stack.Navigator>

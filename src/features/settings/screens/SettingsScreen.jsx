@@ -1,24 +1,23 @@
-import React, {useState} from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   Pressable,
-  Switch,
   Alert,
+  Switch,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {colors, typography, spacing} from '../../../theme';
-import {clearTokens} from '../../../services/storage/tokenStorage';
 
 const SettingsScreen = () => {
   const navigation = useNavigation();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [locationEnabled, setLocationEnabled] = useState(true);
+  const [notifications, setNotifications] = React.useState(true);
+  const [showOnline, setShowOnline] = React.useState(true);
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
     Alert.alert(
       'Logout',
       'Are you sure you want to logout?',
@@ -28,215 +27,314 @@ const SettingsScreen = () => {
           text: 'Logout',
           style: 'destructive',
           onPress: async () => {
-            try {
-              await clearTokens();
-              await AsyncStorage.removeItem('@pryvo_user');
-              navigation.reset({
-                index: 0,
-                routes: [{name: 'SignIn'}],
-              });
-            } catch (error) {
-              console.error('Logout error:', error);
-              Alert.alert('Error', 'Failed to logout. Please try again.');
-            }
+            await AsyncStorage.multiRemove([
+              '@pryvo_user',
+              '@pryvo/token',
+              '@pryvo/refreshToken',
+            ]);
+            navigation.reset({
+              index: 0,
+              routes: [{name: 'OnboardingIntro'}],
+            });
           },
         },
       ]
     );
   };
 
-  const SettingsSection = ({title, children}) => (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      {children}
-    </View>
-  );
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      'This action cannot be undone. All your data will be permanently deleted.',
+      [
+        {text: 'Cancel', style: 'cancel'},
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert('Contact Support', 'Please contact support@pryvo.app to delete your account.');
+          },
+        },
+      ]
+    );
+  };
 
-  const SettingsItem = ({title, subtitle, onPress, rightComponent, showArrow = true}) => (
-    <Pressable
-      style={styles.settingsItem}
-      onPress={onPress}
-      android_ripple={{color: colors.border}}>
-      <View style={styles.settingsItemContent}>
-        <View style={styles.settingsItemText}>
-          <Text style={styles.settingsItemTitle}>{title}</Text>
-          {subtitle && <Text style={styles.settingsItemSubtitle}>{subtitle}</Text>}
-        </View>
-        {rightComponent || (showArrow && <Text style={styles.arrow}>›</Text>)}
+  const SettingItem = ({icon, title, subtitle, onPress, rightElement}) => (
+    <Pressable style={styles.settingItem} onPress={onPress}>
+      <Text style={styles.settingIcon}>{icon}</Text>
+      <View style={styles.settingContent}>
+        <Text style={styles.settingTitle}>{title}</Text>
+        {subtitle && <Text style={styles.settingSubtitle}>{subtitle}</Text>}
       </View>
+      {rightElement || <Text style={styles.chevron}>›</Text>}
     </Pressable>
   );
 
+  const SettingToggle = ({icon, title, value, onValueChange}) => (
+    <View style={styles.settingItem}>
+      <Text style={styles.settingIcon}>{icon}</Text>
+      <View style={styles.settingContent}>
+        <Text style={styles.settingTitle}>{title}</Text>
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{false: '#ddd', true: colors.primary}}
+        thumbColor="#fff"
+      />
+    </View>
+  );
+
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
+        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Text style={styles.backText}>←</Text>
+        </Pressable>
         <Text style={styles.headerTitle}>Settings</Text>
+        <View style={{width: 40}} />
       </View>
 
-      <SettingsSection title="Account">
-        <SettingsItem
-          title="Edit Profile"
-          subtitle="Update your profile information"
-          onPress={() => Alert.alert('Edit Profile', 'Coming soon')}
-        />
-        <SettingsItem
-          title="Subscription"
-          subtitle="Manage your subscription"
-          onPress={() => Alert.alert('Subscription', 'Coming soon')}
-        />
-        <SettingsItem
-          title="Payment Methods"
-          subtitle="Add or update payment methods"
-          onPress={() => Alert.alert('Payment Methods', 'Coming soon')}
-        />
-      </SettingsSection>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Account Section */}
+        <Text style={styles.sectionTitle}>Account</Text>
+        <View style={styles.section}>
+          <SettingItem 
+            icon="👤" 
+            title="Edit Profile" 
+            onPress={() => navigation.navigate('ProfileDetails')} 
+          />
+          <SettingItem 
+            icon="📧" 
+            title="Email" 
+            subtitle="Change your email address"
+            onPress={() => Alert.alert('Coming Soon', 'Email change feature coming soon')} 
+          />
+          <SettingItem 
+            icon="🔒" 
+            title="Password" 
+            subtitle="Change your password"
+            onPress={() => Alert.alert('Coming Soon', 'Password change feature coming soon')} 
+          />
+        </View>
 
-      <SettingsSection title="Preferences">
-        <SettingsItem
-          title="Notifications"
-          subtitle="Manage notification settings"
-          rightComponent={
-            <Switch
-              value={notificationsEnabled}
-              onValueChange={setNotificationsEnabled}
-              trackColor={{false: colors.borderLight, true: colors.primary}}
-            />
-          }
-          showArrow={false}
-        />
-        <SettingsItem
-          title="Location Services"
-          subtitle="Allow location access"
-          rightComponent={
-            <Switch
-              value={locationEnabled}
-              onValueChange={setLocationEnabled}
-              trackColor={{false: colors.borderLight, true: colors.primary}}
-            />
-          }
-          showArrow={false}
-        />
-        <SettingsItem
-          title="Discovery Settings"
-          subtitle="Adjust who you see"
-          onPress={() => Alert.alert('Discovery Settings', 'Coming soon')}
-        />
-      </SettingsSection>
+        {/* Notifications Section */}
+        <Text style={styles.sectionTitle}>Notifications</Text>
+        <View style={styles.section}>
+          <SettingToggle
+            icon="🔔"
+            title="Push Notifications"
+            value={notifications}
+            onValueChange={setNotifications}
+          />
+          <SettingToggle
+            icon="💬"
+            title="Message Notifications"
+            value={notifications}
+            onValueChange={setNotifications}
+          />
+          <SettingToggle
+            icon="💕"
+            title="Match Notifications"
+            value={notifications}
+            onValueChange={setNotifications}
+          />
+        </View>
 
-      <SettingsSection title="Support">
-        <SettingsItem
-          title="Help Center"
-          subtitle="Get help and support"
-          onPress={() => navigation.navigate('HelpCentre')}
-        />
-        <SettingsItem
-          title="Report a Problem"
-          subtitle="Report bugs or issues"
-          onPress={() => navigation.navigate('ReportProblem')}
-        />
-        <SettingsItem
-          title="Privacy Policy"
-          subtitle="Read our privacy policy"
-          onPress={() => navigation.navigate('Privacy')}
-        />
-        <SettingsItem
-          title="Terms of Service"
-          subtitle="Read our terms of service"
-          onPress={() => navigation.navigate('Terms')}
-        />
-      </SettingsSection>
+        {/* Privacy Section */}
+        <Text style={styles.sectionTitle}>Privacy</Text>
+        <View style={styles.section}>
+          <SettingToggle
+            icon="🟢"
+            title="Show Online Status"
+            value={showOnline}
+            onValueChange={setShowOnline}
+          />
+          <SettingItem 
+            icon="🚫" 
+            title="Blocked Users" 
+            onPress={() => Alert.alert('Coming Soon', 'Blocked users list coming soon')} 
+          />
+          <SettingItem 
+            icon="📋" 
+            title="Privacy Policy" 
+            onPress={() => navigation.navigate('Privacy')} 
+          />
+          <SettingItem 
+            icon="📜" 
+            title="Terms of Service" 
+            onPress={() => navigation.navigate('Terms')} 
+          />
+        </View>
 
-      <SettingsSection title="About">
-        <SettingsItem
-          title="App Version"
-          subtitle="1.0.0"
-          showArrow={false}
-        />
-        <SettingsItem
-          title="Logout"
-          subtitle="Sign out of your account"
-          onPress={handleLogout}
-        />
-      </SettingsSection>
+        {/* Support Section */}
+        <Text style={styles.sectionTitle}>Support</Text>
+        <View style={styles.section}>
+          <SettingItem 
+            icon="❓" 
+            title="Help Centre" 
+            onPress={() => navigation.navigate('HelpCentre')} 
+          />
+          <SettingItem 
+            icon="🐛" 
+            title="Report a Problem" 
+            onPress={() => navigation.navigate('ReportProblem')} 
+          />
+          <SettingItem 
+            icon="💌" 
+            title="Contact Us" 
+            subtitle="support@pryvo.app"
+            onPress={() => Alert.alert('Contact', 'Email us at support@pryvo.app')} 
+          />
+        </View>
 
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>Made with ❤️ by Pryvo</Text>
-      </View>
-    </ScrollView>
+        {/* Subscription Section */}
+        <Text style={styles.sectionTitle}>Subscription</Text>
+        <View style={styles.section}>
+          <SettingItem 
+            icon="💎" 
+            title="Upgrade to Premium" 
+            subtitle="Unlock all features"
+            onPress={() => navigation.navigate('SubscriptionUpsell')} 
+          />
+          <SettingItem 
+            icon="💳" 
+            title="Manage Subscription" 
+            onPress={() => Alert.alert('Coming Soon', 'Subscription management coming soon')} 
+          />
+        </View>
+
+        {/* Danger Zone */}
+        <Text style={styles.sectionTitle}>Account Actions</Text>
+        <View style={styles.section}>
+          <SettingItem 
+            icon="🚪" 
+            title="Logout" 
+            onPress={handleLogout} 
+          />
+          <Pressable style={styles.dangerItem} onPress={handleDeleteAccount}>
+            <Text style={styles.dangerIcon}>⚠️</Text>
+            <Text style={styles.dangerText}>Delete Account</Text>
+          </Pressable>
+        </View>
+
+        {/* App Info */}
+        <View style={styles.appInfo}>
+          <Text style={styles.appName}>Pryvo</Text>
+          <Text style={styles.appVersion}>Version 1.0.0</Text>
+        </View>
+
+        <View style={{height: 100}} />
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#f5f5f5',
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.surface,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.md,
+    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: '#eee',
+  },
+  backButton: {
+    padding: spacing.sm,
+  },
+  backText: {
+    fontSize: 24,
+    color: '#1a1a1a',
   },
   headerTitle: {
-    fontSize: typography.headings.h2,
+    fontSize: 18,
     fontFamily: typography.fontFamilyBold,
-    color: colors.textPrimary,
-  },
-  section: {
-    marginTop: spacing.xl,
-    paddingHorizontal: spacing.lg,
+    color: '#1a1a1a',
   },
   sectionTitle: {
-    fontSize: typography.body.small,
+    fontSize: 13,
     fontFamily: typography.fontFamilyBold,
-    color: colors.textSecondary,
+    color: '#999',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: spacing.sm,
+    letterSpacing: 1,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.sm,
   },
-  settingsItem: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    marginBottom: spacing.xs,
-    overflow: 'hidden',
+  section: {
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#eee',
   },
-  settingsItemContent: {
+  settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f5f5f5',
   },
-  settingsItemText: {
+  settingIcon: {
+    fontSize: 20,
+    marginRight: spacing.md,
+  },
+  settingContent: {
     flex: 1,
   },
-  settingsItemTitle: {
-    fontSize: typography.body.medium,
+  settingTitle: {
+    fontSize: 16,
     fontFamily: typography.fontFamilyMedium,
-    color: colors.textPrimary,
-    marginBottom: 2,
+    color: '#1a1a1a',
   },
-  settingsItemSubtitle: {
-    fontSize: typography.body.small,
+  settingSubtitle: {
+    fontSize: 13,
     fontFamily: typography.fontFamilyRegular,
-    color: colors.textSecondary,
+    color: '#999',
+    marginTop: 2,
   },
-  arrow: {
+  chevron: {
     fontSize: 24,
-    color: colors.textSecondary,
-    marginLeft: spacing.sm,
+    color: '#ccc',
   },
-  footer: {
-    paddingVertical: spacing.xxl,
+  dangerItem: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
   },
-  footerText: {
-    fontSize: typography.body.small,
+  dangerIcon: {
+    fontSize: 20,
+    marginRight: spacing.md,
+  },
+  dangerText: {
+    fontSize: 16,
+    fontFamily: typography.fontFamilyMedium,
+    color: '#FF3B30',
+  },
+  appInfo: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+  },
+  appName: {
+    fontSize: 16,
+    fontFamily: typography.fontFamilyBold,
+    color: '#1a1a1a',
+  },
+  appVersion: {
+    fontSize: 13,
     fontFamily: typography.fontFamilyRegular,
-    color: colors.textSecondary,
+    color: '#999',
+    marginTop: 4,
   },
 });
 
 export default SettingsScreen;
-

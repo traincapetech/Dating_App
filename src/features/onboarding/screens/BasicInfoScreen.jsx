@@ -32,6 +32,7 @@ const BasicInfoScreen = () => {
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
+    dob: '',
     email: '',
     emailVerified: false,
     notificationsEnabled: true,
@@ -297,6 +298,7 @@ const BasicInfoScreen = () => {
         userId: userId, // Include userId for server authentication
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
+        dob: form.dob.trim(),
         email: form.email.trim(),
         location: form.location.trim(),
         locationDetails: form.locationDetails,
@@ -324,7 +326,7 @@ const BasicInfoScreen = () => {
   const canProceed = () => {
     switch (step) {
       case 1:
-        return form.firstName.trim() && form.lastName.trim();
+        return form.firstName.trim() && form.lastName.trim() && form.dob.trim();
       case 2:
         return form.email.trim() && /\S+@\S+\.\S+/.test(form.email) && form.emailVerified;
       case 3:
@@ -364,6 +366,17 @@ const BasicInfoScreen = () => {
               style={styles.input}
               placeholderTextColor={colors.textSecondary}
             />
+          <Text style={[styles.label, {marginTop: spacing.lg}]}>
+            Date of birth (YYYY-MM-DD)
+          </Text>
+          <TextInput
+            value={form.dob}
+            onChangeText={value => handleChange('dob', value)}
+            placeholder="1998-05-12"
+            keyboardType="numbers-and-punctuation"
+            style={styles.input}
+            placeholderTextColor={colors.textSecondary}
+          />
           </View>
         );
       case 2:

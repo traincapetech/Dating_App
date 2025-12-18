@@ -140,3 +140,8 @@ export async function getProfile(userId) {
   return apiClient.get(`/profile/${userId}`, headers);
 }
 
+export async function updateProfileApi(payload) {
+  const headers = await getAuthHeaders();
+  return apiClient.put('/profile/update', payload, headers);
+}
+

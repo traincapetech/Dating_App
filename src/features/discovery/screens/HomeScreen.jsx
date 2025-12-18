@@ -135,53 +135,61 @@ const HomeScreen = ({navigation}) => {
     opacity.setValue(1);
   };
 
-  const processSwipe = async direction => {
+  const processSwipe = (direction) => {
     if (!currentProfile || !currentUserId) return;
 
     const likedUserId = currentProfile.userId;
     const myPhoto = profiles[currentIndex]?.photos?.[0];
     const theirPhoto = currentProfile.photos?.[0];
 
-    try {
-      if (direction === 'right') {
-        const result = await likeUser(currentUserId, likedUserId); // POST /like
-
-        if (result?.isMatch && result?.match) {
-          setMatchPopup({
-            visible: true,
-            myPhoto,
-            theirPhoto,
-            matchId: result.match._id,
-          });
-        }
-      } else if (direction === 'left') {
-        await passUser(currentUserId, likedUserId); // POST /pass
-      }
-    } catch (err) {
-      console.error('Error in swipe action:', err);
-    }
-
+    // Animate card off screen IMMEDIATELY (don't wait for API)
     Animated.parallel([
       Animated.timing(translateX, {
         toValue: direction === 'right' ? SCREEN_WIDTH : -SCREEN_WIDTH,
-        duration: 200,
+        duration: 250,
         useNativeDriver: true,
       }),
       Animated.timing(opacity, {
         toValue: 0,
-        duration: 200,
+        duration: 250,
         useNativeDriver: true,
       }),
     ]).start(() => {
       goToNextProfile();
     });
+
+    // Fire API call in background (don't block animation)
+    if (direction === 'right') {
+      likeUser(currentUserId, likedUserId)
+        .then(result => {
+          if (result?.isMatch && result?.match) {
+            setMatchPopup({
+              visible: true,
+              myPhoto,
+              theirPhoto,
+              matchId: result.match._id,
+            });
+          }
+        })
+        .catch(err => console.error('Like error:', err));
+    } else {
+      passUser(currentUserId, likedUserId)
+        .catch(err => console.error('Pass error:', err));
+    }
   };
 
   const panResponder = useRef(
     PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => {
         const {dx, dy} = gestureState;
-        return Math.abs(dx) > 10 || Math.abs(dy) > 10;
+        // Only respond to horizontal swipes
+        return Math.abs(dx) > 5 && Math.abs(dx) > Math.abs(dy);
+      },
+      onPanResponderGrant: () => {
+        // Stop any ongoing animations when touch starts
+        translateX.stopAnimation();
+        translateY.stopAnimation();
       },
       onPanResponderMove: Animated.event(
         [
@@ -194,9 +202,11 @@ const HomeScreen = ({navigation}) => {
         {useNativeDriver: false},
       ),
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dx > SWIPE_THRESHOLD) {
+        const {dx, vx} = gestureState;
+        // Swipe if threshold met OR velocity is high enough
+        if (dx > SWIPE_THRESHOLD || vx > 0.5) {
           processSwipe('right');
-        } else if (gestureState.dx < -SWIPE_THRESHOLD) {
+        } else if (dx < -SWIPE_THRESHOLD || vx < -0.5) {
           processSwipe('left');
         } else {
           resetCardPosition();
@@ -340,6 +350,20 @@ const HomeScreen = ({navigation}) => {
             </View>
           </LinearGradient>
         </Animated.View>
+      </View>
+
+      {/* Action Buttons */}
+      <View style={styles.actionButtons}>
+        <Pressable
+          style={[styles.actionButton, styles.passButton]}
+          onPress={() => processSwipe('left')}>
+          <Text style={styles.actionButtonText}>✕</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.actionButton, styles.likeButton]}
+          onPress={() => processSwipe('right')}>
+          <Text style={[styles.actionButtonText, {color: '#fff'}]}>♥</Text>
+        </Pressable>
       </View>
 
       {/* Tinder-style Match Popup */}
@@ -486,6 +510,38 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamilyRegular,
     color: colors.textSecondary,
     textAlign: 'center',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.xl * 2,
+    paddingBottom: spacing.xl,
+    paddingTop: spacing.md,
+  },
+  actionButton: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  passButton: {
+    backgroundColor: colors.surface,
+    borderWidth: 2,
+    borderColor: '#FF6B6B',
+  },
+  likeButton: {
+    backgroundColor: colors.primary,
+  },
+  actionButtonText: {
+    fontSize: 28,
+    color: '#FF6B6B',
   },
 });
 

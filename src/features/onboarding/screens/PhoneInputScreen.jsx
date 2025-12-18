@@ -23,23 +23,48 @@ const PhoneInputScreen = () => {
   // This library validates automatically through callbacks
   const [isValid, setIsValid] = useState(false);
 
-  const handleContinue = () => {
+  // Fallback validation: check if phone number has at least 10 digits
+  const validatePhoneNumber = (phone) => {
+    if (!phone || !phone.trim()) return false;
+    // Remove all non-digit characters and check length
+    const digitsOnly = phone.replace(/\D/g, '');
+    return digitsOnly.length >= 10;
+  };
+
+  const handlePhoneChange = (value) => {
+    setPhoneNumber(value);
+    // Also update isValid based on our own validation as fallback
+    // This ensures the button works even if the library's validation callback doesn't fire
+    const valid = validatePhoneNumber(value);
+    setIsValid(valid);
+  };
+
+  const handleContinue = async () => {
     if (!phoneNumber.trim()) {
       Alert.alert('Required', 'Please enter your phone number');
       return;
     }
 
-    if (!isValid) {
-      Alert.alert('Invalid', 'Please enter a valid phone number');
+    // Use fallback validation if library validation didn't work
+    const phoneValid = isValid || validatePhoneNumber(phoneNumber);
+    
+    if (!phoneValid) {
+      Alert.alert('Invalid', 'Please enter a valid phone number (at least 10 digits)');
       return;
     }
 
     setIsSubmitting(true);
 
-    setTimeout(() => {
+    try {
+      // Navigate to OTPVerification screen with phone number
+      // The OTPVerification screen will handle the verification or skip it
+      navigation.navigate(AppRoute.OTPVerification, { phone: phoneNumber });
+    } catch (error) {
+      console.error('Error in handleContinue:', error);
+      Alert.alert('Error', 'Something went wrong. Please try again.');
+    } finally {
       setIsSubmitting(false);
-      navigation.navigate(AppRoute.Welcome);
-    }, 400);
+    }
   };
 
   return (
@@ -58,7 +83,7 @@ const PhoneInputScreen = () => {
         <PhoneInput
           defaultCountry="IN"
           value={phoneNumber}
-          onChangePhoneNumber={setPhoneNumber}
+          onChangePhoneNumber={handlePhoneChange}
           onChangeIsValid={setIsValid}
           containerStyle={styles.phoneInputContainer}
           phoneInputTextStyle={styles.phoneInputText}
@@ -68,11 +93,11 @@ const PhoneInputScreen = () => {
         <Pressable
           style={[
             styles.primaryButton,
-            (!phoneNumber.trim() || !isValid || isSubmitting) &&
+            (!phoneNumber.trim() || (!isValid && !validatePhoneNumber(phoneNumber)) || isSubmitting) &&
               styles.primaryButtonDisabled,
           ]}
           onPress={handleContinue}
-          disabled={!phoneNumber.trim() || !isValid || isSubmitting}>
+          disabled={!phoneNumber.trim() || (!isValid && !validatePhoneNumber(phoneNumber)) || isSubmitting}>
           {isSubmitting ? (
             <ActivityIndicator color={colors.surface} />
           ) : (
