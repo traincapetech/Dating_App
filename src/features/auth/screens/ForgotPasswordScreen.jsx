@@ -12,51 +12,55 @@ import {
   Alert,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
-import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
-import {signIn} from '../../../services/auth';
+import {forgotPassword} from '../../../services/auth/authService';
 
-const SignInScreen = () => {
+const ForgotPasswordScreen = () => {
   const navigation = useNavigation();
-  const [form, setForm] = useState({email: '', password: ''});
-  const [errors, setErrors] = useState({});
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (field, value) => {
-    setForm(prev => ({...prev, [field]: value}));
-    setErrors(prev => ({...prev, [field]: undefined, api: undefined}));
-  };
-
   const validate = () => {
-    const newErrors = {};
-    if (!form.email.trim()) newErrors.email = 'Email is required';
-    if (!/\S+@\S+\.\S+/.test(form.email)) {
-      newErrors.email = 'Enter a valid email address';
+    if (!email.trim()) {
+      setError('Email is required');
+      return false;
     }
-    if (!form.password) newErrors.password = 'Password is required';
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    if (!/\S+@\S+\.\S+/.test(email)) {
+      setError('Enter a valid email address');
+      return false;
+    }
+    setError('');
+    return true;
   };
 
   const handleSubmit = async () => {
     if (!validate()) {
       return;
     }
+
     setIsSubmitting(true);
     try {
-      const response = await signIn({
-        email: form.email.trim().toLowerCase(),
-        password: form.password,
-      });
-      // Navigate directly to home screen for existing users
-      // They've already completed onboarding during sign up
-      navigation.reset({
-        index: 0,
-        routes: [{name: AppRoute.HomeTabs}],
-      });
+      const result = await forgotPassword(email.trim().toLowerCase());
+      
+      Alert.alert(
+        'Reset Code Sent',
+        result.message || 'If an account exists with this email, a password reset code has been sent.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              navigation.navigate('ResetPassword', {email: email.trim().toLowerCase()});
+            },
+          },
+        ]
+      );
     } catch (error) {
-      const message = error?.message || 'Unable to sign you in right now.';
-      setErrors(prev => ({...prev, api: message}));
+      console.error('Error requesting password reset:', error);
+      Alert.alert(
+        'Error',
+        error.message || 'Failed to send reset code. Please try again.'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -70,71 +74,47 @@ const SignInScreen = () => {
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text style={styles.title}>Welcome back</Text>
+          <Text style={styles.title}>Forgot Password?</Text>
           <Text style={styles.subtitle}>
-            Pick up where you left off with your conversations and matches.
+            Enter your email address and we'll send you a code to reset your password.
           </Text>
         </View>
-
-        {errors.api ? <Text style={styles.errorText}>{errors.api}</Text> : null}
 
         <View style={styles.fieldset}>
           <Text style={styles.label}>Email</Text>
           <TextInput
-            value={form.email}
-            onChangeText={value => handleChange('email', value)}
+            value={email}
+            onChangeText={value => {
+              setEmail(value);
+              setError('');
+            }}
             placeholder="you@example.com"
             keyboardType="email-address"
             autoCapitalize="none"
-            style={[styles.input, errors.email && styles.inputError]}
-            placeholderTextColor={colors.textSecondary}
-            returnKeyType="next"
-          />
-          {errors.email && (
-            <Text style={styles.errorText}>{errors.email}</Text>
-          )}
-        </View>
-
-        <View style={styles.fieldset}>
-          <Text style={styles.label}>Password</Text>
-          <TextInput
-            value={form.password}
-            onChangeText={value => handleChange('password', value)}
-            placeholder="Enter your password"
-            secureTextEntry
-            style={[styles.input, errors.password && styles.inputError]}
+            style={[styles.input, error && styles.inputError]}
             placeholderTextColor={colors.textSecondary}
             returnKeyType="done"
             onSubmitEditing={handleSubmit}
+            editable={!isSubmitting}
           />
-          {errors.password && (
-            <Text style={styles.errorText}>{errors.password}</Text>
-          )}
+          {error && <Text style={styles.errorText}>{error}</Text>}
         </View>
 
-        <Pressable 
-          style={styles.forgotPassword}
-          onPress={() => navigation.navigate('ForgotPassword')}>
-          <Text style={styles.forgotPasswordText}>Forgot password?</Text>
-        </Pressable>
-
         <Pressable
-          style={styles.primaryButton}
+          style={[styles.primaryButton, isSubmitting && styles.primaryButtonDisabled]}
           onPress={handleSubmit}
           disabled={isSubmitting}>
           {isSubmitting ? (
             <ActivityIndicator color={colors.surface} />
           ) : (
-            <Text style={styles.primaryButtonText}>Sign in</Text>
+            <Text style={styles.primaryButtonText}>Send Reset Code</Text>
           )}
         </Pressable>
 
         <Pressable
           style={styles.secondaryCta}
-          onPress={() => navigation.navigate(AppRoute.SignUp)}>
-          <Text style={styles.secondaryCtaText}>
-            Need an account? Create one
-          </Text>
+          onPress={() => navigation.goBack()}>
+          <Text style={styles.secondaryCtaText}>Back to Sign In</Text>
         </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -157,12 +137,12 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamilyBold,
     fontSize: typography.headings.h2,
     color: colors.textPrimary,
+    marginBottom: spacing.sm,
   },
   subtitle: {
     fontFamily: typography.fontFamilyRegular,
     fontSize: typography.body.medium,
     color: colors.textSecondary,
-    marginTop: spacing.sm,
   },
   fieldset: {
     marginBottom: spacing.lg,
@@ -191,20 +171,15 @@ const styles = StyleSheet.create({
     color: colors.error,
     fontSize: typography.caption,
   },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-  },
-  forgotPasswordText: {
-    fontFamily: typography.fontFamilyMedium,
-    fontSize: typography.body.small,
-    color: colors.primary,
-  },
   primaryButton: {
     backgroundColor: colors.primary,
     paddingVertical: spacing.md,
     borderRadius: 18,
     alignItems: 'center',
     marginTop: spacing.xl,
+  },
+  primaryButtonDisabled: {
+    opacity: 0.6,
   },
   primaryButtonText: {
     color: colors.surface,
@@ -222,5 +197,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SignInScreen;
+export default ForgotPasswordScreen;
 

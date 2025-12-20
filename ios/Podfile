@@ -1,50 +1,78 @@
 # Resolve react_native_pods.rb with node to allow for hoisting
-require Pod::Executable.execute_command('node', ['-p',
-  'require.resolve(
-    "react-native/scripts/react_native_pods.rb",
-    {paths: [process.argv[1]]},
-  )', __dir__]).strip
+require Pod::Executable.execute_command(
+  'node',
+  ['-p',
+   'require.resolve(
+     "react-native/scripts/react_native_pods.rb",
+     { paths: [process.argv[1]] }
+   )', __dir__]
+).strip
 
-platform :ios, min_ios_version_supported
+# 🚨 FORCE iOS VERSION (CRITICAL)
+platform :ios, '18.0'
+
+# Disable New Architecture
+ENV['RCT_NEW_ARCH_ENABLED'] = '0'
+
 prepare_react_native_project!
 
-linkage = ENV['USE_FRAMEWORKS']
-if linkage != nil
-  Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
-  use_frameworks! :linkage => linkage.to_sym
-end
-
-# Enable modular headers globally for Firebase compatibility
-use_modular_headers!
+# 🚨 Firebase + RN REQUIRE STATIC FRAMEWORKS
+use_frameworks! :linkage => :static
+$RNFirebaseAsStaticFramework = true
 
 target 'Pryvo' do
   config = use_native_modules!
 
   use_react_native!(
     :path => config[:reactNativePath],
-    # An absolute path to your application root.
-    :app_path => "#{Pod::Config.instance.installation_root}/.."
+    :app_path => "#{Pod::Config.instance.installation_root}/..",
+    :fabric_enabled => false
   )
 
   target 'PryvoTests' do
     inherit! :complete
-    # Pods for testing
   end
 
   post_install do |installer|
-    # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
     react_native_post_install(
       installer,
       config[:reactNativePath],
-      :mac_catalyst_enabled => false,
-      # :ccache_enabled => true
+      :mac_catalyst_enabled => false
     )
-    
-    # Enable modular headers for Firebase dependencies
+
+    # Fix Xcode 15+/iOS issues
     installer.pods_project.targets.each do |target|
-      if ['GoogleUtilities', 'FirebaseCoreInternal', 'FirebaseCore', 'FirebaseMessaging'].include?(target.name)
-        target.build_configurations.each do |config|
-          config.build_settings['DEFINES_MODULE'] = 'YES'
+      target.build_configurations.each do |config|
+        config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+        
+        # Add header search paths for codegen
+        header_search_paths = config.build_settings['HEADER_SEARCH_PATHS'] || ['$(inherited)']
+        header_search_paths << '"$(PODS_TARGET_SRCROOT)/../build/generated/ios"' unless header_search_paths.include?('"$(PODS_TARGET_SRCROOT)/../build/generated/ios"')
+        config.build_settings['HEADER_SEARCH_PATHS'] = header_search_paths
+        
+        # Disable New Architecture - remove from all flags
+        config.build_settings['RCT_NEW_ARCH_ENABLED'] = '0'
+        
+        # Remove RCT_NEW_ARCH_ENABLED from preprocessor definitions
+        if config.build_settings['GCC_PREPROCESSOR_DEFINITIONS']
+          definitions = config.build_settings['GCC_PREPROCESSOR_DEFINITIONS']
+          if definitions.is_a?(Array)
+            definitions = definitions.reject { |d| d.to_s.include?('RCT_NEW_ARCH_ENABLED') }
+            definitions << 'RCT_NEW_ARCH_ENABLED=0'
+            config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = definitions
+          elsif definitions.is_a?(String)
+            config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = definitions.gsub(/-DRCT_NEW_ARCH_ENABLED[= ]?[01]?/, '') + ' -DRCT_NEW_ARCH_ENABLED=0'
+          end
+        else
+          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = ['$(inherited)', 'RCT_NEW_ARCH_ENABLED=0']
+        end
+        
+        # Remove from OTHER_CFLAGS and OTHER_CPLUSPLUSFLAGS
+        ['OTHER_CFLAGS', 'OTHER_CPLUSPLUSFLAGS'].each do |flag|
+          if config.build_settings[flag]
+            config.build_settings[flag] = config.build_settings[flag].gsub(/-DRCT_NEW_ARCH_ENABLED[= ]?[01]?/, '').strip
+            config.build_settings[flag] = config.build_settings[flag] + ' -DRCT_NEW_ARCH_ENABLED=0'
+          end
         end
       end
     end

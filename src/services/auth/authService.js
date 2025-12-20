@@ -31,3 +31,41 @@ export async function signOut() {
   await AsyncStorage.removeItem('@pryvo_user');
 }
 
+export async function changeEmail(userId, newEmail, password) {
+  const data = await apiClient.post('/auth/change-email', {
+    userId,
+    newEmail,
+    password,
+  });
+  if (data?.user) {
+    await AsyncStorage.setItem('@pryvo_user', JSON.stringify(data.user));
+  }
+  return data;
+}
+
+export async function changePassword(userId, currentPassword, newPassword) {
+  return await apiClient.post('/auth/change-password', {
+    userId,
+    currentPassword,
+    newPassword,
+  });
+}
+
+export async function forgotPassword(email) {
+  return await apiClient.post('/auth/forgot-password', {
+    email,
+  });
+}
+
+export async function resetPassword(email, code, newPassword) {
+  return await apiClient.post('/auth/reset-password', {
+    email,
+    code,
+    newPassword,
+  });
+}
+
+export async function deleteAccount(userId) {
+  return await apiClient.delete(`/auth/user/${userId}`);
+}
+

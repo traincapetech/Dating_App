@@ -39,3 +39,59 @@ export const signInSchema = z.object({
     .min(6),
 });
 
+export const changeEmailSchema = z.object({
+  userId: z.string().uuid('Invalid user ID'),
+  newEmail: z
+    .string({
+      required_error: 'New email is required',
+    })
+    .email('Invalid email format'),
+  password: z
+    .string({
+      required_error: 'Password is required',
+    })
+    .min(6),
+});
+
+export const changePasswordSchema = z.object({
+  userId: z.string().uuid('Invalid user ID'),
+  currentPassword: z
+    .string({
+      required_error: 'Current password is required',
+    })
+    .min(6),
+  newPassword: z
+    .string({
+      required_error: 'New password is required',
+    })
+    .min(6)
+    .max(64),
+});
+
+export const requestPasswordResetSchema = z.object({
+  email: z
+    .string({
+      required_error: 'Email is required',
+    })
+    .email('Invalid email format'),
+});
+
+export const resetPasswordSchema = z.object({
+  email: z
+    .string({
+      required_error: 'Email is required',
+    })
+    .email('Invalid email format'),
+  code: z
+    .string({
+      required_error: 'Reset code is required',
+    })
+    .length(6, 'Reset code must be 6 digits'),
+  newPassword: z
+    .string({
+      required_error: 'New password is required',
+    })
+    .min(6)
+    .max(64),
+});
+

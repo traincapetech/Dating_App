@@ -6,6 +6,8 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import SplashScreen from '../features/onboarding/screens/SplashScreen.jsx';
 import SignUpScreen from '../features/auth/screens/SignUpScreen.jsx';
 import SignInScreen from '../features/auth/screens/SignInScreen.jsx';
+import ForgotPasswordScreen from '../features/auth/screens/ForgotPasswordScreen.jsx';
+import ResetPasswordScreen from '../features/auth/screens/ResetPasswordScreen.jsx';
 import TermsScreen from '../features/onboarding/screens/static/TermsScreen.js';
 import PrivacyScreen from '../features/onboarding/screens/static/PrivacyScreen.js'; 
 import PhoneInputScreen from '../features/onboarding/screens/PhoneInputScreen.jsx';
@@ -25,6 +27,10 @@ import ChatsScreen from '../features/messages/screens/ChatsScreen.jsx';
 import ChatScreen from '../features/messages/screens/ChatScreen.jsx';
 import ProfileDetailsScreen from '../features/profile/screens/ProfileDetailsScreen.jsx';
 import SettingsScreen from '../features/settings/screens/SettingsScreen.jsx';
+import ChangeEmailScreen from '../features/settings/screens/ChangeEmailScreen.jsx';
+import ChangePasswordScreen from '../features/settings/screens/ChangePasswordScreen.jsx';
+import BlockedUsersScreen from '../features/settings/screens/BlockedUsersScreen.jsx';
+import DeleteAccountScreen from '../features/settings/screens/DeleteAccountScreen.jsx';
 import {colors, typography} from '../theme';
 
 const Stack = createNativeStackNavigator();
@@ -50,6 +56,8 @@ const AppNavigator = () => {
         />
         <Stack.Screen name="SignUp" component={SignUpScreen} />
         <Stack.Screen name="SignIn" component={SignInScreen} />
+        <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
         <Stack.Screen name="Terms" component={TermsScreen} />
         <Stack.Screen name="Privacy" component={PrivacyScreen} />  
         <Stack.Screen
@@ -91,6 +99,10 @@ const AppNavigator = () => {
         <Stack.Screen name="ChatScreen" component={ChatScreen} />
         <Stack.Screen name="ProfileDetails" component={ProfileDetailsScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
+        <Stack.Screen name="ChangeEmail" component={ChangeEmailScreen} />
+        <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+        <Stack.Screen name="BlockedUsers" component={BlockedUsersScreen} />
+        <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
         <Stack.Screen name="HelpCentre" component={HelpCentreScreen} />
         <Stack.Screen name="ReportProblem" component={ReportProblemScreen} />
       </Stack.Navigator>

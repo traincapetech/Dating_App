@@ -43,20 +43,7 @@ const SettingsScreen = () => {
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete Account',
-      'This action cannot be undone. All your data will be permanently deleted.',
-      [
-        {text: 'Cancel', style: 'cancel'},
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert('Contact Support', 'Please contact support@pryvo.app to delete your account.');
-          },
-        },
-      ]
-    );
+    navigation.navigate('DeleteAccount');
   };
 
   const SettingItem = ({icon, title, subtitle, onPress, rightElement}) => (
@@ -109,13 +96,13 @@ const SettingsScreen = () => {
             icon="📧" 
             title="Email" 
             subtitle="Change your email address"
-            onPress={() => Alert.alert('Coming Soon', 'Email change feature coming soon')} 
+            onPress={() => navigation.navigate('ChangeEmail')} 
           />
           <SettingItem 
             icon="🔒" 
             title="Password" 
             subtitle="Change your password"
-            onPress={() => Alert.alert('Coming Soon', 'Password change feature coming soon')} 
+            onPress={() => navigation.navigate('ChangePassword')} 
           />
         </View>
 
@@ -154,7 +141,7 @@ const SettingsScreen = () => {
           <SettingItem 
             icon="🚫" 
             title="Blocked Users" 
-            onPress={() => Alert.alert('Coming Soon', 'Blocked users list coming soon')} 
+            onPress={() => navigation.navigate('BlockedUsers')} 
           />
           <SettingItem 
             icon="📋" 
