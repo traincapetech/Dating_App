@@ -176,6 +176,21 @@ export const checkIfBlocked = async (userId, otherUserId) => {
   }
 };
 
+/**
+ * Unmatch with a user
+ * @param {string} matchId - The match ID
+ * @param {string} userId - Current user ID
+ */
+export const unmatchUser = async (matchId, userId) => {
+  try {
+    const res = await apiClient.post(`/match/${matchId}/unmatch`, { userId });
+    return res;
+  } catch (err) {
+    console.log("❌ unmatchUser error:", err?.message);
+    throw err;
+  }
+};
+
 export default {
   fetchMessages,
   sendMessageApi,
@@ -188,4 +203,5 @@ export default {
   reportUser,
   blockAndReportUser,
   checkIfBlocked,
+  unmatchUser,
 };

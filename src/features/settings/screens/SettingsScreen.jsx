@@ -16,6 +16,23 @@ const SettingsScreen = () => {
   const navigation = useNavigation();
   const [notifications, setNotifications] = React.useState(true);
   const [showOnline, setShowOnline] = React.useState(true);
+  const [isPremium, setIsPremium] = React.useState(false);
+
+  React.useEffect(() => {
+    checkPremiumStatus();
+  }, []);
+
+  const checkPremiumStatus = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('@pryvo_user');
+      if (userData) {
+        const user = JSON.parse(userData);
+        setIsPremium(user.isPremium || false);
+      }
+    } catch (error) {
+      console.error('Error checking premium status:', error);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -109,23 +126,22 @@ const SettingsScreen = () => {
         {/* Notifications Section */}
         <Text style={styles.sectionTitle}>Notifications</Text>
         <View style={styles.section}>
-          <SettingToggle
+          <SettingItem 
             icon="🔔"
-            title="Push Notifications"
-            value={notifications}
-            onValueChange={setNotifications}
+            title="Notification Preferences" 
+            subtitle="Manage your notification settings"
+            onPress={() => navigation.navigate('NotificationPreferences')} 
           />
-          <SettingToggle
-            icon="💬"
-            title="Message Notifications"
-            value={notifications}
-            onValueChange={setNotifications}
-          />
-          <SettingToggle
-            icon="💕"
-            title="Match Notifications"
-            value={notifications}
-            onValueChange={setNotifications}
+        </View>
+
+        {/* Discovery Section */}
+        <Text style={styles.sectionTitle}>Discovery</Text>
+        <View style={styles.section}>
+          <SettingItem 
+            icon="📍" 
+            title="Distance Filter" 
+            subtitle="Set maximum distance for matches"
+            onPress={() => navigation.navigate('DistanceFilter')} 
           />
         </View>
 
@@ -171,8 +187,8 @@ const SettingsScreen = () => {
           <SettingItem 
             icon="💌" 
             title="Contact Us" 
-            subtitle="support@pryvo.app"
-            onPress={() => Alert.alert('Contact', 'Email us at support@pryvo.app')} 
+            subtitle="pryvo@traincapetech.in"
+            onPress={() => Alert.alert('Contact', 'Email us at pryvo@traincapetech.in')} 
           />
         </View>
 
@@ -188,7 +204,8 @@ const SettingsScreen = () => {
           <SettingItem 
             icon="💳" 
             title="Manage Subscription" 
-            onPress={() => Alert.alert('Coming Soon', 'Subscription management coming soon')} 
+            subtitle={isPremium ? "View and manage your subscription" : "No active subscription"}
+            onPress={() => navigation.navigate('SubscriptionManagement')} 
           />
         </View>
 

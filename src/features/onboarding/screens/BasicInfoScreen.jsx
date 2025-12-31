@@ -13,6 +13,7 @@ import {
   Alert,
   PermissionsAndroid,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import Geolocation from 'react-native-geolocation-service';
 import {useNavigation} from '@react-navigation/native';
 import {AppRoute} from '../../../constants/routes';
@@ -323,10 +324,48 @@ const BasicInfoScreen = () => {
     }
   };
 
+  // Calculate age from date of birth
+  const calculateAge = (dobString) => {
+    if (!dobString || dobString.length < 10) return null;
+    
+    try {
+      // Parse date (format: YYYY-MM-DD)
+      const parts = dobString.split('-');
+      if (parts.length !== 3) return null;
+      
+      const birthDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+      const today = new Date();
+      let age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        age--;
+      }
+      
+      return age;
+    } catch (error) {
+      console.error('Error calculating age:', error);
+      return null;
+    }
+  };
+
+  // Verify user is 18+
+  const verifyAge = (dobString) => {
+    const age = calculateAge(dobString);
+    if (age === null) return { valid: false, message: 'Please enter a valid date of birth (YYYY-MM-DD)' };
+    if (age < 18) return { valid: false, message: 'You must be at least 18 years old to use Pryvo.' };
+    return { valid: true, age };
+  };
+
   const canProceed = () => {
     switch (step) {
       case 1:
-        return form.firstName.trim() && form.lastName.trim() && form.dob.trim();
+        if (!form.firstName.trim() || !form.lastName.trim() || !form.dob.trim()) {
+          return false;
+        }
+        // Verify age is 18+
+        const ageCheck = verifyAge(form.dob);
+        return ageCheck.valid;
       case 2:
         return form.email.trim() && /\S+@\S+\.\S+/.test(form.email) && form.emailVerified;
       case 3:
@@ -369,14 +408,43 @@ const BasicInfoScreen = () => {
           <Text style={[styles.label, {marginTop: spacing.lg}]}>
             Date of birth (YYYY-MM-DD)
           </Text>
+          <Text style={styles.hintText}>
+            You must be at least 18 years old to use Pryvo
+          </Text>
           <TextInput
             value={form.dob}
-            onChangeText={value => handleChange('dob', value)}
+            onChangeText={value => {
+              handleChange('dob', value);
+              // Validate age when DOB is entered
+              if (value.length >= 10) {
+                const ageCheck = verifyAge(value);
+                if (!ageCheck.valid) {
+                  Alert.alert(
+                    'Age Verification Required',
+                    ageCheck.message,
+                    [{ text: 'OK' }]
+                  );
+                }
+              }
+            }}
             placeholder="1998-05-12"
             keyboardType="numbers-and-punctuation"
             style={styles.input}
             placeholderTextColor={colors.textSecondary}
           />
+          {form.dob.length >= 10 && (() => {
+            const ageCheck = verifyAge(form.dob);
+            if (!ageCheck.valid) {
+              return (
+                <Text style={styles.errorText}>{ageCheck.message}</Text>
+              );
+            }
+            return (
+              <Text style={styles.successText}>
+                ✓ Age verified: {ageCheck.age} years old
+              </Text>
+            );
+          })()}
           </View>
         );
       case 2:
@@ -468,6 +536,7 @@ const BasicInfoScreen = () => {
               <Switch
                 value={form.notificationsEnabled}
                 onValueChange={async value => {
+                  const previousValue = form.notificationsEnabled;
                   try {
                     if (value) {
                       // Enable notifications - request permission and get token
@@ -478,8 +547,12 @@ const BasicInfoScreen = () => {
                         'You will now receive push notifications for matches and messages.',
                       );
                     } else {
+                      // Only try to unregister token if permission was actually granted
+                      const hasPermission = await checkNotificationPermission();
+                      if (hasPermission) {
+                        await disableNotifications();
+                      }
                       // Disable notifications
-                      await disableNotifications();
                       handleChange('notificationsEnabled', false);
                     }
                   } catch (error) {
@@ -489,7 +562,7 @@ const BasicInfoScreen = () => {
                         'Failed to update notification settings. Please try again.',
                     );
                     // Revert switch if error
-                    handleChange('notificationsEnabled', !value);
+                    handleChange('notificationsEnabled', previousValue);
                   }
                 }}
                 trackColor={{false: colors.borderLight, true: colors.primary}}
@@ -499,7 +572,10 @@ const BasicInfoScreen = () => {
               style={styles.secondaryButton}
               onPress={async () => {
                 try {
-                  await disableNotifications();
+                  const hasPermission = await checkNotificationPermission();
+                  if (hasPermission) {
+                    await disableNotifications();
+                  }
                   handleChange('notificationsEnabled', false);
                 } catch (error) {
                   Alert.alert(
@@ -655,27 +731,31 @@ const BasicInfoScreen = () => {
   if (isLocationStep) {
     // For location step, use View to avoid VirtualizedList nesting
     return (
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
-        <View style={styles.container}>
-          {content}
-        </View>
-      </KeyboardAvoidingView>
+      <SafeAreaView style={styles.flex} edges={['top', 'left', 'right']}>
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
+          <View style={styles.container}>
+            {content}
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     );
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled">
-        {content}
-      </ScrollView>
-    </KeyboardAvoidingView>
+    <SafeAreaView style={styles.flex} edges={['top', 'left', 'right']}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled">
+          {content}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
@@ -1011,6 +1091,25 @@ const styles = StyleSheet.create({
     fontSize: typography.body.small,
     color: colors.primary,
     textDecorationLine: 'underline',
+  },
+  hintText: {
+    fontFamily: typography.fontFamilyRegular,
+    fontSize: typography.body.small,
+    color: colors.textSecondary,
+    marginTop: spacing.xs,
+    marginBottom: spacing.xs,
+  },
+  errorText: {
+    fontFamily: typography.fontFamilyRegular,
+    fontSize: typography.body.small,
+    color: '#FF3B30',
+    marginTop: spacing.xs,
+  },
+  successText: {
+    fontFamily: typography.fontFamilyMedium,
+    fontSize: typography.body.small,
+    color: colors.success || '#34C759',
+    marginTop: spacing.xs,
   },
 });
 

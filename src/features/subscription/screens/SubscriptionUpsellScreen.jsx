@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -6,33 +6,74 @@ import {
   Pressable,
   ScrollView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {StripeProvider, useStripe} from '@stripe/stripe-react-native';
 import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
+import {
+  getAvailablePlans,
+  createPaymentOrder,
+  verifyPaymentAndCreateSubscription,
+  getSubscriptionStatus,
+} from '../../../services/subscription/subscriptionService';
 
-const SubscriptionUpsellScreen = () => {
+const SubscriptionUpsellScreenContent = () => {
   const navigation = useNavigation();
+  const stripe = useStripe();
   const [selectedPlan, setSelectedPlan] = useState(null);
+  const [plans, setPlans] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
 
-  const plans = [
+  useEffect(() => {
+    loadPlans();
+    loadUserId();
+  }, []);
+
+  const loadUserId = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('@pryvo_user');
+      if (userData) {
+        const user = JSON.parse(userData);
+        setCurrentUserId(user.id);
+      }
+    } catch (error) {
+      console.error('Error loading user ID:', error);
+    }
+  };
+
+  const loadPlans = async () => {
+    try {
+      setLoading(true);
+      const response = await getAvailablePlans();
+      if (response?.success && response?.plans) {
+        setPlans(response.plans);
+      } else {
+        // Fallback to default plans
+        setPlans([
+          {id: '1week', label: '1 week', price: 899, period: 'wk'},
+          {id: '1month', label: '1 month', price: 1699, period: 'mo', popular: true},
+          {id: '3months', label: '3 months', price: 1166.33, period: 'mo', savings: 'Save 50%'},
+          {id: '6months', label: '6 months', price: 816.5, period: 'mo', savings: 'Save 79%'},
+        ]);
+      }
+    } catch (error) {
+      console.error('Error loading plans:', error);
+      // Fallback to default plans
+      setPlans([
     {id: '1week', label: '1 week', price: 899, period: 'wk'},
     {id: '1month', label: '1 month', price: 1699, period: 'mo', popular: true},
-    {
-      id: '3months',
-      label: '3 months',
-      price: 1166.33,
-      period: 'mo',
-      savings: 'Save 50%',
-    },
-    {
-      id: '6months',
-      label: '6 months',
-      price: 816.5,
-      period: 'mo',
-      savings: 'Save 79%',
-    },
-  ];
+        {id: '3months', label: '3 months', price: 1166.33, period: 'mo', savings: 'Save 50%'},
+        {id: '6months', label: '6 months', price: 816.5, period: 'mo', savings: 'Save 79%'},
+      ]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const features = [
     'Enhanced Recommendations/Access to your type',
@@ -41,10 +82,99 @@ const SubscriptionUpsellScreen = () => {
     'Send unlimited likes/Swipes',
   ];
 
-  const handleCheckout = () => {
-    if (selectedPlan) {
-      // Navigate to checkout or process payment
-      Alert.alert('Checkout', `Processing payment for ${selectedPlan} plan`);
+  const handleCheckout = async () => {
+    if (!selectedPlan || !currentUserId) {
+      Alert.alert('Error', 'Please select a plan');
+      return;
+    }
+
+    if (!stripe) {
+      Alert.alert('Error', 'Stripe is not initialized. Please check your configuration.');
+      return;
+    }
+
+    try {
+      setProcessing(true);
+
+      // Step 1: Create payment order from backend
+      const orderResponse = await createPaymentOrder(currentUserId, selectedPlan);
+      
+      if (!orderResponse?.success || !orderResponse?.paymentOrder) {
+        throw new Error(orderResponse?.message || 'Failed to create payment order');
+      }
+
+      const paymentOrder = orderResponse.paymentOrder;
+      const gateway = paymentOrder.gateway || 'stripe';
+
+      // Update Stripe publishable key if provided in response
+      if (paymentOrder.publishableKey) {
+        // Note: This won't update the provider, but the key should be set initially
+        // For production, fetch key from a config endpoint before rendering
+      }
+
+      // Step 2: Handle payment based on gateway
+      if (gateway === 'stripe') {
+        // Initialize Stripe payment sheet
+        const {error: initError} = await stripe.initPaymentSheet({
+          paymentIntentClientSecret: paymentOrder.clientSecret,
+          merchantDisplayName: 'Pryvo',
+        });
+
+        if (initError) {
+          throw new Error(initError.message || 'Failed to initialize payment');
+        }
+
+        // Present payment sheet
+        const {error: presentError} = await stripe.presentPaymentSheet();
+
+        if (presentError) {
+          if (presentError.code !== 'Canceled') {
+            throw new Error(presentError.message || 'Payment failed');
+          } else {
+            // User canceled
+            setProcessing(false);
+            return;
+          }
+        }
+
+        // Step 3: Payment succeeded, verify and create subscription
+        const verifyResponse = await verifyPaymentAndCreateSubscription(
+          currentUserId,
+          selectedPlan,
+          paymentOrder.orderId,
+          paymentOrder.orderId, // Payment ID is same as order ID for Stripe
+          '', // No signature needed for Stripe mobile
+          'stripe',
+          paymentOrder.currency || 'INR',
+          true // auto-renew enabled
+        );
+
+        if (verifyResponse?.success) {
+          Alert.alert(
+            'Success!',
+            'Your Premium subscription is now active!',
+            [
+              {
+                text: 'OK',
+                onPress: () => navigation.navigate(AppRoute.HomeTabs),
+              },
+            ]
+          );
+        } else {
+          throw new Error(verifyResponse?.message || 'Failed to create subscription');
+        }
+      } else {
+        // For other gateways (Razorpay, etc.), show appropriate message
+        Alert.alert(
+          'Payment Gateway',
+          `${gateway} payment integration is coming soon. Please use Stripe for now.`
+        );
+      }
+    } catch (error) {
+      console.error('Checkout error:', error);
+      Alert.alert('Error', error?.message || 'Failed to process payment. Please try again.');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -79,6 +209,11 @@ const SubscriptionUpsellScreen = () => {
         <Text style={styles.plansTitle}>
           Send and see all the likes you want
         </Text>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : (
         <View style={styles.plansContainer}>
           {plans.map(plan => (
             <Pressable
@@ -101,11 +236,12 @@ const SubscriptionUpsellScreen = () => {
               )}
               <Text style={styles.planLabel}>{plan.label}</Text>
               <Text style={styles.planPrice}>
-                ₹{plan.price.toFixed(2)}/{plan.period}
+                ₹{plan.price?.toFixed(2) || plan.price}/{plan.period}
               </Text>
             </Pressable>
           ))}
         </View>
+        )}
         <Text style={styles.plansNote}>
           Send unlimited likes, See everyone who likes you
         </Text>
@@ -115,11 +251,15 @@ const SubscriptionUpsellScreen = () => {
         <Pressable
           style={[
             styles.primaryButton,
-            !selectedPlan && styles.primaryButtonDisabled,
+            (!selectedPlan || processing) && styles.primaryButtonDisabled,
           ]}
           onPress={handleCheckout}
-          disabled={!selectedPlan}>
+          disabled={!selectedPlan || processing}>
+          {processing ? (
+            <ActivityIndicator color={colors.surface} />
+          ) : (
           <Text style={styles.primaryButtonText}>Check out</Text>
+          )}
         </Pressable>
         <Pressable style={styles.secondaryButton} onPress={handleMaybeLater}>
           <Text style={styles.secondaryButtonText}>Maybe later</Text>
@@ -279,7 +419,52 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamilyMedium,
     fontSize: typography.body.large,
   },
+  loadingContainer: {
+    padding: spacing.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });
+
+// Wrapper component with StripeProvider
+const SubscriptionUpsellScreen = () => {
+  // Stripe publishable key - get from backend payment order response
+  // For production, fetch from backend config endpoint or use env variable
+  // Using test key for now - will be replaced when payment order is created
+  const [publishableKey, setPublishableKey] = useState(null);
+
+  useEffect(() => {
+    // Fetch publishable key from first payment order creation
+    // This is a temporary approach - ideally should have a config endpoint
+    const fetchStripeKey = async () => {
+      try {
+        // Try to get key from a test order (or better: create a config endpoint)
+        // For now, using a fallback test key
+        setPublishableKey('pk_test_51RNq3aQ0qRbELDrXrWQtGUARFShAyk2osAsJOFT9Cj2lvamEsGnRqqHdrwKhkMHFkqmt2OqeX91FDQfPdWK4FHSH00Xi0LTJft');
+      } catch (error) {
+        console.error('Error loading Stripe key:', error);
+        // Fallback test key
+        setPublishableKey('pk_test_51RNq3aQ0qRbELDrXrWQtGUARFShAyk2osAsJOFT9Cj2lvamEsGnRqqHdrwKhkMHFkqmt2OqeX91FDQfPdWK4FHSH00Xi0LTJft');
+      }
+    };
+    fetchStripeKey();
+  }, []);
+
+  if (!publishableKey) {
+    return (
+      <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background}}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={{marginTop: 16, color: colors.textSecondary}}>Loading payment system...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <StripeProvider publishableKey={publishableKey}>
+      <SubscriptionUpsellScreenContent />
+    </StripeProvider>
+  );
+};
 
 export default SubscriptionUpsellScreen;
 

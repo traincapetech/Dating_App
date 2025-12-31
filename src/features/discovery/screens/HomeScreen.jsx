@@ -11,13 +11,17 @@ import {
   ActivityIndicator,
   Alert,
   PanResponder,
+  ScrollView,
+  Modal,
 } from 'react-native';
+import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {colors, typography, spacing} from '../../../theme';
 import LinearGradient from 'react-native-linear-gradient';
 import {getDiscoverProfiles} from '../../../services/profile/profileService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MatchPopup from '../../../components/profile/MatchPopup.js';
-import { likeUser, passUser } from '../../../services/swipeActions';
+import { likeUser, passUser, getDailyLikeInfo } from '../../../services/swipeActions';
+import { watchLocation } from '../../../services/location/locationService';
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - spacing.xl * 2;
@@ -30,6 +34,24 @@ const HomeScreen = ({navigation}) => {
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [dailyLikeInfo, setDailyLikeInfo] = useState({
+    count: 0,
+    limit: 50,
+    remaining: 50,
+    isPremium: false,
+  });
+  const [swipeCount, setSwipeCount] = useState(0);
+  const [showLikePopup, setShowLikePopup] = useState(false);
+  const distancePresets = [
+    {label: '1 - 10 km', value: 10},
+    {label: '1 - 25 km', value: 25},
+    {label: '1 - 50 km', value: 50},
+    {label: '1 - 100 km', value: 100},
+  ];
+  const [maxDistance, setMaxDistance] = useState(distancePresets[2].value); // default 50 km
+  const [selectedPreset, setSelectedPreset] = useState(distancePresets[2].value);
+  const [useDistanceFilter, setUseDistanceFilter] = useState(true);
+  const DISTANCE_PREF_KEY = '@pryvo_distance_preferences';
 
   const translateX = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(0)).current;
@@ -41,12 +63,62 @@ const HomeScreen = ({navigation}) => {
     theirPhoto: null,
     matchId: null,
   });
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
-    loadProfiles();
+    const init = async () => {
+      const prefs = await loadDistancePrefs();
+      await loadProfiles(prefs?.distance, prefs?.enabled ?? useDistanceFilter);
+      await loadDailyLikeInfo();
+    };
+    init();
+
+    // Watch for location changes and refresh profiles
+    const locationWatcher = watchLocation(
+      async (location) => {
+        console.log('Location changed, refreshing profiles...', location);
+        // Reload profiles with current distance preferences
+        const prefs = await loadDistancePrefs();
+        await loadProfiles(prefs?.distance, prefs?.enabled ?? useDistanceFilter);
+      },
+      {
+        distanceFilter: 1000, // 1km minimum change
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 10000,
+      }
+    );
+
+    // Cleanup on unmount
+    return () => {
+      locationWatcher.stop();
+    };
   }, []);
 
-  const loadProfiles = async () => {
+  const loadDailyLikeInfo = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('@pryvo_user');
+      if (!userData) return;
+      
+      const user = JSON.parse(userData);
+      const info = await getDailyLikeInfo(user.id, false); // TODO: Check premium status
+      if (info.success) {
+        setDailyLikeInfo({
+          count: info.count || 0,
+          limit: info.limit || 50,
+          remaining: info.remaining || 50,
+          isPremium: info.isPremium || false,
+        });
+      }
+    } catch (error) {
+      console.error('Error loading daily like info:', error);
+    }
+  };
+
+  const loadProfiles = async (
+    distanceOverride = null,
+    distanceEnabled = useDistanceFilter,
+  ) => {
     try {
       setLoading(true);
 
@@ -62,6 +134,10 @@ const HomeScreen = ({navigation}) => {
       // Fetch profiles from backend
       const response = await getDiscoverProfiles(excludeUserId, {
         useMatching: false,
+        maxDistance:
+          distanceEnabled && (distanceOverride || maxDistance)
+            ? distanceOverride || maxDistance
+            : undefined,
         // useMatching: true,
         // minScore: 30,
         // sortBy: 'score',
@@ -108,6 +184,72 @@ const HomeScreen = ({navigation}) => {
     }
   };
 
+  const loadDistancePrefs = async () => {
+    try {
+      const raw = await AsyncStorage.getItem(DISTANCE_PREF_KEY);
+      if (!raw) {
+        return null;
+      }
+      const parsed = JSON.parse(raw);
+      const distance = clampDistance(parsed.maxDistance ?? maxDistance);
+      const enabled =
+        typeof parsed.useDistanceFilter === 'boolean'
+          ? parsed.useDistanceFilter
+          : useDistanceFilter;
+      const presetValue = parsed.selectedPreset || null;
+      setMaxDistance(distance);
+      setUseDistanceFilter(enabled);
+      setSelectedPreset(presetValue);
+      return {distance, enabled};
+    } catch (error) {
+      console.warn('Failed to load distance preferences', error);
+      return null;
+    }
+  };
+
+  const saveDistancePrefs = async (distance, enabled, presetValue) => {
+    try {
+      await AsyncStorage.setItem(
+        DISTANCE_PREF_KEY,
+        JSON.stringify({
+          maxDistance: clampDistance(distance),
+          useDistanceFilter: enabled,
+          selectedPreset: presetValue,
+        }),
+      );
+    } catch (error) {
+      console.warn('Failed to save distance preferences', error);
+    }
+  };
+
+  const clampDistance = value => Math.max(1, Math.min(100, value));
+
+  const handleAdjustDistance = delta => {
+    setMaxDistance(prev => {
+      const next = clampDistance(prev + delta);
+      setSelectedPreset(null);
+      saveDistancePrefs(next, useDistanceFilter, null);
+      loadProfiles(next, useDistanceFilter);
+      return next;
+    });
+  };
+
+  const handleSelectPreset = value => {
+    setSelectedPreset(value);
+    setMaxDistance(value);
+    saveDistancePrefs(value, useDistanceFilter, value);
+    loadProfiles(value, useDistanceFilter);
+  };
+
+  const handleToggleDistance = () => {
+    setUseDistanceFilter(prev => {
+      const next = !prev;
+      saveDistancePrefs(maxDistance, next, selectedPreset);
+      loadProfiles(undefined, next);
+      return next;
+    });
+  };
+
   const currentProfile = profiles[currentIndex];
 
   const resetCardPosition = () => {
@@ -138,9 +280,34 @@ const HomeScreen = ({navigation}) => {
   const processSwipe = (direction) => {
     if (!currentProfile || !currentUserId) return;
 
+    // Check daily like limit before allowing like
+    if (direction === 'right' && dailyLikeInfo.remaining <= 0) {
+      Alert.alert(
+        'Daily Like Limit Reached',
+        `You've reached your daily like limit of ${dailyLikeInfo.limit}. Come back tomorrow for more likes!`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     const likedUserId = currentProfile.userId;
     const myPhoto = profiles[currentIndex]?.photos?.[0];
     const theirPhoto = currentProfile.photos?.[0];
+
+    // Only track likes (right swipes) for the popup
+    if (direction === 'right') {
+      // Increment swipe count only for likes
+      const newSwipeCount = swipeCount + 1;
+      setSwipeCount(newSwipeCount);
+
+      // Show popup every 10 likes
+      if (newSwipeCount % 10 === 0) {
+        setShowLikePopup(true);
+        setTimeout(() => {
+          setShowLikePopup(false);
+        }, 2000); // Show for 2 seconds
+      }
+    }
 
     // Animate card off screen IMMEDIATELY (don't wait for API)
     Animated.parallel([
@@ -160,8 +327,28 @@ const HomeScreen = ({navigation}) => {
 
     // Fire API call in background (don't block animation)
     if (direction === 'right') {
-      likeUser(currentUserId, likedUserId)
+      likeUser(currentUserId, likedUserId, dailyLikeInfo.isPremium)
         .then(result => {
+          // Update daily like info if returned
+          let updatedInfo;
+          if (result?.dailyLikeInfo) {
+            updatedInfo = result.dailyLikeInfo;
+            setDailyLikeInfo(updatedInfo);
+          } else {
+            // Fallback: decrement remaining
+            updatedInfo = {
+              ...dailyLikeInfo,
+              count: dailyLikeInfo.count + 1,
+              remaining: Math.max(0, dailyLikeInfo.remaining - 1),
+            };
+            setDailyLikeInfo(updatedInfo);
+          }
+          
+          // Update popup text if it's showing
+          if (showLikePopup) {
+            // The popup will show the updated count from state
+          }
+          
           if (result?.isMatch && result?.match) {
             setMatchPopup({
               visible: true,
@@ -171,7 +358,18 @@ const HomeScreen = ({navigation}) => {
             });
           }
         })
-        .catch(err => console.error('Like error:', err));
+        .catch(err => {
+          console.error('Like error:', err);
+          if (err?.response?.status === 429 || err?.limitReached) {
+            Alert.alert(
+              'Daily Like Limit Reached',
+              err?.message || `You've reached your daily like limit. Come back tomorrow!`,
+              [{ text: 'OK' }]
+            );
+            // Reload daily like info
+            loadDailyLikeInfo();
+          }
+        });
     } else {
       passUser(currentUserId, likedUserId)
         .catch(err => console.error('Pass error:', err));
@@ -245,7 +443,7 @@ const HomeScreen = ({navigation}) => {
   }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       {/* Card Stack */}
@@ -352,19 +550,36 @@ const HomeScreen = ({navigation}) => {
         </Animated.View>
       </View>
 
+      {/* Like Remaining Popup */}
+      {showLikePopup && (
+        <View style={styles.likePopupContainer}>
+          <View style={styles.likePopup}>
+            <Text style={styles.likePopupText}>
+              {dailyLikeInfo.remaining} likes left
+            </Text>
+          </View>
+        </View>
+      )}
+
       {/* Action Buttons */}
-      <View style={styles.actionButtons}>
+      <View style={[styles.actionButtons, {paddingBottom: spacing.md}]}>
         <Pressable
           style={[styles.actionButton, styles.passButton]}
           onPress={() => processSwipe('left')}>
           <Text style={styles.actionButtonText}>✕</Text>
         </Pressable>
         <Pressable
-          style={[styles.actionButton, styles.likeButton]}
-          onPress={() => processSwipe('right')}>
+          style={[
+            styles.actionButton,
+            styles.likeButton,
+            dailyLikeInfo.remaining <= 0 && styles.likeButtonDisabled,
+          ]}
+          onPress={() => processSwipe('right')}
+          disabled={dailyLikeInfo.remaining <= 0}>
           <Text style={[styles.actionButtonText, {color: '#fff'}]}>♥</Text>
         </Pressable>
       </View>
+
 
       {/* Tinder-style Match Popup */}
       <MatchPopup
@@ -389,12 +604,12 @@ const HomeScreen = ({navigation}) => {
           }
         }}
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safe: {
     flex: 1,
     backgroundColor: colors.background,
   },
@@ -402,6 +617,52 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  filterBar: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+    gap: spacing.sm,
+  },
+  filterLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  filterTitle: {
+    fontFamily: typography.fontFamilyBold,
+    fontSize: typography.body.large,
+    color: colors.textPrimary,
+  },
+  filterToggle: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  filterToggleActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.secondary,
+  },
+  filterToggleText: {
+    fontFamily: typography.fontFamilyMedium,
+    fontSize: typography.body.small,
+    color: colors.textSecondary,
+  },
+  filterToggleTextActive: {
+    color: colors.primary,
+  },
+  presetScroll: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  presetRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
   },
   card: {
     width: CARD_WIDTH,
@@ -539,9 +800,33 @@ const styles = StyleSheet.create({
   likeButton: {
     backgroundColor: colors.primary,
   },
+  likeButtonDisabled: {
+    backgroundColor: '#ccc',
+    opacity: 0.6,
+  },
   actionButtonText: {
     fontSize: 28,
     color: '#FF6B6B',
+  },
+  likePopupContainer: {
+    position: 'absolute',
+    top: '50%',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  likePopup: {
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    borderRadius: 20,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  likePopupText: {
+    color: colors.surface,
+    fontFamily: typography.fontFamilyBold,
+    fontSize: typography.body.large,
   },
 });
 

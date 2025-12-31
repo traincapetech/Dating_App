@@ -31,6 +31,9 @@ import ChangeEmailScreen from '../features/settings/screens/ChangeEmailScreen.js
 import ChangePasswordScreen from '../features/settings/screens/ChangePasswordScreen.jsx';
 import BlockedUsersScreen from '../features/settings/screens/BlockedUsersScreen.jsx';
 import DeleteAccountScreen from '../features/settings/screens/DeleteAccountScreen.jsx';
+import DistanceFilterScreen from '../features/settings/screens/DistanceFilterScreen.jsx';
+import NotificationPreferencesScreen from '../features/settings/screens/NotificationPreferencesScreen.jsx';
+import SubscriptionManagementScreen from '../features/settings/screens/SubscriptionManagementScreen.jsx';
 import {colors, typography} from '../theme';
 
 const Stack = createNativeStackNavigator();
@@ -103,6 +106,9 @@ const AppNavigator = () => {
         <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
         <Stack.Screen name="BlockedUsers" component={BlockedUsersScreen} />
         <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
+        <Stack.Screen name="DistanceFilter" component={DistanceFilterScreen} />
+        <Stack.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} />
+        <Stack.Screen name="SubscriptionManagement" component={SubscriptionManagementScreen} />
         <Stack.Screen name="HelpCentre" component={HelpCentreScreen} />
         <Stack.Screen name="ReportProblem" component={ReportProblemScreen} />
       </Stack.Navigator>

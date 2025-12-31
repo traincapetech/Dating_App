@@ -67,7 +67,7 @@ const HelpCentreScreen = () => {
         <Text style={styles.supportText}>Our support team is here for you.</Text>
 
         <TouchableOpacity
-          onPress={() => Linking.openURL("mailto:sales@traincapetech.in")}
+          onPress={() => Linking.openURL("mailto:pryvo@traincapetech.in")}
           style={styles.supportBtn}>
           <Text style={styles.supportBtnText}>Contact Support</Text>
         </TouchableOpacity>

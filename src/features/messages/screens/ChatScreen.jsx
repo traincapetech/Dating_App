@@ -14,6 +14,7 @@ import {
   Modal,
   TouchableOpacity,
 } from 'react-native';
+import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { launchImageLibrary } from 'react-native-image-picker';
 import { colors, typography, spacing } from '../../../theme';
@@ -31,7 +32,8 @@ import {
   markMessagesAsSeen,
   uploadChatMedia,
   blockAndReportUser,
-  checkIfBlocked
+  checkIfBlocked,
+  unmatchUser
 } from '../../../services/chatService';
 
 const REPORT_REASONS = [
@@ -53,14 +55,17 @@ const ChatScreen = ({ route, navigation }) => {
   const [typing, setTyping] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
+  const [showUnmatchModal, setShowUnmatchModal] = useState(false);
   const [selectedReason, setSelectedReason] = useState(null);
   const [reportDescription, setReportDescription] = useState('');
   const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [unmatching, setUnmatching] = useState(false);
 
   const flatListRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const socketRef = useRef(null);
   const lastTypingEmitRef = useRef(0);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (!matchId) {
@@ -311,6 +316,36 @@ const ChatScreen = ({ route, navigation }) => {
     }
   };
 
+  const handleUnmatch = async () => {
+    Alert.alert(
+      'Unmatch',
+      'Are you sure you want to unmatch? This will remove this conversation and you won\'t be able to message each other anymore.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Unmatch',
+          style: 'destructive',
+          onPress: async () => {
+            setUnmatching(true);
+            try {
+              await unmatchUser(matchId, currentUserId);
+              Alert.alert(
+                'Unmatched',
+                'You have unmatched with this user.',
+                [{ text: 'OK', onPress: () => navigation.goBack() }]
+              );
+            } catch (e) {
+              console.log('Unmatch error', e);
+              Alert.alert('Error', 'Failed to unmatch. Please try again.');
+            } finally {
+              setUnmatching(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const getStatusIcon = (message) => {
     if (message.senderId !== currentUserId) return null;
     
@@ -385,74 +420,117 @@ const ChatScreen = ({ route, navigation }) => {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.headerButton}>
-          <Text style={styles.backText}>{'<'} Back</Text>
-        </Pressable>
-        <Text style={styles.headerTitle}>{theirName || 'Chat'}</Text>
-        <Pressable onPress={() => setShowReportModal(true)} style={styles.headerButton}>
-          <Text style={styles.moreText}>⋯</Text>
-        </Pressable>
-      </View>
-
-      {/* Messages */}
-      <FlatList
-        ref={flatListRef}
-        data={messages}
-        keyExtractor={(item) => item._id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.messagesContainer}
-        onContentSizeChange={scrollToBottom}
-        onLayout={scrollToBottom}
-      />
-
-      {/* Typing indicator */}
-      {typing && (
-        <View style={styles.typingContainer}>
-          <Text style={styles.typingText}>typing...</Text>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <KeyboardAvoidingView
+        style={styles.container}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Pressable onPress={() => navigation.goBack()} style={styles.headerButton}>
+            <Text style={styles.backText}>{'<'} Back</Text>
+          </Pressable>
+          <Text style={styles.headerTitle}>{theirName || 'Chat'}</Text>
+          <View style={styles.headerActions}>
+            <Pressable onPress={() => setShowUnmatchModal(true)} style={styles.headerButton}>
+              <Text style={styles.unmatchText}>Unmatch</Text>
+            </Pressable>
+            <Pressable onPress={() => setShowReportModal(true)} style={styles.headerButton}>
+              <Text style={styles.moreText}>⋯</Text>
+            </Pressable>
+          </View>
         </View>
-      )}
 
-      {/* Input */}
-      <View style={styles.inputContainer}>
-        <Pressable 
-          style={styles.mediaButton} 
-          onPress={handlePickImage}
-          disabled={uploadingMedia}
-        >
-          {uploadingMedia ? (
-            <ActivityIndicator size="small" color={colors.primary} />
-          ) : (
-            <Text style={styles.mediaButtonText}>📷</Text>
-          )}
-        </Pressable>
-        <TextInput
-          style={styles.input}
-          placeholder="Type a message..."
-          placeholderTextColor={colors.textSecondary}
-          value={inputText}
-          onChangeText={onChangeText}
-          multiline
-          maxLength={1000}
+        {/* Messages */}
+        <FlatList
+          ref={flatListRef}
+          data={messages}
+          keyExtractor={(item) => item._id}
+          renderItem={renderItem}
+          contentContainerStyle={styles.messagesContainer}
+          onContentSizeChange={scrollToBottom}
+          onLayout={scrollToBottom}
         />
-        <Pressable 
-          style={[styles.sendButton, (!inputText.trim() || sending) && styles.sendButtonDisabled]} 
-          onPress={handleSend}
-          disabled={!inputText.trim() || sending}
-        >
-          {sending ? (
-            <ActivityIndicator size="small" color="#fff" />
-          ) : (
-            <Text style={styles.sendText}>Send</Text>
-          )}
-        </Pressable>
-      </View>
+
+        {/* Typing indicator */}
+        {typing && (
+          <View style={styles.typingContainer}>
+            <Text style={styles.typingText}>typing...</Text>
+          </View>
+        )}
+
+        {/* Input */}
+        <View style={[styles.inputContainer, {paddingBottom: (insets.bottom || 0) + spacing.sm}]}>
+          <Pressable 
+            style={styles.mediaButton} 
+            onPress={handlePickImage}
+            disabled={uploadingMedia}
+          >
+            {uploadingMedia ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Text style={styles.mediaButtonText}>📷</Text>
+            )}
+          </Pressable>
+          <TextInput
+            style={styles.input}
+            placeholder="Type a message..."
+            placeholderTextColor={colors.textSecondary}
+            value={inputText}
+            onChangeText={onChangeText}
+            multiline
+            maxLength={1000}
+          />
+          <Pressable 
+            style={[styles.sendButton, (!inputText.trim() || sending) && styles.sendButtonDisabled]} 
+            onPress={handleSend}
+            disabled={!inputText.trim() || sending}
+          >
+            {sending ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Text style={styles.sendText}>Send</Text>
+            )}
+          </Pressable>
+        </View>
+
+      {/* Unmatch Modal */}
+      <Modal
+        visible={showUnmatchModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowUnmatchModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.unmatchModalContent}>
+            <Text style={styles.modalTitle}>Unmatch</Text>
+            <Text style={styles.modalSubtitle}>
+              Are you sure you want to unmatch with {theirName || 'this user'}? This will remove your conversation and you won't be able to message each other anymore.
+            </Text>
+            <View style={styles.modalButtons}>
+              <Pressable 
+                style={styles.cancelButton} 
+                onPress={() => setShowUnmatchModal(false)}
+                disabled={unmatching}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </Pressable>
+              <Pressable 
+                style={[styles.unmatchButton, unmatching && styles.unmatchButtonDisabled]} 
+                onPress={handleUnmatch}
+                disabled={unmatching}
+              >
+                {unmatching ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.unmatchButtonText}>Unmatch</Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Report Modal */}
       <Modal
@@ -516,11 +594,13 @@ const ChatScreen = ({ route, navigation }) => {
           </View>
         </View>
       </Modal>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safe: {flex: 1, backgroundColor: colors.background},
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
 
@@ -546,9 +626,19 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamilyBold,
     color: colors.textPrimary,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   moreText: {
     fontSize: 24,
     color: colors.textPrimary,
+  },
+  unmatchText: {
+    fontSize: 14,
+    color: colors.error,
+    fontFamily: typography.fontFamilyMedium,
   },
 
   messagesContainer: {
@@ -772,6 +862,28 @@ const styles = StyleSheet.create({
     backgroundColor: '#ccc',
   },
   reportButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+  },
+  unmatchModalContent: {
+    backgroundColor: colors.background,
+    borderRadius: 20,
+    padding: spacing.lg,
+    margin: spacing.xl,
+    maxWidth: 400,
+    alignSelf: 'center',
+  },
+  unmatchButton: {
+    flex: 1,
+    paddingVertical: spacing.md,
+    borderRadius: 8,
+    backgroundColor: colors.error,
+    alignItems: 'center',
+  },
+  unmatchButtonDisabled: {
+    opacity: 0.6,
+  },
+  unmatchButtonText: {
     color: '#fff',
     fontWeight: '600',
   },
