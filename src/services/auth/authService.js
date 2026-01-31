@@ -1,6 +1,12 @@
 import {apiClient} from '../api/client';
+import {getAccessToken} from '../storage/tokenStorage';
 import {storeTokens, clearTokens} from '../storage/tokenStorage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+async function getAuthHeaders() {
+  const token = await getAccessToken();
+  return token ? {token} : {};
+}
 
 export async function signUp(payload) {
   const data = await apiClient.post('/auth/signup', payload);
@@ -69,3 +75,22 @@ export async function deleteAccount(userId) {
   return await apiClient.delete(`/auth/user/${userId}`);
 }
 
+/**
+ * Logout from all devices
+ * Invalidates all refresh tokens for the user
+ */
+export async function logoutFromAllDevices() {
+  try {
+    const headers = await getAuthHeaders();
+    await apiClient.post('/auth/logout-all-devices', {}, headers);
+  } catch (error) {
+    // Even if API call fails, clear local tokens
+    console.error('Error calling logout API:', error);
+  }
+  
+  // Always clear local tokens
+  await clearTokens();
+  await AsyncStorage.removeItem('@pryvo_user');
+  
+  return {success: true, message: 'Logged out from all devices'};
+}

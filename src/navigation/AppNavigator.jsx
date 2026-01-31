@@ -34,6 +34,8 @@ import DeleteAccountScreen from '../features/settings/screens/DeleteAccountScree
 import DistanceFilterScreen from '../features/settings/screens/DistanceFilterScreen.jsx';
 import NotificationPreferencesScreen from '../features/settings/screens/NotificationPreferencesScreen.jsx';
 import SubscriptionManagementScreen from '../features/settings/screens/SubscriptionManagementScreen.jsx';
+import BoostProfileScreen from '../features/settings/screens/BoostProfileScreen.jsx';
+import AdvancedFiltersScreen from '../features/settings/screens/AdvancedFiltersScreen.jsx';
 import {colors, typography} from '../theme';
 
 const Stack = createNativeStackNavigator();
@@ -109,6 +111,8 @@ const AppNavigator = () => {
         <Stack.Screen name="DistanceFilter" component={DistanceFilterScreen} />
         <Stack.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} />
         <Stack.Screen name="SubscriptionManagement" component={SubscriptionManagementScreen} />
+        <Stack.Screen name="BoostProfile" component={BoostProfileScreen} />
+        <Stack.Screen name="AdvancedFilters" component={AdvancedFiltersScreen} />
         <Stack.Screen name="HelpCentre" component={HelpCentreScreen} />
         <Stack.Screen name="ReportProblem" component={ReportProblemScreen} />
       </Stack.Navigator>

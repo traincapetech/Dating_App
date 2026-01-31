@@ -1,6 +1,7 @@
 import React, {useEffect} from 'react';
-import {StatusBar, StyleSheet, View, Text} from 'react-native';
+import {StatusBar, StyleSheet, View, Text, Platform} from 'react-native';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
+import {SafeAreaProvider} from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
 
 class ErrorBoundary extends React.Component {
@@ -60,10 +61,16 @@ const App = () => {
   
   return (
     <ErrorBoundary>
-    <GestureHandlerRootView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      <AppNavigator />
-    </GestureHandlerRootView>
+      <SafeAreaProvider>
+        <GestureHandlerRootView style={styles.container}>
+          <StatusBar 
+            barStyle="dark-content" 
+            backgroundColor={Platform.OS === 'android' ? '#FFF' : undefined}
+            translucent={Platform.OS === 'android'}
+          />
+          <AppNavigator />
+        </GestureHandlerRootView>
+      </SafeAreaProvider>
     </ErrorBoundary>
   );
 };

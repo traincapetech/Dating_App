@@ -17,6 +17,9 @@ import {
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { launchImageLibrary } from 'react-native-image-picker';
+import EmojiPicker from 'rn-emoji-keyboard';
+import GifPicker from '../../../components/chat/GifPicker';
+import ScreenshotPrevent from 'react-native-screenshot-prevent';
 import { colors, typography, spacing } from '../../../theme';
 import { 
   initSocket, 
@@ -60,6 +63,8 @@ const ChatScreen = ({ route, navigation }) => {
   const [reportDescription, setReportDescription] = useState('');
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [unmatching, setUnmatching] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showGifPicker, setShowGifPicker] = useState(false);
 
   const flatListRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -75,6 +80,9 @@ const ChatScreen = ({ route, navigation }) => {
 
     initChat();
 
+    // Enable screenshot blocking in chat
+    ScreenshotPrevent.enabled(true);
+
     return () => {
       if (socketRef.current) {
         leaveChatRoom(matchId);
@@ -87,6 +95,8 @@ const ChatScreen = ({ route, navigation }) => {
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
+      // Disable screenshot blocking when leaving chat
+      ScreenshotPrevent.enabled(false);
     };
   }, [matchId]);
 
@@ -272,6 +282,37 @@ const ChatScreen = ({ route, navigation }) => {
     }
   };
 
+  const handleSelectGif = async (gifUrl) => {
+    if (!currentUserId || sending) return;
+
+    setSending(true);
+    try {
+      // Send GIF as media message
+      const saved = await sendMessageApi({
+        matchId,
+        senderId: currentUserId,
+        receiverId: theirId,
+        text: null,
+        mediaUrl: gifUrl,
+        mediaType: 'gif',
+      });
+
+      setMessages((prev) => [...prev, saved]);
+      scrollToBottom();
+      setShowGifPicker(false);
+    } catch (e) {
+      console.log('GIF send error', e);
+      Alert.alert('Error', 'Failed to send GIF. Please try again.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleEmojiSelect = (emoji) => {
+    setInputText(prev => prev + emoji.emoji);
+    setShowEmojiPicker(false);
+  };
+
   const onChangeText = (text) => {
     setInputText(text);
     
@@ -363,6 +404,7 @@ const ChatScreen = ({ route, navigation }) => {
 
   const renderItem = ({ item }) => {
     const isMe = item.senderId === currentUserId;
+    const isGif = item.mediaType === 'gif';
     
     return (
       <View style={[styles.messageRow, isMe ? styles.rowRight : styles.rowLeft]}>
@@ -370,8 +412,11 @@ const ChatScreen = ({ route, navigation }) => {
           {item.mediaUrl && (
             <Image 
               source={{ uri: item.mediaUrl }} 
-              style={styles.messageImage}
-              resizeMode="cover"
+              style={[
+                styles.messageImage,
+                isGif && styles.gifImage
+              ]}
+              resizeMode={isGif ? 'contain' : 'cover'}
             />
           )}
           {item.text && (
@@ -423,7 +468,7 @@ const ChatScreen = ({ route, navigation }) => {
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
         style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
       >
         {/* Header */}
@@ -473,6 +518,19 @@ const ChatScreen = ({ route, navigation }) => {
               <Text style={styles.mediaButtonText}>📷</Text>
             )}
           </Pressable>
+          <Pressable 
+            style={styles.mediaButton} 
+            onPress={() => setShowGifPicker(true)}
+            disabled={sending}
+          >
+            <Text style={styles.mediaButtonText}>GIF</Text>
+          </Pressable>
+          <Pressable 
+            style={styles.mediaButton} 
+            onPress={() => setShowEmojiPicker(true)}
+          >
+            <Text style={styles.mediaButtonText}>😊</Text>
+          </Pressable>
           <TextInput
             style={styles.input}
             placeholder="Type a message..."
@@ -494,6 +552,20 @@ const ChatScreen = ({ route, navigation }) => {
             )}
           </Pressable>
         </View>
+
+        {/* Emoji Picker */}
+        <EmojiPicker
+          onEmojiSelected={handleEmojiSelect}
+          open={showEmojiPicker}
+          onClose={() => setShowEmojiPicker(false)}
+        />
+
+        {/* GIF Picker */}
+        <GifPicker
+          visible={showGifPicker}
+          onSelect={handleSelectGif}
+          onClose={() => setShowGifPicker(false)}
+        />
 
       {/* Unmatch Modal */}
       <Modal
@@ -682,6 +754,11 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 12,
     marginBottom: spacing.xs,
+  },
+  gifImage: {
+    width: 250,
+    height: 200,
+    maxWidth: '100%',
   },
   messageFooter: {
     flexDirection: 'row',

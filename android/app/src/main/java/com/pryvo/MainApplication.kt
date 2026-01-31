@@ -6,10 +6,10 @@ import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
 import com.facebook.react.ReactNativeHost
 import com.facebook.react.ReactPackage
+import com.facebook.react.PackageList
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.load
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
-import com.facebook.react.shell.MainReactPackage
 import com.facebook.react.soloader.OpenSourceMergedSoMapping
 import com.facebook.soloader.SoLoader
 
@@ -18,19 +18,8 @@ class MainApplication : Application(), ReactApplication {
   override val reactNativeHost: ReactNativeHost =
       object : DefaultReactNativeHost(this) {
         override fun getPackages(): List<ReactPackage> {
-          // Include MainReactPackage which contains all core React Native modules (AppState, ImageLoader, etc.)
-          val packages = ArrayList<ReactPackage>()
-          packages.add(MainReactPackage())
-          // Add manually linked packages
-          packages.add(com.swmansion.gesturehandler.RNGestureHandlerPackage())
-          packages.add(com.th3rdwave.safeareacontext.SafeAreaContextPackage())
-          packages.add(com.BV.LinearGradient.LinearGradientPackage())
-          packages.add(com.swmansion.rnscreens.RNScreensPackage())
-          packages.add(com.reactnativecommunity.asyncstorage.AsyncStoragePackage())
-          packages.add(com.imagepicker.ImagePickerPackage())
-          packages.add(org.reactnative.maskedview.RNCMaskedViewPackage())
-          packages.add(com.agontuk.RNFusedLocation.RNFusedLocationPackage())
-          return packages
+          // Use autolinking to keep native modules in sync
+          return PackageList(this).packages
         }
 
         override fun getJSMainModuleName(): String = "index"

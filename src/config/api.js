@@ -28,12 +28,17 @@ const getApiBaseUrl = () => {
     return PRODUCTION_API_URL;
   }
 
-  // For Android emulator, use 10.0.2.2
-  if (Platform.OS === 'android' && LOCAL_API_URL.includes('YOUR_COMPUTER_IP')) {
+  // For Android emulator, always use 10.0.2.2 to connect to localhost
+  if (Platform.OS === 'android') {
     return 'http://10.0.2.2:3000/api';
   }
 
-  // For iOS simulator or physical device with configured IP
+  // For iOS simulator, use localhost
+  if (Platform.OS === 'ios') {
+    return 'http://localhost:3000/api';
+  }
+
+  // For physical device, use the configured IP
   return LOCAL_API_URL;
 };
 
@@ -42,11 +47,17 @@ const getSocketUrl = () => {
     return PRODUCTION_SOCKET_URL;
   }
 
-  // For Android emulator, use 10.0.2.2
-  if (Platform.OS === 'android' && LOCAL_SOCKET_URL.includes('YOUR_COMPUTER_IP')) {
+  // For Android emulator, always use 10.0.2.2 to connect to localhost
+  if (Platform.OS === 'android') {
     return 'http://10.0.2.2:3000';
   }
 
+  // For iOS simulator, use localhost
+  if (Platform.OS === 'ios') {
+    return 'http://localhost:3000';
+  }
+
+  // For physical device, use the configured IP
   return LOCAL_SOCKET_URL;
 };
 

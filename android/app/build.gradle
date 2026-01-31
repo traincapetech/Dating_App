@@ -1,53 +1,37 @@
-apply plugin: "com.android.application"
-apply plugin: "org.jetbrains.kotlin.android"
-apply plugin: "com.facebook.react"
-// Add the Google services Gradle plugin
-apply plugin: "com.google.gms.google-services"
-
-// Keep autolinking disabled
-project.afterEvaluate {
-    tasks.named("generateAutolinkingPackageList").configure {
-        enabled = false
-    }
+plugins {
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("com.facebook.react")
+    id("com.google.gms.google-services")
 }
 
 /**
- * This is the configuration block to customize your React Native Android app.
- * By default you don't need to apply any configuration, just uncomment the lines you need.
+ * React Native configuration
+ * Do NOT disable autolinking
  */
 react {
-    /* Folders */
     root = file("../../")
     reactNativeDir = file("../../node_modules/react-native")
-    
-    /* Autolinking - Disabled, but core modules are registered via DefaultReactNativeHost */
-    // autolinkLibrariesWithApp()
+    autolinkLibrariesWithApp()
 }
 
 /**
- * Set this to true to Run Proguard on Release builds to minify the Java bytecode.
+ * Proguard
  */
 def enableProguardInReleaseBuilds = false
 
 /**
- * The preferred build flavor of JavaScriptCore (JSC)
- *
- * For example, to use the international variant, you can use:
- * `def jscFlavor = 'org.webkit:android-jsc-intl:+'`
- *
- * The international variant includes ICU i18n library and necessary data
- * allowing to use e.g. `Date.toLocaleString` and `String.localeCompare` that
- * give correct results when using with locales other than en-US. Note that
- * this variant is about 6MiB larger per architecture than default.
+ * JavaScriptCore (only used if Hermes is disabled)
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
 android {
+    namespace "com.pryvo"
+
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.pryvo"
     defaultConfig {
         applicationId "com.pryvo"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -55,52 +39,47 @@ android {
         versionCode 1
         versionName "1.0"
     }
+
     signingConfigs {
         debug {
-            storeFile file('debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
+            storeFile file("debug.keystore")
+            storePassword "android"
+            keyAlias "androiddebugkey"
+            keyPassword "android"
         }
     }
+
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
             signingConfig signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
-            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            proguardFiles(
+                getDefaultProguardFile("proguard-android.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }
 
 dependencies {
-    // The version of react-native is set by the React Native Gradle Plugin
+    // Core React Native (version managed by plugin)
     implementation("com.facebook.react:react-android")
 
+    // Hermes / JSC
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {
-        implementation jscFlavor
+        implementation(jscFlavor)
     }
 
-    // Import the Firebase BoM
-    implementation platform("com.google.firebase:firebase-bom:33.7.0")
-    // Firebase Cloud Messaging
+    // Firebase
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-messaging")
-    // Firebase Analytics (optional but recommended)
     implementation("com.google.firebase:firebase-analytics")
-    
-    // Manually linked native modules
-    implementation(project(":react-native-gesture-handler"))
-    implementation(project(":react-native-safe-area-context"))
-    implementation(project(":react-native-linear-gradient"))
-    implementation(project(":react-native-screens"))
-    implementation(project(":react-native-async-storage_async-storage"))
-    implementation(project(":react-native-image-picker"))
-    implementation(project(":react-native-masked-view_masked-view"))
-    implementation(project(":react-native-geolocation-service"))
+
+    // ❌ DO NOT manually link any react-native-* libraries
+    // ❌ Autolinking handles everything automatically
 }

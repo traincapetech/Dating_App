@@ -131,6 +131,27 @@ const HomeScreen = ({navigation}) => {
         setCurrentUserId(user.id);
       }
 
+      // Load advanced filters if available
+      let advancedFilters = null;
+      try {
+        const savedFilters = await AsyncStorage.getItem('@pryvo_advanced_filters');
+        if (savedFilters) {
+          const parsed = JSON.parse(savedFilters);
+          // Only include filters that have values
+          const activeFilters = {};
+          Object.keys(parsed).forEach(key => {
+            if (parsed[key] !== null && parsed[key] !== undefined) {
+              activeFilters[key] = parsed[key];
+            }
+          });
+          if (Object.keys(activeFilters).length > 0) {
+            advancedFilters = activeFilters;
+          }
+        }
+      } catch (error) {
+        console.error('Error loading advanced filters:', error);
+      }
+
       // Fetch profiles from backend
       const response = await getDiscoverProfiles(excludeUserId, {
         useMatching: false,
@@ -138,6 +159,7 @@ const HomeScreen = ({navigation}) => {
           distanceEnabled && (distanceOverride || maxDistance)
             ? distanceOverride || maxDistance
             : undefined,
+        filters: advancedFilters,
         // useMatching: true,
         // minScore: 30,
         // sortBy: 'score',
@@ -420,25 +442,31 @@ const HomeScreen = ({navigation}) => {
 
   if (loading) {
     return (
-      <View style={styles.container}>
-        <View style={styles.emptyContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.emptySubtitle}>Loading profiles...</Text>
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+        <View style={styles.container}>
+          <View style={styles.emptyContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.emptySubtitle}>Loading profiles...</Text>
+          </View>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (!currentProfile) {
     return (
-      <View style={styles.container}>
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyTitle}>No more profiles</Text>
-          <Text style={styles.emptySubtitle}>
-            Check back later for more matches!
-          </Text>
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+        <View style={styles.container}>
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyTitle}>No more profiles</Text>
+            <Text style={styles.emptySubtitle}>
+              Check back later for more matches!
+            </Text>
+          </View>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 

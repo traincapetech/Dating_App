@@ -10,6 +10,7 @@ import {
   RefreshControl,
   Dimensions,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation, useFocusEffect} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {colors, typography, spacing} from '../../../theme';
@@ -138,16 +139,17 @@ const ProfileScreen = () => {
 
   if (loading && !refreshing) {
     return (
-      <View style={[styles.container, styles.centerContent]}>
+      <SafeAreaView style={[styles.container, styles.centerContent]} edges={['top', 'left', 'right']}>
         <ActivityIndicator size="large" color={colors.primary} />
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      showsVerticalScrollIndicator={false}
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <ScrollView
+        style={styles.flex}
+        showsVerticalScrollIndicator={false}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -322,6 +324,7 @@ const ProfileScreen = () => {
 
       <View style={{height: spacing.xl}} />
     </ScrollView>
+    </SafeAreaView>
   );
 };
 
@@ -329,6 +332,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
+  },
+  flex: {
+    flex: 1,
   },
   centerContent: {
     justifyContent: 'center',

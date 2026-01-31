@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Text, View, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import HomeScreen from '../features/discovery/screens/HomeScreen';
 import LikesScreen from '../features/likes/screens/LikesScreen';
@@ -14,6 +15,7 @@ const Tab = createBottomTabNavigator();
 
 const TabNavigator = () => {
   const [likesCount, setLikesCount] = useState(0);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     loadLikesCount();
@@ -47,9 +49,9 @@ const TabNavigator = () => {
           backgroundColor: colors.surface,
           borderTopWidth: 1,
           borderTopColor: colors.border,
-          paddingBottom: 8,
+          paddingBottom: Math.max(insets.bottom, 8),
           paddingTop: 8,
-          height: 60,
+          height: 60 + Math.max(insets.bottom - 8, 0),
         },
         tabBarLabelStyle: {
           fontSize: 11,

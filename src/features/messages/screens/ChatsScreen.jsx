@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, typography, spacing } from '../../../theme';
@@ -121,21 +122,21 @@ const ChatsScreen = ({ navigation }) => {
 
   if (loading) {
     return (
-      <View style={styles.center}>
+      <SafeAreaView style={styles.center} edges={['top', 'left', 'right']}>
         <ActivityIndicator size="large" color={colors.primary} />
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (!matches.length) {
     return (
-      <View style={styles.center}>
+      <SafeAreaView style={styles.center} edges={['top', 'left', 'right']}>
         <Text style={styles.emptyEmoji}>💬</Text>
         <Text style={styles.emptyTitle}>No matches yet</Text>
         <Text style={styles.emptyText}>
           When you match with someone, you can start chatting here
         </Text>
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -196,7 +197,7 @@ const ChatsScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Messages</Text>
       </View>
@@ -215,7 +216,7 @@ const ChatsScreen = ({ navigation }) => {
           />
         }
       />
-    </View>
+    </SafeAreaView>
   );
 };
 

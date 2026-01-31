@@ -1,33 +1,31 @@
 pluginManagement {
     repositories {
-        maven {
-            url = uri("../node_modules/react-native/android")
-        }
         gradlePluginPortal()
-        mavenCentral()
         google()
+        mavenCentral()
     }
     includeBuild("../node_modules/@react-native/gradle-plugin")
 }
-plugins { id("com.facebook.react.settings") }
-// Keep autolinking disabled but ensure core modules are registered via DefaultReactNativeHost
-// extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
-rootProject.name = 'Pryvo'
-include ':app'
-include ':react-native-gesture-handler'
-project(':react-native-gesture-handler').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-gesture-handler/android')
-include ':react-native-safe-area-context'
-project(':react-native-safe-area-context').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-safe-area-context/android')
-include ':react-native-linear-gradient'
-project(':react-native-linear-gradient').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-linear-gradient/android')
-include ':react-native-screens'
-project(':react-native-screens').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-screens/android')
-include ':react-native-async-storage_async-storage'
-project(':react-native-async-storage_async-storage').projectDir = new File(rootProject.projectDir, '../node_modules/@react-native-async-storage/async-storage/android')
-include ':react-native-image-picker'
-project(':react-native-image-picker').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-image-picker/android')
-include ':react-native-masked-view_masked-view'
-project(':react-native-masked-view_masked-view').projectDir = new File(rootProject.projectDir, '../node_modules/@react-native-masked-view/masked-view/android')
-include ':react-native-geolocation-service'
-project(':react-native-geolocation-service').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-geolocation-service/android')
-includeBuild('../node_modules/@react-native/gradle-plugin')
+
+plugins {
+    id("com.facebook.react.settings")
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.PREFER_SETTINGS)
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri("https://jitpack.io") }
+        maven { url = uri("${rootDir}/../node_modules/react-native/android") }
+        maven { url = uri("${rootDir}/../node_modules/jsc-android/dist") }
+    }
+}
+
+rootProject.name = "Pryvo"
+
+extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
+    ex.autolinkLibrariesFromCommand()
+}
+
+include(":app")

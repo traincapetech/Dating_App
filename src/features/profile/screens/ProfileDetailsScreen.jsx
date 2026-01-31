@@ -14,7 +14,7 @@ import {
 import {useNavigation, useRoute} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {colors, typography, spacing} from '../../../theme';
-import {getProfile, updateProfileApi} from '../../../services/profile/profileService';
+import {getProfile, updateProfileApi, uploadProfileImage} from '../../../services/profile/profileService';
 import {launchImageLibrary} from 'react-native-image-picker';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
@@ -199,14 +199,53 @@ const ProfileDetailsScreen = () => {
         quality: 0.8,
         maxWidth: 1024,
         maxHeight: 1024,
+        includeBase64: true,
       });
 
       if (result.assets && result.assets[0]) {
-        // TODO: Upload photo to server
-        Alert.alert('Photo Selected', 'Photo upload will be implemented');
+        const asset = result.assets[0];
+        
+        // Get user ID
+        let currentUserId = userId;
+        if (!currentUserId) {
+          const userData = await AsyncStorage.getItem('@pryvo_user');
+          if (userData) {
+            const user = JSON.parse(userData);
+            currentUserId = user.id;
+          }
+        }
+
+        if (!currentUserId) {
+          Alert.alert('Error', 'User ID not found');
+          return;
+        }
+
+        // Show loading
+        setSaving(true);
+        
+        try {
+          // Upload the image
+          const uploadResult = await uploadProfileImage(
+            currentUserId,
+            asset,
+            asset.fileName || `photo_${index}_${Date.now()}.jpg`
+          );
+          
+          console.log('[ProfileDetails] Photo uploaded successfully:', uploadResult);
+          Alert.alert('Success', 'Photo uploaded successfully');
+          
+          // Refresh profile to show new photo
+          loadProfile();
+        } catch (uploadError) {
+          console.error('[ProfileDetails] Photo upload failed:', uploadError);
+          Alert.alert('Error', uploadError.message || 'Failed to upload photo');
+        } finally {
+          setSaving(false);
+        }
       }
     } catch (error) {
       console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image');
     }
   };
 

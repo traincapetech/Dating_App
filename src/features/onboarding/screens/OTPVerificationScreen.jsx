@@ -10,6 +10,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
@@ -81,12 +82,13 @@ const OTPVerificationScreen = () => {
   const isOtpComplete = otp.every(digit => digit !== '');
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled">
+    <SafeAreaView style={styles.flex} edges={['top', 'left', 'right']}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <Text style={styles.title}>OTP Verification</Text>
           <Text style={styles.subtitle}>
@@ -136,8 +138,9 @@ const OTPVerificationScreen = () => {
             <Text style={styles.resendText}>Resend code</Text>
           </Pressable>
         )}
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 

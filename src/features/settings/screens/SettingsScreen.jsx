@@ -7,19 +7,26 @@ import {
   Pressable,
   Alert,
   Switch,
+  ActivityIndicator,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {colors, typography, spacing} from '../../../theme';
+import {pauseProfile} from '../../../services/profile/profileService';
+import {logoutFromAllDevices} from '../../../services/auth/authService';
 
 const SettingsScreen = () => {
   const navigation = useNavigation();
   const [notifications, setNotifications] = React.useState(true);
   const [showOnline, setShowOnline] = React.useState(true);
   const [isPremium, setIsPremium] = React.useState(false);
+  const [isPaused, setIsPaused] = React.useState(false);
+  const [loadingPause, setLoadingPause] = React.useState(false);
+  const [loadingLogoutAll, setLoadingLogoutAll] = React.useState(false);
 
   React.useEffect(() => {
     checkPremiumStatus();
+    loadProfileStatus();
   }, []);
 
   const checkPremiumStatus = async () => {
@@ -32,6 +39,95 @@ const SettingsScreen = () => {
     } catch (error) {
       console.error('Error checking premium status:', error);
     }
+  };
+
+  const loadProfileStatus = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('@pryvo_user');
+      if (!userData) return;
+      
+      const user = JSON.parse(userData);
+      // Fetch profile to check pause status
+      const {getProfile} = await import('../../../services/profile/profileService');
+      const response = await getProfile(user.id);
+      if (response?.profile) {
+        setIsPaused(response.profile.isPaused || false);
+      }
+    } catch (error) {
+      console.error('Error loading profile status:', error);
+    }
+  };
+
+  const handlePauseProfile = async (paused) => {
+    try {
+      setLoadingPause(true);
+      const userData = await AsyncStorage.getItem('@pryvo_user');
+      if (!userData) {
+        Alert.alert('Error', 'User not found');
+        return;
+      }
+
+      const user = JSON.parse(userData);
+      const response = await pauseProfile(paused);
+      
+      if (response?.success) {
+        setIsPaused(paused);
+        Alert.alert(
+          paused ? 'Profile Paused' : 'Profile Resumed',
+          paused 
+            ? 'Your profile is now hidden from discovery. You can still message your matches.'
+            : 'Your profile is now visible in discovery again.',
+          [{text: 'OK'}]
+        );
+      } else {
+        throw new Error(response?.error || 'Failed to update profile status');
+      }
+    } catch (error) {
+      console.error('Error pausing profile:', error);
+      Alert.alert('Error', 'Failed to update profile status. Please try again.');
+    } finally {
+      setLoadingPause(false);
+    }
+  };
+
+  const handleLogoutAllDevices = () => {
+    Alert.alert(
+      'Logout from All Devices',
+      'This will log you out from all devices where you\'re signed in. You\'ll need to sign in again on this device.',
+      [
+        {text: 'Cancel', style: 'cancel'},
+        {
+          text: 'Logout All',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoadingLogoutAll(true);
+              await logoutFromAllDevices();
+              Alert.alert(
+                'Success',
+                'You have been logged out from all devices.',
+                [
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      navigation.reset({
+                        index: 0,
+                        routes: [{name: 'OnboardingIntro'}],
+                      });
+                    },
+                  },
+                ]
+              );
+            } catch (error) {
+              console.error('Error logging out from all devices:', error);
+              Alert.alert('Error', 'Failed to logout from all devices. Please try again.');
+            } finally {
+              setLoadingLogoutAll(false);
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleLogout = () => {
@@ -47,7 +143,7 @@ const SettingsScreen = () => {
             await AsyncStorage.multiRemove([
               '@pryvo_user',
               '@pryvo/token',
-              '@pryvo/refreshToken',
+              '@pryvo/refresh',
             ]);
             navigation.reset({
               index: 0,
@@ -143,6 +239,12 @@ const SettingsScreen = () => {
             subtitle="Set maximum distance for matches"
             onPress={() => navigation.navigate('DistanceFilter')} 
           />
+          <SettingItem 
+            icon="🔍" 
+            title="Advanced Filters" 
+            subtitle={isPremium ? "Filter by education, height, lifestyle" : "Premium feature"}
+            onPress={() => navigation.navigate('AdvancedFilters')} 
+          />
         </View>
 
         {/* Privacy Section */}
@@ -154,6 +256,27 @@ const SettingsScreen = () => {
             value={showOnline}
             onValueChange={setShowOnline}
           />
+          <View style={styles.settingItem}>
+            <Text style={styles.settingIcon}>⏸️</Text>
+            <View style={styles.settingContent}>
+              <Text style={styles.settingTitle}>Pause Profile</Text>
+              <Text style={styles.settingSubtitle}>
+                {isPaused 
+                  ? 'Your profile is hidden from discovery' 
+                  : 'Temporarily hide your profile from discovery'}
+              </Text>
+            </View>
+            {loadingPause ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Switch
+                value={isPaused}
+                onValueChange={handlePauseProfile}
+                trackColor={{false: '#ddd', true: colors.primary}}
+                thumbColor="#fff"
+              />
+            )}
+          </View>
           <SettingItem 
             icon="🚫" 
             title="Blocked Users" 
@@ -217,6 +340,24 @@ const SettingsScreen = () => {
             title="Logout" 
             onPress={handleLogout} 
           />
+          <Pressable 
+            style={styles.settingItem} 
+            onPress={handleLogoutAllDevices}
+            disabled={loadingLogoutAll}
+          >
+            <Text style={styles.settingIcon}>📱</Text>
+            <View style={styles.settingContent}>
+              <Text style={styles.settingTitle}>Logout from All Devices</Text>
+              <Text style={styles.settingSubtitle}>
+                Sign out from all devices where you're logged in
+              </Text>
+            </View>
+            {loadingLogoutAll ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <Text style={styles.chevron}>›</Text>
+            )}
+          </Pressable>
           <Pressable style={styles.dangerItem} onPress={handleDeleteAccount}>
             <Text style={styles.dangerIcon}>⚠️</Text>
             <Text style={styles.dangerText}>Delete Account</Text>

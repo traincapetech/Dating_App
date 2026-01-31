@@ -12,11 +12,12 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
+import ImagePicker from 'react-native-image-crop-picker';
 import {useNavigation} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
-import {uploadProfileImage} from '../../../services/profile/profileService';
+import {uploadProfileImage, updateProfileApi} from '../../../services/profile/profileService';
 
 const MediaUploadScreen = () => {
   const navigation = useNavigation();
@@ -56,7 +57,6 @@ const MediaUploadScreen = () => {
         {
           text: 'Camera',
           onPress: () => {
-            // Longer delay to ensure Alert is fully closed and UI is ready
             setTimeout(() => {
               handleCamera(index);
             }, 300);
@@ -65,7 +65,6 @@ const MediaUploadScreen = () => {
         {
           text: 'Gallery',
           onPress: () => {
-            // Longer delay to ensure Alert is fully closed and UI is ready
             setTimeout(() => {
               handleGallery(index);
             }, 300);
@@ -78,6 +77,56 @@ const MediaUploadScreen = () => {
       ],
       {cancelable: true},
     );
+  };
+
+  const handleImageCrop = async (imageUri, index) => {
+    try {
+      const croppedImage = await ImagePicker.openCropper({
+        path: imageUri,
+        width: 1080,
+        height: 1080,
+        cropping: true,
+        cropperCircleOverlay: false,
+        compressImageQuality: 0.8,
+        includeBase64: true,
+      });
+
+      if (croppedImage) {
+        const base64Data = croppedImage.data 
+          ? `data:${croppedImage.mime || 'image/jpeg'};base64,${croppedImage.data}`
+          : null;
+
+        setMedia(prev => {
+          const newMedia = [...prev];
+          newMedia[index] = {
+            uri: croppedImage.path,
+            type: 'photo',
+            fileName: croppedImage.filename || `cropped_${index}.jpg`,
+            base64: base64Data,
+            cropped: true,
+          };
+          return newMedia;
+        });
+      }
+    } catch (error) {
+      if (error.message !== 'User cancelled image selection') {
+        console.error('[Crop] Error:', error);
+        Alert.alert('Crop Error', 'Failed to crop image. Using original image.');
+        // Continue with original image
+      }
+    }
+  };
+
+  const handleReorder = (index, direction) => {
+    if (direction === 'up' && index === 0) return;
+    if (direction === 'down' && index === media.length - 1) return;
+    
+    setMedia(prev => {
+      const newMedia = [...prev];
+      const targetIndex = direction === 'up' ? index - 1 : index + 1;
+      [newMedia[index], newMedia[targetIndex]] = [newMedia[targetIndex], newMedia[index]];
+      return newMedia;
+    });
   };
 
   const checkCameraPermission = async () => {
@@ -227,17 +276,36 @@ const MediaUploadScreen = () => {
             ? `data:${asset.type || 'image/jpeg'};base64,${asset.base64}`
             : null;
 
-          setMedia(prev => {
-            const newMedia = [...prev];
-            newMedia[index] = {
-              uri: mediaUri,
-              type: mediaType,
-              fileName: asset.fileName || `media_${index}.jpg`,
-              base64: base64Data,
-              asset: asset,
-            };
-            return newMedia;
-          });
+          // Offer to crop the image
+          Alert.alert(
+            'Crop Image?',
+            'Would you like to crop this image?',
+            [
+              {
+                text: 'Skip',
+                onPress: () => {
+                  setMedia(prev => {
+                    const newMedia = [...prev];
+                    newMedia[index] = {
+                      uri: mediaUri,
+                      type: mediaType,
+                      fileName: asset.fileName || `media_${index}.jpg`,
+                      base64: base64Data,
+                      asset: asset,
+                    };
+                    return newMedia;
+                  });
+                },
+              },
+              {
+                text: 'Crop',
+                onPress: () => {
+                  handleImageCrop(mediaUri, index);
+                },
+              },
+            ],
+            {cancelable: true}
+          );
         } else {
           console.warn('[Camera] No assets in response');
         }
@@ -333,17 +401,36 @@ const MediaUploadScreen = () => {
             ? `data:${asset.type || 'image/jpeg'};base64,${asset.base64}`
             : null;
 
-          setMedia(prev => {
-            const newMedia = [...prev];
-            newMedia[index] = {
-              uri: mediaUri,
-              type: mediaType,
-              fileName: asset.fileName || asset.uri?.split('/').pop() || `media_${index}.jpg`,
-              base64: base64Data,
-              asset: asset,
-            };
-            return newMedia;
-          });
+          // Offer to crop the image
+          Alert.alert(
+            'Crop Image?',
+            'Would you like to crop this image?',
+            [
+              {
+                text: 'Skip',
+                onPress: () => {
+                  setMedia(prev => {
+                    const newMedia = [...prev];
+                    newMedia[index] = {
+                      uri: mediaUri,
+                      type: mediaType,
+                      fileName: asset.fileName || asset.uri?.split('/').pop() || `media_${index}.jpg`,
+                      base64: base64Data,
+                      asset: asset,
+                    };
+                    return newMedia;
+                  });
+                },
+              },
+              {
+                text: 'Crop',
+                onPress: () => {
+                  handleImageCrop(mediaUri, index);
+                },
+              },
+            ],
+            {cancelable: true}
+          );
         } else {
           console.warn('[Gallery] No assets in response');
         }
@@ -427,31 +514,63 @@ const MediaUploadScreen = () => {
 
       setUploading(true);
       
-      // Upload images one by one to handle errors better
+      // Upload images one by one in the correct order
       const uploadResults = [];
       const uploadErrors = [];
+      const mediaWithOrder = [];
       
-      for (let index = 0; index < mediaToUpload.length; index++) {
-        const item = mediaToUpload[index];
+      // Find the actual indices of non-null media items to preserve order
+      media.forEach((item, originalIndex) => {
+        if (item !== null) {
+          mediaWithOrder.push({item, originalIndex});
+        }
+      });
+      
+      for (let i = 0; i < mediaWithOrder.length; i++) {
+        const {item, originalIndex} = mediaWithOrder[i];
         try {
-          console.log(`[MediaUpload] Uploading image ${index + 1}/${mediaToUpload.length}`);
+          console.log(`[MediaUpload] Uploading image ${i + 1}/${mediaWithOrder.length} (order: ${originalIndex})`);
           
           let result;
-        // Prefer asset object (which includes base64), then base64, then URI
-        if (item.asset) {
+          // Prefer asset object (which includes base64), then base64, then URI
+          if (item.asset) {
             result = await uploadProfileImage(userId, item.asset, item.fileName);
-        } else if (item.base64) {
+          } else if (item.base64) {
             result = await uploadProfileImage(userId, item.base64, item.fileName);
-        } else {
+          } else {
             result = await uploadProfileImage(userId, item.uri, item.fileName);
-        }
+          }
           
-          uploadResults.push({index, success: true, result});
-          console.log(`[MediaUpload] Image ${index + 1} uploaded successfully`);
+          uploadResults.push({index: originalIndex, order: i, success: true, result});
+          console.log(`[MediaUpload] Image ${i + 1} uploaded successfully with order ${i}`);
         } catch (error) {
-          console.error(`[MediaUpload] Error uploading image ${index + 1}:`, error);
-          uploadErrors.push({index, error: error.message || 'Upload failed'});
+          console.error(`[MediaUpload] Error uploading image ${i + 1}:`, error);
+          uploadErrors.push({index: originalIndex, order: i, error: error.message || 'Upload failed'});
           // Continue with next image even if one fails
+        }
+      }
+      
+      // After all uploads, update the profile with correct order
+      if (uploadResults.length > 0) {
+        try {
+          const mediaArray = uploadResults
+            .sort((a, b) => a.order - b.order)
+            .map((result, idx) => ({
+              type: 'photo',
+              url: result.result?.url || result.result?.data?.url,
+              order: idx,
+            }))
+            .filter(item => item.url); // Only include items with valid URLs
+          
+          if (mediaArray.length > 0) {
+            await updateProfileApi({
+              media: {media: mediaArray},
+            });
+            console.log('[MediaUpload] Profile updated with correct media order');
+          }
+        } catch (error) {
+          console.error('[MediaUpload] Error updating profile order:', error);
+          // Don't fail the whole upload if order update fails
         }
       }
 
@@ -536,11 +655,30 @@ const MediaUploadScreen = () => {
                     resizeMode="cover"
                   />
                 )}
-                <Pressable
-                  style={styles.removeButton}
-                  onPress={e => handleRemoveMedia(index, e)}>
-                  <Text style={styles.removeButtonText}>×</Text>
-                </Pressable>
+                <View style={styles.mediaControls}>
+                  {index > 0 && (
+                    <Pressable
+                      style={styles.reorderButton}
+                      onPress={() => handleReorder(index, 'up')}>
+                      <Text style={styles.reorderButtonText}>↑</Text>
+                    </Pressable>
+                  )}
+                  {index < media.length - 1 && (
+                    <Pressable
+                      style={styles.reorderButton}
+                      onPress={() => handleReorder(index, 'down')}>
+                      <Text style={styles.reorderButtonText}>↓</Text>
+                    </Pressable>
+                  )}
+                  <Pressable
+                    style={styles.removeButton}
+                    onPress={e => handleRemoveMedia(index, e)}>
+                    <Text style={styles.removeButtonText}>×</Text>
+                  </Pressable>
+                </View>
+                <View style={styles.orderBadge}>
+                  <Text style={styles.orderBadgeText}>{index + 1}</Text>
+                </View>
               </View>
             ) : (
               <View style={styles.mediaPlaceholder}>
@@ -638,23 +776,59 @@ const styles = StyleSheet.create({
     fontSize: 40,
     color: colors.textInverse,
   },
-  removeButton: {
+  mediaControls: {
     position: 'absolute',
     top: 8,
     right: 8,
+    flexDirection: 'row',
+    gap: 4,
+    zIndex: 10,
+  },
+  reorderButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 0.9,
+  },
+  reorderButtonText: {
+    color: colors.textInverse,
+    fontSize: 16,
+    fontWeight: 'bold',
+    lineHeight: 16,
+  },
+  removeButton: {
     width: 28,
     height: 28,
     borderRadius: 14,
     backgroundColor: colors.error,
     alignItems: 'center',
     justifyContent: 'center',
-    zIndex: 10,
   },
   removeButtonText: {
     color: colors.textInverse,
     fontSize: 20,
     fontWeight: 'bold',
     lineHeight: 20,
+  },
+  orderBadge: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  orderBadgeText: {
+    color: colors.textInverse,
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   mediaPlaceholder: {
     width: '100%',

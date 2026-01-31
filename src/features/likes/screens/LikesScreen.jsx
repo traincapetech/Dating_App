@@ -10,6 +10,7 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { colors, typography, spacing } from '../../../theme';
@@ -94,15 +95,15 @@ const LikesScreen = ({ navigation }) => {
 
   if (loading) {
     return (
-      <View style={styles.center}>
+      <SafeAreaView style={styles.center} edges={['top', 'left', 'right']}>
         <ActivityIndicator size="large" color={colors.primary} />
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (isPremiumRequired) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Likes</Text>
           {likesCount > 0 && (
@@ -124,13 +125,13 @@ const LikesScreen = ({ navigation }) => {
             <Text style={styles.premiumButtonText}>💎 Upgrade to Premium</Text>
           </Pressable>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   if (likes.length === 0) {
     return (
-      <View style={styles.container}>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Likes</Text>
         </View>
@@ -141,7 +142,7 @@ const LikesScreen = ({ navigation }) => {
             Keep swiping! When someone likes you, they'll appear here.
           </Text>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -168,7 +169,7 @@ const LikesScreen = ({ navigation }) => {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Likes</Text>
         <View style={styles.countBadge}>
@@ -190,7 +191,7 @@ const LikesScreen = ({ navigation }) => {
           />
         }
       />
-    </View>
+    </SafeAreaView>
   );
 };
 

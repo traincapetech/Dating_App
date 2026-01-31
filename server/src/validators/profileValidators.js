@@ -77,5 +77,7 @@ export const updateProfileSchema = z.object({
   lifestyle: lifestyleSchema.optional(),
   profilePrompts: profilePromptsSchema.optional(),
   media: mediaUploadSchema.optional(),
+  isPaused: z.boolean().optional(),
+  isHidden: z.boolean().optional(),
 });
 

@@ -31,6 +31,35 @@ export async function getDiscoverProfiles(excludeUserId = null, options = {}) {
     params.limit = options.limit;
   }
   
+  // Add advanced filters (premium feature)
+  if (options.filters) {
+    const filters = options.filters;
+    if (filters.educationLevel) {
+      params.educationLevel = filters.educationLevel;
+    }
+    if (filters.minHeight !== null && filters.minHeight !== undefined) {
+      params.minHeight = filters.minHeight;
+    }
+    if (filters.maxHeight !== null && filters.maxHeight !== undefined) {
+      params.maxHeight = filters.maxHeight;
+    }
+    if (filters.drink) {
+      params.drink = filters.drink;
+    }
+    if (filters.smokeTobacco) {
+      params.smokeTobacco = filters.smokeTobacco;
+    }
+    if (filters.smokeWeed) {
+      params.smokeWeed = filters.smokeWeed;
+    }
+    if (filters.religiousBeliefs) {
+      params.religiousBeliefs = filters.religiousBeliefs;
+    }
+    if (filters.politicalBeliefs) {
+      params.politicalBeliefs = filters.politicalBeliefs;
+    }
+  }
+  
   const queryString = new URLSearchParams(params).toString();
   const path = `/profile/discover${queryString ? `?${queryString}` : ''}`;
   return apiClient.get(path, headers);
@@ -143,5 +172,10 @@ export async function getProfile(userId) {
 export async function updateProfileApi(payload) {
   const headers = await getAuthHeaders();
   return apiClient.put('/profile/update', payload, headers);
+}
+
+export async function pauseProfile(isPaused) {
+  const headers = await getAuthHeaders();
+  return apiClient.post('/profile/pause', {isPaused}, headers);
 }
 

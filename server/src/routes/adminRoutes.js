@@ -1,6 +1,7 @@
 import {Router} from 'express';
 import {
   adminLoginController,
+  adminSignupController,
   getAdminProfileController,
   getAllSubscriptionsController,
   getSubscriptionDetailsController,
@@ -12,6 +13,12 @@ import {
   toggleUserStatusController,
   deleteUserController,
   getDashboardAnalyticsController,
+  getAllReportsController,
+  getReportDetailsController,
+  updateReportStatusController,
+  getPendingProfilesController,
+  moderateProfileController,
+  getFlaggedProfilesController,
 } from '../controllers/adminController.js';
 import {verifyAdminToken, requirePermission, requireAnyPermission} from '../middlewares/adminAuth.js';
 
@@ -19,6 +26,7 @@ const router = Router();
 
 // Public routes
 router.post('/login', adminLoginController);
+router.post('/signup', adminSignupController);
 
 // Protected routes (require admin authentication)
 router.use(verifyAdminToken);
@@ -41,6 +49,16 @@ router.get('/users', requirePermission('view_users'), getAllUsersController);
 router.get('/users/:userId', requirePermission('view_users'), getUserDetailsController);
 router.post('/users/:userId/suspend', requirePermission('manage_users'), toggleUserStatusController);
 router.delete('/users/:userId', requirePermission('manage_users'), deleteUserController);
+
+// Report Management
+router.get('/reports', requirePermission('view_reports'), getAllReportsController);
+router.get('/reports/:reportId', requirePermission('view_reports'), getReportDetailsController);
+router.put('/reports/:reportId/status', requirePermission('view_reports'), updateReportStatusController);
+
+// Profile Moderation
+router.get('/profiles/pending', requirePermission('moderate_content'), getPendingProfilesController);
+router.get('/profiles/flagged', requirePermission('moderate_content'), getFlaggedProfilesController);
+router.post('/profiles/:profileId/moderate', requirePermission('moderate_content'), moderateProfileController);
 
 export default router;
 

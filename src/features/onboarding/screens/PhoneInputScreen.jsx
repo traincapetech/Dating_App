@@ -10,6 +10,7 @@ import {
   Alert,
   Pressable,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import PhoneInput from 'react-native-international-phone-number';
 import { AppRoute } from '../../../constants/routes';
@@ -68,10 +69,11 @@ const PhoneInputScreen = () => {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={styles.container}>
+    <SafeAreaView style={styles.flex} edges={['top', 'left', 'right']}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>What's your phone number?</Text>
           <Text style={styles.subtitle}>
@@ -105,7 +107,8 @@ const PhoneInputScreen = () => {
           )}
         </Pressable>
       </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 

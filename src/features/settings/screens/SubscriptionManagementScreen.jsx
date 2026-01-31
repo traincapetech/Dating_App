@@ -266,6 +266,15 @@ const SubscriptionManagementScreen = () => {
                   </View>
                 )}
 
+                {/* Boost Profile Button */}
+                {subscription.status === 'active' && (
+                  <Pressable
+                    style={styles.boostButton}
+                    onPress={() => navigation.navigate('BoostProfile')}>
+                    <Text style={styles.boostButtonText}>🚀 Boost Profile</Text>
+                  </Pressable>
+                )}
+
                 {/* Cancel Button */}
                 {subscription.status === 'active' && (
                   <Pressable
@@ -478,6 +487,27 @@ const styles = StyleSheet.create({
     fontSize: typography.body.small,
     fontFamily: typography.fontFamilyRegular,
     color: colors.textSecondary,
+  },
+  cancelButton: {
+    marginTop: spacing.md,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.error || '#FF3B30',
+    borderRadius: 12,
+  },
+  boostButton: {
+    marginTop: spacing.md,
+    marginBottom: spacing.sm,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+  },
+  boostButtonText: {
+    color: colors.surface,
+    fontFamily: typography.fontFamilyBold,
+    fontSize: typography.body.large,
   },
   cancelButton: {
     marginTop: spacing.md,
