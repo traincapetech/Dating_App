@@ -12,7 +12,10 @@ import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {colors, typography, spacing} from '../../../theme';
-import {createBoost, getBoostStatus} from '../../../services/boost/boostService';
+import {
+  createBoost,
+  getBoostStatus,
+} from '../../../services/boost/boostService';
 
 const BoostProfileScreen = () => {
   const navigation = useNavigation();
@@ -31,7 +34,7 @@ const BoostProfileScreen = () => {
     try {
       setLoading(true);
       const userData = await AsyncStorage.getItem('@pryvo_user');
-      if (!userData) {
+      if (!userData || userData === 'undefined') {
         Alert.alert('Error', 'User not found');
         navigation.goBack();
         return;
@@ -65,7 +68,7 @@ const BoostProfileScreen = () => {
             text: 'Upgrade',
             onPress: () => navigation.navigate('SubscriptionUpsell'),
           },
-        ]
+        ],
       );
       return;
     }
@@ -73,7 +76,7 @@ const BoostProfileScreen = () => {
     if (boostStatus?.hasActiveBoost) {
       Alert.alert(
         'Boost Active',
-        `You already have an active boost! It will expire in ${boostStatus.boost.timeRemaining} minutes.`
+        `You already have an active boost! It will expire in ${boostStatus.boost.timeRemaining} minutes.`,
       );
       return;
     }
@@ -107,24 +110,32 @@ const BoostProfileScreen = () => {
                       text: 'Upgrade',
                       onPress: () => navigation.navigate('SubscriptionUpsell'),
                     },
-                  ]
+                  ],
                 );
-              } else if (error.message?.includes('already have an active boost')) {
-                Alert.alert('Boost Active', 'You already have an active boost!');
+              } else if (
+                error.message?.includes('already have an active boost')
+              ) {
+                Alert.alert(
+                  'Boost Active',
+                  'You already have an active boost!',
+                );
                 loadBoostStatus();
               } else {
-                Alert.alert('Error', error?.message || 'Failed to boost profile');
+                Alert.alert(
+                  'Error',
+                  error?.message || 'Failed to boost profile',
+                );
               }
             } finally {
               setBoosting(false);
             }
           },
         },
-      ]
+      ],
     );
   };
 
-  const formatTimeRemaining = (minutes) => {
+  const formatTimeRemaining = minutes => {
     if (minutes <= 0) return 'Expired';
     if (minutes < 60) return `${minutes} min`;
     const hours = Math.floor(minutes / 60);
@@ -136,7 +147,9 @@ const BoostProfileScreen = () => {
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
         <View style={styles.header}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}>
             <Text style={styles.backText}>←</Text>
           </Pressable>
           <Text style={styles.headerTitle}>Boost Profile</Text>
@@ -152,7 +165,9 @@ const BoostProfileScreen = () => {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Pressable
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}>
           <Text style={styles.backText}>←</Text>
         </Pressable>
         <Text style={styles.headerTitle}>Boost Profile</Text>
@@ -169,7 +184,8 @@ const BoostProfileScreen = () => {
           <Text style={styles.infoIcon}>🚀</Text>
           <Text style={styles.infoTitle}>Get 10x More Visibility</Text>
           <Text style={styles.infoText}>
-            Boost your profile to appear at the top of discovery feeds for 30 minutes. Get more likes, matches, and conversations!
+            Boost your profile to appear at the top of discovery feeds for 30
+            minutes. Get more likes, matches, and conversations!
           </Text>
         </View>
 
@@ -181,7 +197,8 @@ const BoostProfileScreen = () => {
               <View style={styles.activeBoostContent}>
                 <Text style={styles.activeBoostTitle}>Boost Active!</Text>
                 <Text style={styles.activeBoostTime}>
-                  {formatTimeRemaining(boostStatus.boost.timeRemaining)} remaining
+                  {formatTimeRemaining(boostStatus.boost.timeRemaining)}{' '}
+                  remaining
                 </Text>
               </View>
             </View>
@@ -192,7 +209,9 @@ const BoostProfileScreen = () => {
                   {
                     width: `${Math.min(
                       100,
-                      (boostStatus.boost.timeRemaining / boostStatus.boost.duration) * 100
+                      (boostStatus.boost.timeRemaining /
+                        boostStatus.boost.duration) *
+                        100,
                     )}%`,
                   },
                 ]}
@@ -207,7 +226,8 @@ const BoostProfileScreen = () => {
             <Text style={styles.premiumRequiredIcon}>💎</Text>
             <Text style={styles.premiumRequiredTitle}>Premium Required</Text>
             <Text style={styles.premiumRequiredText}>
-              Boost Profile is a premium feature. Upgrade to Premium to boost your profile and get more visibility!
+              Boost Profile is a premium feature. Upgrade to Premium to boost
+              your profile and get more visibility!
             </Text>
             <Pressable
               style={styles.upgradeButton}
@@ -226,7 +246,9 @@ const BoostProfileScreen = () => {
               <>
                 <Text style={styles.boostButtonIcon}>🚀</Text>
                 <Text style={styles.boostButtonText}>
-                  {boostStatus?.hasActiveBoost ? 'Boost Active' : 'Boost My Profile'}
+                  {boostStatus?.hasActiveBoost
+                    ? 'Boost Active'
+                    : 'Boost My Profile'}
                 </Text>
               </>
             )}
@@ -244,9 +266,7 @@ const BoostProfileScreen = () => {
           </View>
           <View style={styles.benefitItem}>
             <Text style={styles.benefitIcon}>👀</Text>
-            <Text style={styles.benefitText}>
-              Get 10x more profile views
-            </Text>
+            <Text style={styles.benefitText}>Get 10x more profile views</Text>
           </View>
           <View style={styles.benefitItem}>
             <Text style={styles.benefitIcon}>❤️</Text>
@@ -256,9 +276,7 @@ const BoostProfileScreen = () => {
           </View>
           <View style={styles.benefitItem}>
             <Text style={styles.benefitIcon}>💬</Text>
-            <Text style={styles.benefitText}>
-              Start more conversations
-            </Text>
+            <Text style={styles.benefitText}>Start more conversations</Text>
           </View>
         </View>
       </ScrollView>
@@ -466,4 +484,3 @@ const styles = StyleSheet.create({
 });
 
 export default BoostProfileScreen;
-

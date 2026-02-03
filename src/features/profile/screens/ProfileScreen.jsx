@@ -38,13 +38,17 @@ const ProfileScreen = () => {
       const userData = await AsyncStorage.getItem('@pryvo_user');
       let currentUserId = null;
 
-      if (userData) {
-        const user = JSON.parse(userData);
-        currentUserId = user.id;
-        setUserId(user.id);
+      if (userData && userData !== 'undefined') {
+        try {
+          const user = JSON.parse(userData);
+          currentUserId = user.id;
+          setUserId(user.id);
+        } catch (e) {
+          console.error('Failed to parse user data in profile screen:', e);
+        }
       } else {
         const token = await AsyncStorage.getItem('@pryvo/token');
-        if (token) {
+        if (token && token !== 'undefined') {
           try {
             const payload = JSON.parse(atob(token.split('.')[1]));
             currentUserId = payload.userId || payload.id;
@@ -83,27 +87,29 @@ const ProfileScreen = () => {
 
     // Check photos
     if (profile.photos?.length > 0 || profile.media?.media?.length > 0) score++;
-    
+
     // Check name (from enriched profile or basicInfo)
     if (profile.name || profile.basicInfo?.firstName) score++;
-    
+
     // Check bio (from enriched profile, profilePrompts.aboutMe.answer, profilePrompts.bio, or basicInfo.bio)
-    const bio = profile.bio || 
-                profile.profilePrompts?.aboutMe?.answer || 
-                profile.profilePrompts?.bio || 
-                profile.basicInfo?.bio;
+    const bio =
+      profile.bio ||
+      profile.profilePrompts?.aboutMe?.answer ||
+      profile.profilePrompts?.bio ||
+      profile.basicInfo?.bio;
     if (bio && bio.trim().length > 0) score++;
-    
+
     // Check interests
     const interests = profile.interests || profile.lifestyle?.interests || [];
     if (interests.length > 0) score++;
-    
+
     // Check age (from enriched profile, personalDetails, or DOB)
-    if (profile.age || profile.personalDetails?.age || profile.basicInfo?.dob) score++;
-    
+    if (profile.age || profile.personalDetails?.age || profile.basicInfo?.dob)
+      score++;
+
     // Check location
     if (profile.basicInfo?.location) score++;
-    
+
     // Check dating preferences
     if (profile.datingPreferences?.whoToDate?.length > 0) score++;
 
@@ -139,7 +145,9 @@ const ProfileScreen = () => {
 
   if (loading && !refreshing) {
     return (
-      <SafeAreaView style={[styles.container, styles.centerContent]} edges={['top', 'left', 'right']}>
+      <SafeAreaView
+        style={[styles.container, styles.centerContent]}
+        edges={['top', 'left', 'right']}>
         <ActivityIndicator size="large" color={colors.primary} />
       </SafeAreaView>
     );
@@ -150,180 +158,182 @@ const ProfileScreen = () => {
       <ScrollView
         style={styles.flex}
         showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          colors={[colors.primary]}
-        />
-      }>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profile</Text>
-        <View style={styles.headerIcons}>
-          <Pressable
-            style={styles.iconButton}
-            onPress={() => navigation.navigate('Settings')}>
-            <Text style={styles.iconText}>⚙️</Text>
-          </Pressable>
-        </View>
-      </View>
-
-      {/* Profile Card - Main */}
-      <Pressable
-        style={styles.profileCard}
-        onPress={() => navigation.navigate('ProfileDetails', {userId})}>
-        <View style={styles.profileHeader}>
-          {/* Photo */}
-          <View style={styles.photoWrapper}>
-            {photos.length > 0 ? (
-              <Image source={{uri: photos[0]}} style={styles.profilePhoto} />
-            ) : (
-              <View style={styles.photoPlaceholder}>
-                <Text style={styles.photoPlaceholderIcon}>👤</Text>
-              </View>
-            )}
-            {completionPercentage < 100 && (
-              <View style={styles.completionBadge}>
-                <Text style={styles.completionText}>{completionPercentage}%</Text>
-              </View>
-            )}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[colors.primary]}
+          />
+        }>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Profile</Text>
+          <View style={styles.headerIcons}>
+            <Pressable
+              style={styles.iconButton}
+              onPress={() => navigation.navigate('Settings')}>
+              <Text style={styles.iconText}>⚙️</Text>
+            </Pressable>
           </View>
+        </View>
 
-          {/* Name and Info */}
-          <View style={styles.profileInfo}>
-            <View style={styles.nameRow}>
-              <Text style={styles.profileName}>
-                {name}
-                {age ? `, ${age}` : ''}
-              </Text>
-              {completionPercentage === 100 && (
-                <View style={styles.verifiedBadge}>
-                  <Text style={styles.verifiedText}>✓</Text>
+        {/* Profile Card - Main */}
+        <Pressable
+          style={styles.profileCard}
+          onPress={() => navigation.navigate('ProfileDetails', {userId})}>
+          <View style={styles.profileHeader}>
+            {/* Photo */}
+            <View style={styles.photoWrapper}>
+              {photos.length > 0 ? (
+                <Image source={{uri: photos[0]}} style={styles.profilePhoto} />
+              ) : (
+                <View style={styles.photoPlaceholder}>
+                  <Text style={styles.photoPlaceholderIcon}>👤</Text>
+                </View>
+              )}
+              {completionPercentage < 100 && (
+                <View style={styles.completionBadge}>
+                  <Text style={styles.completionText}>
+                    {completionPercentage}%
+                  </Text>
                 </View>
               )}
             </View>
-            {location && (
-              <Text style={styles.locationText}>📍 {location}</Text>
-            )}
-            {bio ? (
-              <Text style={styles.bioText} numberOfLines={2}>
-                {bio}
-              </Text>
-            ) : (
-              <Text style={styles.bioPlaceholder}>
-                Add a bio to tell others about yourself
-              </Text>
-            )}
+
+            {/* Name and Info */}
+            <View style={styles.profileInfo}>
+              <View style={styles.nameRow}>
+                <Text style={styles.profileName}>
+                  {name}
+                  {age ? `, ${age}` : ''}
+                </Text>
+                {completionPercentage === 100 && (
+                  <View style={styles.verifiedBadge}>
+                    <Text style={styles.verifiedText}>✓</Text>
+                  </View>
+                )}
+              </View>
+              {location && (
+                <Text style={styles.locationText}>📍 {location}</Text>
+              )}
+              {bio ? (
+                <Text style={styles.bioText} numberOfLines={2}>
+                  {bio}
+                </Text>
+              ) : (
+                <Text style={styles.bioPlaceholder}>
+                  Add a bio to tell others about yourself
+                </Text>
+              )}
+            </View>
           </View>
+
+          {/* Completion Progress Bar */}
+          {completionPercentage < 100 && (
+            <View style={styles.progressSection}>
+              <View style={styles.progressBarContainer}>
+                <View
+                  style={[
+                    styles.progressBar,
+                    {width: `${completionPercentage}%`},
+                  ]}
+                />
+              </View>
+              <Pressable
+                style={styles.completeButton}
+                onPress={() => navigation.navigate('ProfileDetails', {userId})}>
+                <Text style={styles.completeButtonText}>
+                  Complete your profile
+                </Text>
+              </Pressable>
+            </View>
+          )}
+        </Pressable>
+
+        {/* Quick Actions */}
+        <View style={styles.quickActions}>
+          <Pressable
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('ProfileDetails', {userId})}>
+            <View style={styles.actionIcon}>
+              <Text style={styles.actionIconText}>✏️</Text>
+            </View>
+            <Text style={styles.actionText}>Edit Profile</Text>
+          </Pressable>
+          <Pressable
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('Settings')}>
+            <View style={styles.actionIcon}>
+              <Text style={styles.actionIconText}>⚙️</Text>
+            </View>
+            <Text style={styles.actionText}>Settings</Text>
+          </Pressable>
         </View>
 
-        {/* Completion Progress Bar */}
-        {completionPercentage < 100 && (
-          <View style={styles.progressSection}>
-            <View style={styles.progressBarContainer}>
-              <View
-                style={[
-                  styles.progressBar,
-                  {width: `${completionPercentage}%`},
-                ]}
-              />
+        {/* Profile Preview Section */}
+        <View style={styles.previewSection}>
+          <Text style={styles.sectionTitle}>Your Profile</Text>
+
+          {/* Photos Preview */}
+          {photos.length > 0 && (
+            <View style={styles.photosPreview}>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.photosScrollContent}>
+                {photos.slice(0, 6).map((photo, index) => (
+                  <Image
+                    key={index}
+                    source={{uri: photo}}
+                    style={styles.previewPhoto}
+                  />
+                ))}
+              </ScrollView>
             </View>
-            <Pressable
-              style={styles.completeButton}
-              onPress={() => navigation.navigate('ProfileDetails', {userId})}>
-              <Text style={styles.completeButtonText}>
-                Complete your profile
+          )}
+
+          {/* Interests Preview */}
+          {interests.length > 0 && (
+            <View style={styles.interestsPreview}>
+              <Text style={styles.previewLabel}>Interests</Text>
+              <View style={styles.interestsContainer}>
+                {interests.slice(0, 6).map((interest, index) => (
+                  <View key={index} style={styles.interestTag}>
+                    <Text style={styles.interestText}>{interest}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Empty State */}
+          {photos.length === 0 && interests.length === 0 && (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateEmoji}>📸</Text>
+              <Text style={styles.emptyStateText}>
+                Add photos and interests to get more matches
               </Text>
-            </Pressable>
-          </View>
-        )}
-      </Pressable>
-
-      {/* Quick Actions */}
-      <View style={styles.quickActions}>
-        <Pressable
-          style={styles.actionCard}
-          onPress={() => navigation.navigate('ProfileDetails', {userId})}>
-          <View style={styles.actionIcon}>
-            <Text style={styles.actionIconText}>✏️</Text>
-          </View>
-          <Text style={styles.actionText}>Edit Profile</Text>
-        </Pressable>
-        <Pressable
-          style={styles.actionCard}
-          onPress={() => navigation.navigate('Settings')}>
-          <View style={styles.actionIcon}>
-            <Text style={styles.actionIconText}>⚙️</Text>
-          </View>
-          <Text style={styles.actionText}>Settings</Text>
-        </Pressable>
-      </View>
-
-      {/* Profile Preview Section */}
-      <View style={styles.previewSection}>
-        <Text style={styles.sectionTitle}>Your Profile</Text>
-        
-        {/* Photos Preview */}
-        {photos.length > 0 && (
-          <View style={styles.photosPreview}>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.photosScrollContent}>
-              {photos.slice(0, 6).map((photo, index) => (
-                <Image
-                  key={index}
-                  source={{uri: photo}}
-                  style={styles.previewPhoto}
-                />
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* Interests Preview */}
-        {interests.length > 0 && (
-          <View style={styles.interestsPreview}>
-            <Text style={styles.previewLabel}>Interests</Text>
-            <View style={styles.interestsContainer}>
-              {interests.slice(0, 6).map((interest, index) => (
-                <View key={index} style={styles.interestTag}>
-                  <Text style={styles.interestText}>{interest}</Text>
-                </View>
-              ))}
+              <Pressable
+                style={styles.emptyStateButton}
+                onPress={() => navigation.navigate('ProfileDetails', {userId})}>
+                <Text style={styles.emptyStateButtonText}>Get Started</Text>
+              </Pressable>
             </View>
-          </View>
-        )}
+          )}
+        </View>
 
-        {/* Empty State */}
-        {photos.length === 0 && interests.length === 0 && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateEmoji}>📸</Text>
-            <Text style={styles.emptyStateText}>
-              Add photos and interests to get more matches
-            </Text>
-            <Pressable
-              style={styles.emptyStateButton}
-              onPress={() => navigation.navigate('ProfileDetails', {userId})}>
-              <Text style={styles.emptyStateButtonText}>Get Started</Text>
-            </Pressable>
-          </View>
-        )}
-      </View>
+        {/* Help Section */}
+        <Pressable
+          style={styles.helpCard}
+          onPress={() => navigation.navigate('HelpCentre')}>
+          <Text style={styles.helpTitle}>🆘 Need Help?</Text>
+          <Text style={styles.helpText}>
+            Share your concern or report an issue. We're here to help.
+          </Text>
+        </Pressable>
 
-      {/* Help Section */}
-      <Pressable
-        style={styles.helpCard}
-        onPress={() => navigation.navigate('HelpCentre')}>
-        <Text style={styles.helpTitle}>🆘 Need Help?</Text>
-        <Text style={styles.helpText}>
-          Share your concern or report an issue. We're here to help.
-        </Text>
-      </Pressable>
-
-      <View style={{height: spacing.xl}} />
-    </ScrollView>
+        <View style={{height: spacing.xl}} />
+      </ScrollView>
     </SafeAreaView>
   );
 };

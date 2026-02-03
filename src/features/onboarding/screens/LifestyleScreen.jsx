@@ -56,14 +56,14 @@ const LifestyleScreen = () => {
       // Get user ID from storage
       const userData = await AsyncStorage.getItem('@pryvo_user');
       let userId = null;
-      
-      if (userData) {
+
+      if (userData && userData !== 'undefined') {
         const user = JSON.parse(userData);
         userId = user.id;
       } else {
         // Try to get from token (decode JWT)
         const token = await AsyncStorage.getItem('@pryvo/token');
-        if (token) {
+        if (token && token !== 'undefined') {
           try {
             const payload = JSON.parse(atob(token.split('.')[1]));
             userId = payload.userId || payload.id;
@@ -81,9 +81,9 @@ const LifestyleScreen = () => {
 
       // Save lifestyle to backend
       await saveLifestyle({...lifestyle, userId});
-      
+
       console.log('Lifestyle saved successfully');
-    navigation.navigate(AppRoute.ProfilePrompts);
+      navigation.navigate(AppRoute.ProfilePrompts);
     } catch (error) {
       console.error('Error saving lifestyle:', error);
       Alert.alert(
@@ -144,14 +144,17 @@ const LifestyleScreen = () => {
         religiousOptions,
       )}
 
-      <Pressable 
-        style={[styles.primaryButton, isSubmitting && styles.primaryButtonDisabled]} 
+      <Pressable
+        style={[
+          styles.primaryButton,
+          isSubmitting && styles.primaryButtonDisabled,
+        ]}
         onPress={handleContinue}
         disabled={isSubmitting}>
         {isSubmitting ? (
           <ActivityIndicator color={colors.surface} />
         ) : (
-        <Text style={styles.primaryButtonText}>Continue</Text>
+          <Text style={styles.primaryButtonText}>Continue</Text>
         )}
       </Pressable>
     </ScrollView>
@@ -227,4 +230,3 @@ const styles = StyleSheet.create({
 });
 
 export default LifestyleScreen;
-

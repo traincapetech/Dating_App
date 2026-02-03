@@ -67,7 +67,7 @@ const ProfilePromptsScreen = () => {
         'My love language is',
         'The key to my heart is',
         'I geek out on',
-        'If loving is wrong, I don\'t want to be right',
+        "If loving is wrong, I don't want to be right",
       ],
     },
   };
@@ -92,14 +92,14 @@ const ProfilePromptsScreen = () => {
       // Get user ID from storage
       const userData = await AsyncStorage.getItem('@pryvo_user');
       let userId = null;
-      
-      if (userData) {
+
+      if (userData && userData !== 'undefined') {
         const user = JSON.parse(userData);
         userId = user.id;
       } else {
         // Try to get from token (decode JWT)
         const token = await AsyncStorage.getItem('@pryvo/token');
-        if (token) {
+        if (token && token !== 'undefined') {
           try {
             const payload = JSON.parse(atob(token.split('.')[1]));
             userId = payload.userId || payload.id;
@@ -126,9 +126,9 @@ const ProfilePromptsScreen = () => {
 
       // Save profile prompts to backend
       await saveProfilePrompts(promptsData);
-      
+
       console.log('Profile prompts saved successfully');
-    navigation.navigate(AppRoute.MediaUpload);
+      navigation.navigate(AppRoute.MediaUpload);
     } catch (error) {
       console.error('Error saving profile prompts:', error);
       Alert.alert(
@@ -212,14 +212,17 @@ const ProfilePromptsScreen = () => {
         </View>
       )}
 
-      <Pressable 
-        style={[styles.primaryButton, isSubmitting && styles.primaryButtonDisabled]} 
+      <Pressable
+        style={[
+          styles.primaryButton,
+          isSubmitting && styles.primaryButtonDisabled,
+        ]}
         onPress={handleContinue}
         disabled={isSubmitting}>
         {isSubmitting ? (
           <ActivityIndicator color={colors.surface} />
         ) : (
-        <Text style={styles.primaryButtonText}>Continue</Text>
+          <Text style={styles.primaryButtonText}>Continue</Text>
         )}
       </Pressable>
     </ScrollView>
@@ -343,4 +346,3 @@ const styles = StyleSheet.create({
 });
 
 export default ProfilePromptsScreen;
-

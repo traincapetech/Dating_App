@@ -75,14 +75,14 @@ const PersonalDetailsScreen = () => {
       // Get user ID from storage
       const userData = await AsyncStorage.getItem('@pryvo_user');
       let userId = null;
-      
-      if (userData) {
+
+      if (userData && userData !== 'undefined') {
         const user = JSON.parse(userData);
         userId = user.id;
       } else {
         // Try to get from token (decode JWT)
         const token = await AsyncStorage.getItem('@pryvo/token');
-        if (token) {
+        if (token && token !== 'undefined') {
           try {
             const payload = JSON.parse(atob(token.split('.')[1]));
             userId = payload.userId || payload.id;
@@ -100,9 +100,9 @@ const PersonalDetailsScreen = () => {
 
       // Save personal details to backend
       await savePersonalDetails({...details, userId});
-      
+
       console.log('Personal details saved successfully');
-    navigation.navigate(AppRoute.Lifestyle);
+      navigation.navigate(AppRoute.Lifestyle);
     } catch (error) {
       console.error('Error saving personal details:', error);
       Alert.alert(
@@ -134,7 +134,9 @@ const PersonalDetailsScreen = () => {
               styles.optionButton,
               details.familyPlans === option && styles.optionButtonSelected,
             ]}
-            onPress={() => setDetails(prev => ({...prev, familyPlans: option}))}>
+            onPress={() =>
+              setDetails(prev => ({...prev, familyPlans: option}))
+            }>
             <Text
               style={[
                 styles.optionText,
@@ -155,7 +157,9 @@ const PersonalDetailsScreen = () => {
               styles.optionButton,
               details.hasChildren === option && styles.optionButtonSelected,
             ]}
-            onPress={() => setDetails(prev => ({...prev, hasChildren: option}))}>
+            onPress={() =>
+              setDetails(prev => ({...prev, hasChildren: option}))
+            }>
             <Text
               style={[
                 styles.optionText,
@@ -219,7 +223,9 @@ const PersonalDetailsScreen = () => {
         <Text style={styles.sectionTitle}>Where is your hometown?</Text>
         <TextInput
           value={details.hometown}
-          onChangeText={value => setDetails(prev => ({...prev, hometown: value}))}
+          onChangeText={value =>
+            setDetails(prev => ({...prev, hometown: value}))
+          }
           placeholder="Enter your hometown"
           style={styles.input}
           placeholderTextColor={colors.textSecondary}
@@ -243,7 +249,9 @@ const PersonalDetailsScreen = () => {
         <Text style={styles.sectionTitle}>What's your job title?</Text>
         <TextInput
           value={details.jobTitle}
-          onChangeText={value => setDetails(prev => ({...prev, jobTitle: value}))}
+          onChangeText={value =>
+            setDetails(prev => ({...prev, jobTitle: value}))
+          }
           placeholder="Enter your job title"
           style={styles.input}
           placeholderTextColor={colors.textSecondary}
@@ -286,14 +294,17 @@ const PersonalDetailsScreen = () => {
         ))}
       </View>
 
-      <Pressable 
-        style={[styles.primaryButton, isSubmitting && styles.primaryButtonDisabled]} 
+      <Pressable
+        style={[
+          styles.primaryButton,
+          isSubmitting && styles.primaryButtonDisabled,
+        ]}
         onPress={handleContinue}
         disabled={isSubmitting}>
         {isSubmitting ? (
           <ActivityIndicator color={colors.surface} />
         ) : (
-        <Text style={styles.primaryButtonText}>Continue</Text>
+          <Text style={styles.primaryButtonText}>Continue</Text>
         )}
       </Pressable>
     </ScrollView>
@@ -406,4 +417,3 @@ const styles = StyleSheet.create({
 });
 
 export default PersonalDetailsScreen;
-

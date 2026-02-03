@@ -1,10 +1,54 @@
-import messaging from '@react-native-firebase/messaging';
-import {Platform, PermissionsAndroid, Alert} from 'react-native';
+import {Platform, PermissionsAndroid, Alert, NativeModules} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import apiClient from '../api/client.js';
 
 const NOTIFICATION_TOKEN_KEY = '@pryvo_notification_token';
 const NOTIFICATION_PERMISSION_KEY = '@pryvo_notification_permission';
+
+// Helper to check if Firebase native module is available
+const isFirebaseAvailable = () => {
+  try {
+    if (Platform.OS === 'web') return false;
+    // Check if the native module is actually linked and has expected properties
+    const module = NativeModules.RNFBAppModule;
+    return !!(
+      module &&
+      (module.registerContext || module.initializeFirebaseApp)
+    );
+  } catch (error) {
+    return false;
+  }
+};
+
+// Hardcoded AuthorizationStatus to avoid accessing messaging.AuthorizationStatus when missing
+const AuthorizationStatus = {
+  NOT_DETERMINED: -1,
+  DENIED: 0,
+  AUTHORIZED: 1,
+  PROVISIONAL: 2,
+};
+
+// Safe wrapper for messaging()
+const getMessaging = () => {
+  if (!isFirebaseAvailable()) {
+    // Return a mock object to prevent crashes
+    return {
+      isMock: true,
+      requestPermission: async () => AuthorizationStatus.NOT_DETERMINED,
+      hasPermission: async () => AuthorizationStatus.NOT_DETERMINED,
+      getToken: async () => null,
+      deleteToken: async () => {},
+      onMessage: () => () => {},
+      onNotificationOpenedApp: () => {},
+      getInitialNotification: async () => null,
+      subscribeToTopic: async () => {},
+      unsubscribeFromTopic: async () => {},
+      AuthorizationStatus, // Include status enum in mock
+    };
+  }
+  // Lazy require to prevent fatal error upon top-level import
+  return require('@react-native-firebase/messaging').default();
+};
 
 // Request notification permissions
 export async function requestNotificationPermission() {
@@ -21,10 +65,12 @@ export async function requestNotificationPermission() {
       }
     }
 
-    const authStatus = await messaging().requestPermission();
+    if (!isFirebaseAvailable()) return false;
+
+    const authStatus = await getMessaging().requestPermission();
     const enabled =
-      authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-      authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+      authStatus === AuthorizationStatus.AUTHORIZED ||
+      authStatus === AuthorizationStatus.PROVISIONAL;
 
     await AsyncStorage.setItem(
       NOTIFICATION_PERMISSION_KEY,
@@ -41,10 +87,12 @@ export async function requestNotificationPermission() {
 // Check if notification permission is granted
 export async function checkNotificationPermission() {
   try {
-    const authStatus = await messaging().hasPermission();
+    if (!isFirebaseAvailable()) return false;
+
+    const authStatus = await getMessaging().hasPermission();
     return (
-      authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-      authStatus === messaging.AuthorizationStatus.PROVISIONAL
+      authStatus === AuthorizationStatus.AUTHORIZED ||
+      authStatus === AuthorizationStatus.PROVISIONAL
     );
   } catch (error) {
     console.error('Error checking notification permission:', error);
@@ -68,8 +116,8 @@ export async function getFCMToken() {
     }
 
     // Get FCM token
-    const token = await messaging().getToken();
-    
+    const token = await getMessaging().getToken();
+
     if (token) {
       await AsyncStorage.setItem(NOTIFICATION_TOKEN_KEY, token);
       return token;
@@ -85,7 +133,7 @@ export async function getFCMToken() {
 // Delete FCM token (when user disables notifications)
 export async function deleteFCMToken() {
   try {
-    await messaging().deleteToken();
+    await getMessaging().deleteToken();
     await AsyncStorage.removeItem(NOTIFICATION_TOKEN_KEY);
     await AsyncStorage.setItem(NOTIFICATION_PERMISSION_KEY, 'denied');
     return true;
@@ -98,34 +146,36 @@ export async function deleteFCMToken() {
 // Setup notification handlers
 export function setupNotificationHandlers(navigation) {
   // Handle foreground notifications
-  const unsubscribeForeground = messaging().onMessage(async remoteMessage => {
-    console.log('Foreground notification received:', remoteMessage);
-    
-    // You can show a local notification or update UI here
-    Alert.alert(
-      remoteMessage.notification?.title || 'New Notification',
-      remoteMessage.notification?.body || '',
-      [
-        {
-          text: 'View',
-          onPress: () => {
-            // Navigate to relevant screen based on notification data
-            if (remoteMessage.data?.type === 'message') {
-              navigation?.navigate('Messages');
-            } else if (remoteMessage.data?.type === 'match') {
-              navigation?.navigate('HomeTabs');
-            }
+  const unsubscribeForeground = getMessaging().onMessage(
+    async remoteMessage => {
+      console.log('Foreground notification received:', remoteMessage);
+
+      // You can show a local notification or update UI here
+      Alert.alert(
+        remoteMessage.notification?.title || 'New Notification',
+        remoteMessage.notification?.body || '',
+        [
+          {
+            text: 'View',
+            onPress: () => {
+              // Navigate to relevant screen based on notification data
+              if (remoteMessage.data?.type === 'message') {
+                navigation?.navigate('Messages');
+              } else if (remoteMessage.data?.type === 'match') {
+                navigation?.navigate('HomeTabs');
+              }
+            },
           },
-        },
-        {text: 'OK'},
-      ],
-    );
-  });
+          {text: 'OK'},
+        ],
+      );
+    },
+  );
 
   // Handle background/quit state notifications
-  messaging().onNotificationOpenedApp(remoteMessage => {
+  getMessaging().onNotificationOpenedApp(remoteMessage => {
     console.log('Notification opened app:', remoteMessage);
-    
+
     // Navigate to relevant screen
     if (remoteMessage.data?.type === 'message') {
       navigation?.navigate('Messages');
@@ -135,7 +185,7 @@ export function setupNotificationHandlers(navigation) {
   });
 
   // Check if app was opened from a quit state via notification
-  messaging()
+  getMessaging()
     .getInitialNotification()
     .then(remoteMessage => {
       if (remoteMessage) {
@@ -156,7 +206,7 @@ export function setupNotificationHandlers(navigation) {
 async function getUserId() {
   try {
     const userData = await AsyncStorage.getItem('@pryvo_user');
-    if (userData) {
+    if (userData && userData !== 'undefined') {
       const user = JSON.parse(userData);
       return user.id;
     }
@@ -170,7 +220,7 @@ async function getUserId() {
 export async function enableNotifications(userId = null) {
   try {
     const hasPermission = await requestNotificationPermission();
-    
+
     if (!hasPermission) {
       throw new Error(
         'Notification permission denied. Please enable in device settings.',
@@ -178,7 +228,7 @@ export async function enableNotifications(userId = null) {
     }
 
     const token = await getFCMToken();
-    
+
     if (!token) {
       throw new Error('Failed to get notification token');
     }
@@ -211,10 +261,10 @@ export async function enableNotifications(userId = null) {
 export async function disableNotifications(userId = null) {
   try {
     await deleteFCMToken();
-    
+
     // Get userId if not provided
     const finalUserId = userId || (await getUserId());
-    
+
     // Notify backend to remove token
     if (finalUserId) {
       try {

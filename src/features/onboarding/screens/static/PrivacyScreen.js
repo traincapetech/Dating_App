@@ -147,8 +147,7 @@ const PrivacyScreen = () => {
           If you have questions, concerns, or requests regarding this Privacy Policy or our data practices, please contact us at:
         </Text>
         <Text style={styles.contactInfo}>
-          Email: privacy@pryvo.com{'\n'}
-          Support: support@pryvo.com{'\n'}
+          Email: pryvo@traincapetech.in{'\n'}         
           Help Centre: Available in-app
         </Text>
 

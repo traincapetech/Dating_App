@@ -259,7 +259,6 @@ const TermsScreen = () => {
         </Text>
         <Text style={styles.contactInfo}>
           Email: pryvo@traincapetech.in{'\n'}
-          Legal: legal@traincapetech.in{'\n'}
           Help Centre: Available in-app
         </Text>
 

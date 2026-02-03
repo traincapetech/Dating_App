@@ -11,6 +11,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {colors, typography, spacing} from '../../../theme';
@@ -26,15 +27,15 @@ const DeleteAccountScreen = () => {
 
   const validate = () => {
     const newErrors = {};
-    
+
     if (!password) {
       newErrors.password = 'Password is required to confirm deletion';
     }
-    
+
     if (confirmText.toLowerCase() !== 'delete') {
       newErrors.confirmText = 'Please type "delete" to confirm';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -56,14 +57,14 @@ const DeleteAccountScreen = () => {
             setIsDeleting(true);
             try {
               const userData = await AsyncStorage.getItem('@pryvo_user');
-              if (!userData) {
+              if (!userData || userData === 'undefined') {
                 Alert.alert('Error', 'User not found. Please sign in again.');
                 navigation.goBack();
                 return;
               }
 
               const user = JSON.parse(userData);
-              
+
               // Note: The backend delete endpoint doesn't require password verification
               // In production, you might want to add password verification
               await deleteAccount(user.id);
@@ -78,7 +79,7 @@ const DeleteAccountScreen = () => {
 
               Alert.alert(
                 'Account Deleted',
-                'Your account has been permanently deleted. We\'re sorry to see you go!',
+                "Your account has been permanently deleted. We're sorry to see you go!",
                 [
                   {
                     text: 'OK',
@@ -89,121 +90,126 @@ const DeleteAccountScreen = () => {
                       });
                     },
                   },
-                ]
+                ],
               );
             } catch (error) {
               console.error('Error deleting account:', error);
               Alert.alert(
                 'Error',
-                error.message || 'Failed to delete account. Please try again or contact support.'
+                error.message ||
+                  'Failed to delete account. Please try again or contact support.',
               );
             } finally {
               setIsDeleting(false);
             }
           },
         },
-      ]
+      ],
     );
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Text style={styles.backText}>←</Text>
-          </Pressable>
-          <Text style={styles.headerTitle}>Delete Account</Text>
-          <View style={{width: 40}} />
-        </View>
+    <SafeAreaView style={styles.flex} edges={['top', 'left', 'right']}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={styles.container}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Pressable
+              onPress={() => navigation.goBack()}
+              style={styles.backButton}>
+              <Text style={styles.backText}>←</Text>
+            </Pressable>
+            <Text style={styles.headerTitle}>Delete Account</Text>
+            <View style={{width: 40}} />
+          </View>
 
-        <ScrollView
-          contentContainerStyle={styles.content}
-          showsVerticalScrollIndicator={false}>
-          <View style={styles.warningBox}>
-            <Text style={styles.warningIcon}>⚠️</Text>
-            <Text style={styles.warningTitle}>This action is permanent</Text>
-            <Text style={styles.warningText}>
-              Deleting your account will permanently remove:
-            </Text>
-            <View style={styles.listContainer}>
-              <Text style={styles.listItem}>• Your profile and photos</Text>
-              <Text style={styles.listItem}>• All your matches</Text>
-              <Text style={styles.listItem}>• All your messages</Text>
-              <Text style={styles.listItem}>• Your likes and preferences</Text>
-              <Text style={styles.listItem}>• All other account data</Text>
+          <ScrollView
+            contentContainerStyle={styles.content}
+            showsVerticalScrollIndicator={false}>
+            <View style={styles.warningBox}>
+              <Text style={styles.warningIcon}>⚠️</Text>
+              <Text style={styles.warningTitle}>This action is permanent</Text>
+              <Text style={styles.warningText}>
+                Deleting your account will permanently remove:
+              </Text>
+              <View style={styles.listContainer}>
+                <Text style={styles.listItem}>• Your profile and photos</Text>
+                <Text style={styles.listItem}>• All your matches</Text>
+                <Text style={styles.listItem}>• All your messages</Text>
+                <Text style={styles.listItem}>
+                  • Your likes and preferences
+                </Text>
+                <Text style={styles.listItem}>• All other account data</Text>
+              </View>
+              <Text style={styles.warningText}>
+                This cannot be undone. If you're sure, please continue below.
+              </Text>
             </View>
-            <Text style={styles.warningText}>
-              This cannot be undone. If you're sure, please continue below.
-            </Text>
-          </View>
 
-          <View style={styles.fieldset}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              value={password}
-              onChangeText={value => {
-                setPassword(value);
-                setErrors(prev => ({...prev, password: undefined}));
-              }}
-              placeholder="Enter your password"
-              secureTextEntry
-              style={[styles.input, errors.password && styles.inputError]}
-              placeholderTextColor={colors.textSecondary}
-              editable={!isDeleting}
-            />
-            {errors.password && (
-              <Text style={styles.errorText}>{errors.password}</Text>
-            )}
-          </View>
+            <View style={styles.fieldset}>
+              <Text style={styles.label}>Password</Text>
+              <TextInput
+                value={password}
+                onChangeText={value => {
+                  setPassword(value);
+                  setErrors(prev => ({...prev, password: undefined}));
+                }}
+                placeholder="Enter your password"
+                secureTextEntry
+                style={[styles.input, errors.password && styles.inputError]}
+                placeholderTextColor={colors.textSecondary}
+                editable={!isDeleting}
+              />
+              {errors.password && (
+                <Text style={styles.errorText}>{errors.password}</Text>
+              )}
+            </View>
 
-          <View style={styles.fieldset}>
-            <Text style={styles.label}>
-              Type "delete" to confirm
-            </Text>
-            <TextInput
-              value={confirmText}
-              onChangeText={value => {
-                setConfirmText(value);
-                setErrors(prev => ({...prev, confirmText: undefined}));
-              }}
-              placeholder="Type 'delete'"
-              style={[styles.input, errors.confirmText && styles.inputError]}
-              placeholderTextColor={colors.textSecondary}
-              autoCapitalize="none"
-              editable={!isDeleting}
-            />
-            {errors.confirmText && (
-              <Text style={styles.errorText}>{errors.confirmText}</Text>
-            )}
-          </View>
+            <View style={styles.fieldset}>
+              <Text style={styles.label}>Type "delete" to confirm</Text>
+              <TextInput
+                value={confirmText}
+                onChangeText={value => {
+                  setConfirmText(value);
+                  setErrors(prev => ({...prev, confirmText: undefined}));
+                }}
+                placeholder="Type 'delete'"
+                style={[styles.input, errors.confirmText && styles.inputError]}
+                placeholderTextColor={colors.textSecondary}
+                autoCapitalize="none"
+                editable={!isDeleting}
+              />
+              {errors.confirmText && (
+                <Text style={styles.errorText}>{errors.confirmText}</Text>
+              )}
+            </View>
 
-          <Pressable
-            style={[
-              styles.deleteButton,
-              isDeleting && styles.deleteButtonDisabled,
-            ]}
-            onPress={handleDelete}
-            disabled={isDeleting}>
-            {isDeleting ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.deleteButtonText}>Delete My Account</Text>
-            )}
-          </Pressable>
+            <Pressable
+              style={[
+                styles.deleteButton,
+                isDeleting && styles.deleteButtonDisabled,
+              ]}
+              onPress={handleDelete}
+              disabled={isDeleting}>
+              {isDeleting ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.deleteButtonText}>Delete My Account</Text>
+              )}
+            </Pressable>
 
-          <Pressable
-            style={styles.cancelButton}
-            onPress={() => navigation.goBack()}
-            disabled={isDeleting}>
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </Pressable>
-        </ScrollView>
-      </View>
-    </KeyboardAvoidingView>
+            <Pressable
+              style={styles.cancelButton}
+              onPress={() => navigation.goBack()}
+              disabled={isDeleting}>
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </Pressable>
+          </ScrollView>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
@@ -216,13 +222,13 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    height: 56,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
     justifyContent: 'space-between',
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#f0f0f0',
     backgroundColor: colors.background,
   },
   backButton: {
@@ -331,4 +337,3 @@ const styles = StyleSheet.create({
 });
 
 export default DeleteAccountScreen;
-

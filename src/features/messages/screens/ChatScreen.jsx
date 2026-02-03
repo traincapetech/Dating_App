@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, {useEffect, useState, useRef, useCallback} from 'react';
 import {
   View,
   Text,
@@ -16,40 +16,40 @@ import {
 } from 'react-native';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { launchImageLibrary } from 'react-native-image-picker';
+import {launchImageLibrary} from 'react-native-image-picker';
 import EmojiPicker from 'rn-emoji-keyboard';
 import GifPicker from '../../../components/chat/GifPicker';
 import ScreenshotPrevent from 'react-native-screenshot-prevent';
-import { colors, typography, spacing } from '../../../theme';
-import { 
-  initSocket, 
-  joinChatRoom, 
-  leaveChatRoom, 
-  emitTyping, 
+import {colors, typography, spacing} from '../../../theme';
+import {
+  initSocket,
+  joinChatRoom,
+  leaveChatRoom,
+  emitTyping,
   emitStopTyping,
-  emitMessageSeen 
+  emitMessageSeen,
 } from '../../../services/socket';
-import { 
-  fetchMessages, 
-  sendMessageApi, 
+import {
+  fetchMessages,
+  sendMessageApi,
   markMessagesAsSeen,
   uploadChatMedia,
   blockAndReportUser,
   checkIfBlocked,
-  unmatchUser
+  unmatchUser,
 } from '../../../services/chatService';
 
 const REPORT_REASONS = [
-  { id: 'harassment', label: 'Harassment' },
-  { id: 'spam', label: 'Spam' },
-  { id: 'inappropriate_content', label: 'Inappropriate Content' },
-  { id: 'fake_profile', label: 'Fake Profile' },
-  { id: 'underage', label: 'Underage User' },
-  { id: 'other', label: 'Other' },
+  {id: 'harassment', label: 'Harassment'},
+  {id: 'spam', label: 'Spam'},
+  {id: 'inappropriate_content', label: 'Inappropriate Content'},
+  {id: 'fake_profile', label: 'Fake Profile'},
+  {id: 'underage', label: 'Underage User'},
+  {id: 'other', label: 'Other'},
 ];
 
-const ChatScreen = ({ route, navigation }) => {
-  const { matchId, theirId, theirName } = route.params || {};
+const ChatScreen = ({route, navigation}) => {
+  const {matchId, theirId, theirName} = route.params || {};
   const [currentUserId, setCurrentUserId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
@@ -74,7 +74,7 @@ const ChatScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     if (!matchId) {
-      console.log("⚠ No matchId → Skipping chat initialization");
+      console.log('⚠ No matchId → Skipping chat initialization');
       return;
     }
 
@@ -103,98 +103,97 @@ const ChatScreen = ({ route, navigation }) => {
   const initChat = async () => {
     try {
       const userData = await AsyncStorage.getItem('@pryvo_user');
-      if (!userData) {
-        navigation.goBack();
-        return;
-      }
-      
-      const user = JSON.parse(userData);
-      setCurrentUserId(user.id);
+      if (userData && userData !== 'undefined') {
+        const user = JSON.parse(userData);
+        setCurrentUserId(user.id);
 
-      // Check if blocked
-      const blockStatus = await checkIfBlocked(user.id, theirId);
-      if (blockStatus.isBlocked) {
-        setIsBlocked(true);
-        setLoading(false);
-        return;
-      }
+        // Check if blocked
+        const blockStatus = await checkIfBlocked(user.id, theirId);
+        if (blockStatus.isBlocked) {
+          setIsBlocked(true);
+          setLoading(false);
+          return;
+        }
 
-      // Load existing messages
-      const data = await fetchMessages(matchId, user.id);
-      setMessages(data || []);
+        // Load existing messages
+        const data = await fetchMessages(matchId, user.id);
+        setMessages(data || []);
 
-      // Mark messages as seen
-      const unseenMessages = (data || [])
-        .filter(m => m.receiverId === user.id && m.status !== 'seen')
-        .map(m => m._id);
-      
-      if (unseenMessages.length > 0) {
-        await markMessagesAsSeen(matchId, user.id);
-      }
+        // Mark messages as seen
+        const unseenMessages = (data || [])
+          .filter(m => m.receiverId === user.id && m.status !== 'seen')
+          .map(m => m._id);
 
-      // Init socket
-      const socket = initSocket(user.id);
-      socketRef.current = socket;
+        if (unseenMessages.length > 0) {
+          await markMessagesAsSeen(matchId, user.id);
+        }
 
-      // Join chat room
-      joinChatRoom(matchId, user.id);
+        // Init socket
+        const socket = initSocket(user.id);
+        socketRef.current = socket;
 
-      // Listen for new messages
-      socket.on('receiveMessage', (msg) => {
-        if (msg.matchId === matchId) {
-          setMessages((prev) => {
-            // Avoid duplicates
-            if (prev.some(m => m._id === msg._id)) return prev;
-            return [...prev, msg];
-          });
-          scrollToBottom();
+        // Join chat room
+        joinChatRoom(matchId, user.id);
 
-          // Mark as seen immediately if it's for us
-          if (msg.receiverId === user.id) {
-            emitMessageSeen(matchId, user.id, [msg._id]);
+        // Listen for new messages
+        socket.on('receiveMessage', msg => {
+          if (msg.matchId === matchId) {
+            setMessages(prev => {
+              // Avoid duplicates
+              if (prev.some(m => m._id === msg._id)) return prev;
+              return [...prev, msg];
+            });
+            scrollToBottom();
+
+            // Mark as seen immediately if it's for us
+            if (msg.receiverId === user.id) {
+              emitMessageSeen(matchId, user.id, [msg._id]);
+            }
           }
-        }
-      });
+        });
 
-      // Listen for typing indicator
-      socket.on('typing', ({ userId }) => {
-        if (userId !== user.id) {
-          setTyping(true);
-          if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-          typingTimeoutRef.current = setTimeout(() => setTyping(false), 3000);
-        }
-      });
+        // Listen for typing indicator
+        socket.on('typing', ({userId}) => {
+          if (userId !== user.id) {
+            setTyping(true);
+            if (typingTimeoutRef.current)
+              clearTimeout(typingTimeoutRef.current);
+            typingTimeoutRef.current = setTimeout(() => setTyping(false), 3000);
+          }
+        });
 
-      socket.on('stopTyping', ({ userId }) => {
-        if (userId !== user.id) {
-          setTyping(false);
-        }
-      });
+        socket.on('stopTyping', ({userId}) => {
+          if (userId !== user.id) {
+            setTyping(false);
+          }
+        });
 
-      // Listen for messages seen
-      socket.on('messagesSeen', ({ userId, messageIds, seenAt }) => {
-        if (userId !== user.id) {
-          setMessages((prev) => 
-            prev.map(m => 
-              messageIds.includes(m._id) 
-                ? { ...m, status: 'seen', seenAt } 
-                : m
-            )
+        // Listen for messages seen
+        socket.on('messagesSeen', ({userId, messageIds, seenAt}) => {
+          if (userId !== user.id) {
+            setMessages(prev =>
+              prev.map(m =>
+                messageIds.includes(m._id) ? {...m, status: 'seen', seenAt} : m,
+              ),
+            );
+          }
+        });
+
+        socket.on('messageStatusUpdate', ({messageId, status}) => {
+          setMessages(prev =>
+            prev.map(m => (m._id === messageId ? {...m, status} : m)),
           );
-        }
-      });
-
-      // Listen for message status updates
-      socket.on('messageStatusUpdate', ({ messageId, status }) => {
-        setMessages((prev) => 
-          prev.map(m => m._id === messageId ? { ...m, status } : m)
-        );
-      });
-
+        });
+      } else {
+        navigation.goBack();
+      }
     } catch (e) {
       console.log('Error initializing chat', e);
       if (e?.status === 403) {
-        Alert.alert('Access Denied', e.message || 'You cannot access this chat');
+        Alert.alert(
+          'Access Denied',
+          e.message || 'You cannot access this chat',
+        );
         navigation.goBack();
       }
     } finally {
@@ -205,13 +204,14 @@ const ChatScreen = ({ route, navigation }) => {
   const scrollToBottom = useCallback(() => {
     if (flatListRef.current && messages.length > 0) {
       setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
+        flatListRef.current?.scrollToEnd({animated: true});
       }, 100);
     }
   }, [messages.length]);
 
   const handleSend = async () => {
-    if ((!inputText.trim() && !uploadingMedia) || !currentUserId || sending) return;
+    if ((!inputText.trim() && !uploadingMedia) || !currentUserId || sending)
+      return;
 
     const text = inputText.trim();
     setInputText('');
@@ -225,9 +225,9 @@ const ChatScreen = ({ route, navigation }) => {
         text,
       });
 
-      setMessages((prev) => [...prev, saved]);
+      setMessages(prev => [...prev, saved]);
       scrollToBottom();
-      
+
       // Stop typing indicator
       emitStopTyping(matchId, currentUserId);
     } catch (e) {
@@ -252,12 +252,16 @@ const ChatScreen = ({ route, navigation }) => {
       if (result.didCancel || !result.assets?.[0]?.base64) return;
 
       setUploadingMedia(true);
-      
+
       const imageBase64 = result.assets[0].base64;
-      
+
       // Upload image
-      const uploadResult = await uploadChatMedia(imageBase64, currentUserId, matchId);
-      
+      const uploadResult = await uploadChatMedia(
+        imageBase64,
+        currentUserId,
+        matchId,
+      );
+
       if (uploadResult.success && uploadResult.mediaUrl) {
         // Send message with media
         const saved = await sendMessageApi({
@@ -269,7 +273,7 @@ const ChatScreen = ({ route, navigation }) => {
           mediaType: 'image',
         });
 
-        setMessages((prev) => [...prev, saved]);
+        setMessages(prev => [...prev, saved]);
         scrollToBottom();
       } else {
         throw new Error('Failed to upload image');
@@ -282,7 +286,7 @@ const ChatScreen = ({ route, navigation }) => {
     }
   };
 
-  const handleSelectGif = async (gifUrl) => {
+  const handleSelectGif = async gifUrl => {
     if (!currentUserId || sending) return;
 
     setSending(true);
@@ -297,7 +301,7 @@ const ChatScreen = ({ route, navigation }) => {
         mediaType: 'gif',
       });
 
-      setMessages((prev) => [...prev, saved]);
+      setMessages(prev => [...prev, saved]);
       scrollToBottom();
       setShowGifPicker(false);
     } catch (e) {
@@ -308,14 +312,14 @@ const ChatScreen = ({ route, navigation }) => {
     }
   };
 
-  const handleEmojiSelect = (emoji) => {
+  const handleEmojiSelect = emoji => {
     setInputText(prev => prev + emoji.emoji);
     setShowEmojiPicker(false);
   };
 
-  const onChangeText = (text) => {
+  const onChangeText = text => {
     setInputText(text);
-    
+
     // Throttle typing events (max once per second)
     const now = Date.now();
     if (now - lastTypingEmitRef.current > 1000) {
@@ -349,7 +353,7 @@ const ChatScreen = ({ route, navigation }) => {
       Alert.alert(
         'User Blocked',
         'The user has been blocked and reported. You will no longer receive messages from them.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
+        [{text: 'OK', onPress: () => navigation.goBack()}],
       );
     } catch (e) {
       console.log('Block and report error', e);
@@ -360,9 +364,9 @@ const ChatScreen = ({ route, navigation }) => {
   const handleUnmatch = async () => {
     Alert.alert(
       'Unmatch',
-      'Are you sure you want to unmatch? This will remove this conversation and you won\'t be able to message each other anymore.',
+      "Are you sure you want to unmatch? This will remove this conversation and you won't be able to message each other anymore.",
       [
-        { text: 'Cancel', style: 'cancel' },
+        {text: 'Cancel', style: 'cancel'},
         {
           text: 'Unmatch',
           style: 'destructive',
@@ -370,11 +374,9 @@ const ChatScreen = ({ route, navigation }) => {
             setUnmatching(true);
             try {
               await unmatchUser(matchId, currentUserId);
-              Alert.alert(
-                'Unmatched',
-                'You have unmatched with this user.',
-                [{ text: 'OK', onPress: () => navigation.goBack() }]
-              );
+              Alert.alert('Unmatched', 'You have unmatched with this user.', [
+                {text: 'OK', onPress: () => navigation.goBack()},
+              ]);
             } catch (e) {
               console.log('Unmatch error', e);
               Alert.alert('Error', 'Failed to unmatch. Please try again.');
@@ -383,13 +385,13 @@ const ChatScreen = ({ route, navigation }) => {
             }
           },
         },
-      ]
+      ],
     );
   };
 
-  const getStatusIcon = (message) => {
+  const getStatusIcon = message => {
     if (message.senderId !== currentUserId) return null;
-    
+
     switch (message.status) {
       case 'sent':
         return '✓';
@@ -402,20 +404,19 @@ const ChatScreen = ({ route, navigation }) => {
     }
   };
 
-  const renderItem = ({ item }) => {
+  const renderItem = ({item}) => {
     const isMe = item.senderId === currentUserId;
     const isGif = item.mediaType === 'gif';
-    
+
     return (
-      <View style={[styles.messageRow, isMe ? styles.rowRight : styles.rowLeft]}>
-        <View style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleThem]}>
+      <View
+        style={[styles.messageRow, isMe ? styles.rowRight : styles.rowLeft]}>
+        <View
+          style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleThem]}>
           {item.mediaUrl && (
-            <Image 
-              source={{ uri: item.mediaUrl }} 
-              style={[
-                styles.messageImage,
-                isGif && styles.gifImage
-              ]}
+            <Image
+              source={{uri: item.mediaUrl}}
+              style={[styles.messageImage, isGif && styles.gifImage]}
               resizeMode={isGif ? 'contain' : 'cover'}
             />
           )}
@@ -426,16 +427,17 @@ const ChatScreen = ({ route, navigation }) => {
           )}
           <View style={styles.messageFooter}>
             <Text style={[styles.timeText, !isMe && styles.timeTextThem]}>
-              {new Date(item.timestamp).toLocaleTimeString([], { 
-                hour: '2-digit', 
-                minute: '2-digit' 
+              {new Date(item.timestamp).toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
               })}
             </Text>
             {isMe && (
-              <Text style={[
-                styles.statusText, 
-                item.status === 'seen' && styles.statusSeen
-              ]}>
+              <Text
+                style={[
+                  styles.statusText,
+                  item.status === 'seen' && styles.statusSeen,
+                ]}>
                 {getStatusIcon(item)}
               </Text>
             )}
@@ -456,8 +458,12 @@ const ChatScreen = ({ route, navigation }) => {
   if (isBlocked) {
     return (
       <View style={styles.center}>
-        <Text style={styles.blockedText}>This conversation is no longer available</Text>
-        <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
+        <Text style={styles.blockedText}>
+          This conversation is no longer available
+        </Text>
+        <Pressable
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}>
           <Text style={styles.backButtonText}>Go Back</Text>
         </Pressable>
       </View>
@@ -469,19 +475,24 @@ const ChatScreen = ({ route, navigation }) => {
       <KeyboardAvoidingView
         style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
-      >
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}>
         {/* Header */}
         <View style={styles.header}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.headerButton}>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            style={styles.headerButton}>
             <Text style={styles.backText}>{'<'} Back</Text>
           </Pressable>
           <Text style={styles.headerTitle}>{theirName || 'Chat'}</Text>
           <View style={styles.headerActions}>
-            <Pressable onPress={() => setShowUnmatchModal(true)} style={styles.headerButton}>
+            <Pressable
+              onPress={() => setShowUnmatchModal(true)}
+              style={styles.headerButton}>
               <Text style={styles.unmatchText}>Unmatch</Text>
             </Pressable>
-            <Pressable onPress={() => setShowReportModal(true)} style={styles.headerButton}>
+            <Pressable
+              onPress={() => setShowReportModal(true)}
+              style={styles.headerButton}>
               <Text style={styles.moreText}>⋯</Text>
             </Pressable>
           </View>
@@ -491,7 +502,7 @@ const ChatScreen = ({ route, navigation }) => {
         <FlatList
           ref={flatListRef}
           data={messages}
-          keyExtractor={(item) => item._id}
+          keyExtractor={item => item._id}
           renderItem={renderItem}
           contentContainerStyle={styles.messagesContainer}
           onContentSizeChange={scrollToBottom}
@@ -506,29 +517,30 @@ const ChatScreen = ({ route, navigation }) => {
         )}
 
         {/* Input */}
-        <View style={[styles.inputContainer, {paddingBottom: (insets.bottom || 0) + spacing.sm}]}>
-          <Pressable 
-            style={styles.mediaButton} 
+        <View
+          style={[
+            styles.inputContainer,
+            {paddingBottom: (insets.bottom || 0) + spacing.sm},
+          ]}>
+          <Pressable
+            style={styles.mediaButton}
             onPress={handlePickImage}
-            disabled={uploadingMedia}
-          >
+            disabled={uploadingMedia}>
             {uploadingMedia ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
               <Text style={styles.mediaButtonText}>📷</Text>
             )}
           </Pressable>
-          <Pressable 
-            style={styles.mediaButton} 
+          <Pressable
+            style={styles.mediaButton}
             onPress={() => setShowGifPicker(true)}
-            disabled={sending}
-          >
+            disabled={sending}>
             <Text style={styles.mediaButtonText}>GIF</Text>
           </Pressable>
-          <Pressable 
-            style={styles.mediaButton} 
-            onPress={() => setShowEmojiPicker(true)}
-          >
+          <Pressable
+            style={styles.mediaButton}
+            onPress={() => setShowEmojiPicker(true)}>
             <Text style={styles.mediaButtonText}>😊</Text>
           </Pressable>
           <TextInput
@@ -540,11 +552,13 @@ const ChatScreen = ({ route, navigation }) => {
             multiline
             maxLength={1000}
           />
-          <Pressable 
-            style={[styles.sendButton, (!inputText.trim() || sending) && styles.sendButtonDisabled]} 
+          <Pressable
+            style={[
+              styles.sendButton,
+              (!inputText.trim() || sending) && styles.sendButtonDisabled,
+            ]}
             onPress={handleSend}
-            disabled={!inputText.trim() || sending}
-          >
+            disabled={!inputText.trim() || sending}>
             {sending ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
@@ -567,105 +581,109 @@ const ChatScreen = ({ route, navigation }) => {
           onClose={() => setShowGifPicker(false)}
         />
 
-      {/* Unmatch Modal */}
-      <Modal
-        visible={showUnmatchModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowUnmatchModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.unmatchModalContent}>
-            <Text style={styles.modalTitle}>Unmatch</Text>
-            <Text style={styles.modalSubtitle}>
-              Are you sure you want to unmatch with {theirName || 'this user'}? This will remove your conversation and you won't be able to message each other anymore.
-            </Text>
-            <View style={styles.modalButtons}>
-              <Pressable 
-                style={styles.cancelButton} 
-                onPress={() => setShowUnmatchModal(false)}
-                disabled={unmatching}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </Pressable>
-              <Pressable 
-                style={[styles.unmatchButton, unmatching && styles.unmatchButtonDisabled]} 
-                onPress={handleUnmatch}
-                disabled={unmatching}
-              >
-                {unmatching ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.unmatchButtonText}>Unmatch</Text>
-                )}
-              </Pressable>
+        {/* Unmatch Modal */}
+        <Modal
+          visible={showUnmatchModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowUnmatchModal(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.unmatchModalContent}>
+              <Text style={styles.modalTitle}>Unmatch</Text>
+              <Text style={styles.modalSubtitle}>
+                Are you sure you want to unmatch with {theirName || 'this user'}
+                ? This will remove your conversation and you won't be able to
+                message each other anymore.
+              </Text>
+              <View style={styles.modalButtons}>
+                <Pressable
+                  style={styles.cancelButton}
+                  onPress={() => setShowUnmatchModal(false)}
+                  disabled={unmatching}>
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={[
+                    styles.unmatchButton,
+                    unmatching && styles.unmatchButtonDisabled,
+                  ]}
+                  onPress={handleUnmatch}
+                  disabled={unmatching}>
+                  {unmatching ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.unmatchButtonText}>Unmatch</Text>
+                  )}
+                </Pressable>
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
 
-      {/* Report Modal */}
-      <Modal
-        visible={showReportModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowReportModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Report & Block User</Text>
-            <Text style={styles.modalSubtitle}>Why are you reporting this user?</Text>
-            
-            {REPORT_REASONS.map((reason) => (
-              <TouchableOpacity
-                key={reason.id}
-                style={[
-                  styles.reasonItem,
-                  selectedReason === reason.id && styles.reasonItemSelected
-                ]}
-                onPress={() => setSelectedReason(reason.id)}
-              >
-                <Text style={[
-                  styles.reasonText,
-                  selectedReason === reason.id && styles.reasonTextSelected
-                ]}>
-                  {reason.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+        {/* Report Modal */}
+        <Modal
+          visible={showReportModal}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowReportModal(false)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Report & Block User</Text>
+              <Text style={styles.modalSubtitle}>
+                Why are you reporting this user?
+              </Text>
 
-            <TextInput
-              style={styles.descriptionInput}
-              placeholder="Additional details (optional)"
-              placeholderTextColor={colors.textSecondary}
-              value={reportDescription}
-              onChangeText={setReportDescription}
-              multiline
-              maxLength={500}
-            />
+              {REPORT_REASONS.map(reason => (
+                <TouchableOpacity
+                  key={reason.id}
+                  style={[
+                    styles.reasonItem,
+                    selectedReason === reason.id && styles.reasonItemSelected,
+                  ]}
+                  onPress={() => setSelectedReason(reason.id)}>
+                  <Text
+                    style={[
+                      styles.reasonText,
+                      selectedReason === reason.id && styles.reasonTextSelected,
+                    ]}>
+                    {reason.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
 
-            <View style={styles.modalButtons}>
-              <Pressable 
-                style={styles.cancelButton} 
-                onPress={() => {
-                  setShowReportModal(false);
-                  setSelectedReason(null);
-                  setReportDescription('');
-                }}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </Pressable>
-              <Pressable 
-                style={[styles.reportButton, !selectedReason && styles.reportButtonDisabled]} 
-                onPress={handleBlockAndReport}
-                disabled={!selectedReason}
-              >
-                <Text style={styles.reportButtonText}>Block & Report</Text>
-              </Pressable>
+              <TextInput
+                style={styles.descriptionInput}
+                placeholder="Additional details (optional)"
+                placeholderTextColor={colors.textSecondary}
+                value={reportDescription}
+                onChangeText={setReportDescription}
+                multiline
+                maxLength={500}
+              />
+
+              <View style={styles.modalButtons}>
+                <Pressable
+                  style={styles.cancelButton}
+                  onPress={() => {
+                    setShowReportModal(false);
+                    setSelectedReason(null);
+                    setReportDescription('');
+                  }}>
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  style={[
+                    styles.reportButton,
+                    !selectedReason && styles.reportButtonDisabled,
+                  ]}
+                  onPress={handleBlockAndReport}
+                  disabled={!selectedReason}>
+                  <Text style={styles.reportButtonText}>Block & Report</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -673,8 +691,13 @@ const ChatScreen = ({ route, navigation }) => {
 
 const styles = StyleSheet.create({
   safe: {flex: 1, backgroundColor: colors.background},
-  container: { flex: 1, backgroundColor: colors.background },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: spacing.lg },
+  container: {flex: 1, backgroundColor: colors.background},
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
 
   header: {
     height: 56,

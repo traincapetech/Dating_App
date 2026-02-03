@@ -14,7 +14,11 @@ import {
 import {useNavigation, useRoute} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {colors, typography, spacing} from '../../../theme';
-import {getProfile, updateProfileApi, uploadProfileImage} from '../../../services/profile/profileService';
+import {
+  getProfile,
+  updateProfileApi,
+  uploadProfileImage,
+} from '../../../services/profile/profileService';
 import {launchImageLibrary} from 'react-native-image-picker';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
@@ -28,6 +32,7 @@ const ProfileDetailsScreen = () => {
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState({});
+  const [isOwnProfile, setIsOwnProfile] = useState(false);
 
   const userId = route.params?.userId;
 
@@ -39,10 +44,10 @@ const ProfileDetailsScreen = () => {
     try {
       setLoading(true);
       let currentUserId = userId;
-      
+
       if (!currentUserId) {
         const userData = await AsyncStorage.getItem('@pryvo_user');
-        if (userData) {
+        if (userData && userData !== 'undefined') {
           const user = JSON.parse(userData);
           currentUserId = user.id;
         }
@@ -56,6 +61,14 @@ const ProfileDetailsScreen = () => {
       const response = await getProfile(currentUserId);
       const profileData = response?.profile || response;
       setProfile(profileData);
+
+      // Check if it's the current user's profile
+      const userData = await AsyncStorage.getItem('@pryvo_user');
+      if (userData && userData !== 'undefined') {
+        const user = JSON.parse(userData);
+        setIsOwnProfile(user.id === currentUserId);
+      }
+
       setEditedProfile({
         firstName: profileData?.basicInfo?.firstName || '',
         lastName: profileData?.basicInfo?.lastName || '',
@@ -65,13 +78,17 @@ const ProfileDetailsScreen = () => {
         education: profileData?.personalDetails?.school || '',
         location: profileData?.basicInfo?.location || '',
         gender: profileData?.basicInfo?.gender || '',
-        showGenderOnProfile: profileData?.basicInfo?.showGenderOnProfile ?? true,
+        showGenderOnProfile:
+          profileData?.basicInfo?.showGenderOnProfile ?? true,
         interests: (profileData?.interests || []).join(', '),
         datingIntention: profileData?.datingPreferences?.datingIntention || '',
-        relationshipType: profileData?.datingPreferences?.relationshipType || '',
+        relationshipType:
+          profileData?.datingPreferences?.relationshipType || '',
         whoToDate: profileData?.datingPreferences?.whoToDate || [],
-        showIntentionOnProfile: profileData?.datingPreferences?.showIntentionOnProfile ?? true,
-        showRelationshipTypeOnProfile: profileData?.datingPreferences?.showRelationshipTypeOnProfile ?? true,
+        showIntentionOnProfile:
+          profileData?.datingPreferences?.showIntentionOnProfile ?? true,
+        showRelationshipTypeOnProfile:
+          profileData?.datingPreferences?.showRelationshipTypeOnProfile ?? true,
       });
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -84,12 +101,12 @@ const ProfileDetailsScreen = () => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      
+
       // Get current userId
       let currentUserId = userId;
       if (!currentUserId) {
         const userData = await AsyncStorage.getItem('@pryvo_user');
-        if (userData) {
+        if (userData && userData !== 'undefined') {
           const user = JSON.parse(userData);
           currentUserId = user.id;
         }
@@ -127,7 +144,8 @@ const ProfileDetailsScreen = () => {
         payload.basicInfo.gender = editedProfile.gender;
       }
       if (editedProfile.showGenderOnProfile !== undefined) {
-        payload.basicInfo.showGenderOnProfile = editedProfile.showGenderOnProfile;
+        payload.basicInfo.showGenderOnProfile =
+          editedProfile.showGenderOnProfile;
       }
 
       // Profile Prompts
@@ -158,41 +176,52 @@ const ProfileDetailsScreen = () => {
         payload.datingPreferences.whoToDate = editedProfile.whoToDate;
       }
       if (editedProfile.datingIntention?.trim()) {
-        payload.datingPreferences.datingIntention = editedProfile.datingIntention.trim();
+        payload.datingPreferences.datingIntention =
+          editedProfile.datingIntention.trim();
       }
       if (editedProfile.relationshipType) {
-        payload.datingPreferences.relationshipType = editedProfile.relationshipType;
+        payload.datingPreferences.relationshipType =
+          editedProfile.relationshipType;
       }
       if (editedProfile.showIntentionOnProfile !== undefined) {
-        payload.datingPreferences.showIntentionOnProfile = editedProfile.showIntentionOnProfile;
+        payload.datingPreferences.showIntentionOnProfile =
+          editedProfile.showIntentionOnProfile;
       }
       if (editedProfile.showRelationshipTypeOnProfile !== undefined) {
-        payload.datingPreferences.showRelationshipTypeOnProfile = editedProfile.showRelationshipTypeOnProfile;
+        payload.datingPreferences.showRelationshipTypeOnProfile =
+          editedProfile.showRelationshipTypeOnProfile;
       }
 
       // Remove empty objects
       if (Object.keys(payload.basicInfo).length === 0) delete payload.basicInfo;
-      if (Object.keys(payload.profilePrompts).length === 0) delete payload.profilePrompts;
-      if (Object.keys(payload.personalDetails).length === 0) delete payload.personalDetails;
+      if (Object.keys(payload.profilePrompts).length === 0)
+        delete payload.profilePrompts;
+      if (Object.keys(payload.personalDetails).length === 0)
+        delete payload.personalDetails;
       if (Object.keys(payload.lifestyle).length === 0) delete payload.lifestyle;
-      if (Object.keys(payload.datingPreferences).length === 0) delete payload.datingPreferences;
+      if (Object.keys(payload.datingPreferences).length === 0)
+        delete payload.datingPreferences;
 
-      console.log('[ProfileDetails] Updating profile with payload:', JSON.stringify(payload, null, 2));
-      
+      console.log(
+        '[ProfileDetails] Updating profile with payload:',
+        JSON.stringify(payload, null, 2),
+      );
+
       await updateProfileApi(payload);
       Alert.alert('Success', 'Profile updated successfully');
       setIsEditing(false);
       loadProfile();
     } catch (error) {
       console.error('[ProfileDetails] Update error:', error);
-      const errorMessage = error?.message || error?.data?.error || 'Failed to update profile';
+      const errorMessage =
+        error?.message || error?.data?.error || 'Failed to update profile';
       Alert.alert('Error', errorMessage);
     } finally {
       setSaving(false);
     }
   };
 
-  const handleAddPhoto = async (index) => {
+  const handleAddPhoto = async index => {
     try {
       const result = await launchImageLibrary({
         mediaType: 'photo',
@@ -204,12 +233,12 @@ const ProfileDetailsScreen = () => {
 
       if (result.assets && result.assets[0]) {
         const asset = result.assets[0];
-        
+
         // Get user ID
         let currentUserId = userId;
         if (!currentUserId) {
           const userData = await AsyncStorage.getItem('@pryvo_user');
-          if (userData) {
+          if (userData && userData !== 'undefined') {
             const user = JSON.parse(userData);
             currentUserId = user.id;
           }
@@ -222,18 +251,21 @@ const ProfileDetailsScreen = () => {
 
         // Show loading
         setSaving(true);
-        
+
         try {
           // Upload the image
           const uploadResult = await uploadProfileImage(
             currentUserId,
             asset,
-            asset.fileName || `photo_${index}_${Date.now()}.jpg`
+            asset.fileName || `photo_${index}_${Date.now()}.jpg`,
           );
-          
-          console.log('[ProfileDetails] Photo uploaded successfully:', uploadResult);
+
+          console.log(
+            '[ProfileDetails] Photo uploaded successfully:',
+            uploadResult,
+          );
           Alert.alert('Success', 'Photo uploaded successfully');
-          
+
           // Refresh profile to show new photo
           loadProfile();
         } catch (uploadError) {
@@ -257,7 +289,10 @@ const ProfileDetailsScreen = () => {
     );
   }
 
-  const photos = profile?.photos || profile?.media?.media?.map(m => m.url).filter(Boolean) || [];
+  const photos =
+    profile?.photos ||
+    profile?.media?.media?.map(m => m.url).filter(Boolean) ||
+    [];
   const name = profile?.name || profile?.basicInfo?.firstName || 'Add Name';
   const age = profile?.age || null;
   const bio = profile?.bio || '';
@@ -274,43 +309,55 @@ const ProfileDetailsScreen = () => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Pressable
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}>
           <Text style={styles.backText}>←</Text>
         </Pressable>
-        <Text style={styles.headerTitle}>My Profile</Text>
-        <Pressable 
-          onPress={() => isEditing ? handleSave() : setIsEditing(true)}
-          style={styles.editButton}
-        >
-          <Text style={styles.editText}>{saving ? 'Saving...' : (isEditing ? 'Done' : 'Edit')}</Text>
-        </Pressable>
+        <Text style={styles.headerTitle}>
+          {isOwnProfile ? 'My Profile' : profile?.name || 'Profile'}
+        </Text>
+        <View style={styles.headerRight}>
+          {isOwnProfile && (
+            <Pressable
+              onPress={() => (isEditing ? handleSave() : setIsEditing(true))}
+              style={styles.editButton}>
+              <Text style={styles.editText}>
+                {saving ? 'Saving...' : isEditing ? 'Done' : 'Edit'}
+              </Text>
+            </Pressable>
+          )}
+        </View>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Photos Grid */}
         <View style={styles.photosSection}>
           <View style={styles.photosGrid}>
-            {[0, 1, 2, 3, 4, 5].map((index) => (
-              <Pressable 
-                key={index} 
-                style={styles.photoSlot}
-                onPress={() => handleAddPhoto(index)}
-              >
-                {photos[index] ? (
-                  <Image source={{uri: photos[index]}} style={styles.photo} />
-                ) : (
-                  <View style={styles.emptyPhoto}>
-                    <Text style={styles.addPhotoIcon}>📷</Text>
-                    <Text style={styles.addPhotoText}>Add a photo</Text>
-                  </View>
-                )}
-                {index === 0 && (
-                  <View style={styles.mainPhotoBadge}>
-                    <Text style={styles.mainPhotoBadgeText}>Main</Text>
-                  </View>
-                )}
-              </Pressable>
-            ))}
+            {[0, 1, 2, 3, 4, 5].map(index => {
+              if (!isOwnProfile && !photos[index]) return null;
+              return (
+                <Pressable
+                  key={index}
+                  style={styles.photoSlot}
+                  onPress={() => isOwnProfile && handleAddPhoto(index)}
+                  disabled={!isOwnProfile}>
+                  {photos[index] ? (
+                    <Image source={{uri: photos[index]}} style={styles.photo} />
+                  ) : (
+                    <View style={styles.emptyPhoto}>
+                      <Text style={styles.addPhotoIcon}>📷</Text>
+                      <Text style={styles.addPhotoText}>Add a photo</Text>
+                    </View>
+                  )}
+                  {index === 0 && isOwnProfile && (
+                    <View style={styles.mainPhotoBadge}>
+                      <Text style={styles.mainPhotoBadgeText}>Main</Text>
+                    </View>
+                  )}
+                </Pressable>
+              );
+            })}
           </View>
         </View>
 
@@ -322,24 +369,33 @@ const ProfileDetailsScreen = () => {
               <TextInput
                 style={styles.input}
                 value={editedProfile.firstName}
-                onChangeText={(text) => setEditedProfile(prev => ({...prev, firstName: text}))}
+                onChangeText={text =>
+                  setEditedProfile(prev => ({...prev, firstName: text}))
+                }
                 placeholder="First name"
               />
               <TextInput
                 style={[styles.input, {marginTop: spacing.sm}]}
                 value={editedProfile.lastName}
-                onChangeText={(text) => setEditedProfile(prev => ({...prev, lastName: text}))}
+                onChangeText={text =>
+                  setEditedProfile(prev => ({...prev, lastName: text}))
+                }
                 placeholder="Last name"
               />
               <TextInput
                 style={[styles.input, {marginTop: spacing.sm}]}
                 value={editedProfile.dob}
-                onChangeText={(text) => setEditedProfile(prev => ({...prev, dob: text}))}
+                onChangeText={text =>
+                  setEditedProfile(prev => ({...prev, dob: text}))
+                }
                 placeholder="Date of birth (YYYY-MM-DD)"
               />
             </>
           ) : (
-            <Text style={styles.nameText}>{name}{age ? `, ${age}` : ''}</Text>
+            <Text style={styles.nameText}>
+              {name}
+              {age ? `, ${age}` : ''}
+            </Text>
           )}
         </View>
 
@@ -350,11 +406,15 @@ const ProfileDetailsScreen = () => {
             <TextInput
               style={styles.input}
               value={editedProfile.location}
-              onChangeText={(text) => setEditedProfile(prev => ({...prev, location: text}))}
+              onChangeText={text =>
+                setEditedProfile(prev => ({...prev, location: text}))
+              }
               placeholder="Add your location"
             />
           ) : (
-            <Text style={styles.valueText}>{location || 'Add your location'}</Text>
+            <Text style={styles.valueText}>
+              {location || 'Add your location'}
+            </Text>
           )}
         </View>
 
@@ -365,7 +425,9 @@ const ProfileDetailsScreen = () => {
             <TextInput
               style={[styles.input, styles.bioInput]}
               value={editedProfile.bio}
-              onChangeText={(text) => setEditedProfile(prev => ({...prev, bio: text}))}
+              onChangeText={text =>
+                setEditedProfile(prev => ({...prev, bio: text}))
+              }
               placeholder="Tell others about yourself"
               multiline
               numberOfLines={4}
@@ -386,11 +448,15 @@ const ProfileDetailsScreen = () => {
             <TextInput
               style={styles.input}
               value={editedProfile.occupation}
-              onChangeText={(text) => setEditedProfile(prev => ({...prev, occupation: text}))}
+              onChangeText={text =>
+                setEditedProfile(prev => ({...prev, occupation: text}))
+              }
               placeholder="Add your occupation"
             />
           ) : (
-            <Text style={styles.valueText}>{occupation || 'Add your occupation'}</Text>
+            <Text style={styles.valueText}>
+              {occupation || 'Add your occupation'}
+            </Text>
           )}
         </View>
 
@@ -401,11 +467,15 @@ const ProfileDetailsScreen = () => {
             <TextInput
               style={styles.input}
               value={editedProfile.education}
-              onChangeText={(text) => setEditedProfile(prev => ({...prev, education: text}))}
+              onChangeText={text =>
+                setEditedProfile(prev => ({...prev, education: text}))
+              }
               placeholder="Add your education"
             />
           ) : (
-            <Text style={styles.valueText}>{education || 'Add your education'}</Text>
+            <Text style={styles.valueText}>
+              {education || 'Add your education'}
+            </Text>
           )}
         </View>
 
@@ -416,7 +486,9 @@ const ProfileDetailsScreen = () => {
             <TextInput
               style={[styles.input, styles.bioInput]}
               value={editedProfile.interests}
-              onChangeText={(text) => setEditedProfile(prev => ({...prev, interests: text}))}
+              onChangeText={text =>
+                setEditedProfile(prev => ({...prev, interests: text}))
+              }
               placeholder="Add interests separated by commas"
               multiline
             />
@@ -430,7 +502,9 @@ const ProfileDetailsScreen = () => {
             </View>
           ) : (
             <Pressable style={styles.emptyField}>
-              <Text style={styles.placeholderText}>Add interests to find better matches</Text>
+              <Text style={styles.placeholderText}>
+                Add interests to find better matches
+              </Text>
             </Pressable>
           )}
         </View>
@@ -447,12 +521,17 @@ const ProfileDetailsScreen = () => {
                     styles.chip,
                     editedProfile.gender === option && styles.chipSelected,
                   ]}
-                  onPress={() => setEditedProfile(prev => ({...prev, gender: option}))}
-                >
-                  <Text style={[
-                    styles.chipText,
-                    editedProfile.gender === option && styles.chipTextSelected
-                  ]}>{option}</Text>
+                  onPress={() =>
+                    setEditedProfile(prev => ({...prev, gender: option}))
+                  }>
+                  <Text
+                    style={[
+                      styles.chipText,
+                      editedProfile.gender === option &&
+                        styles.chipTextSelected,
+                    ]}>
+                    {option}
+                  </Text>
                 </Pressable>
               ))}
             </View>
@@ -471,7 +550,8 @@ const ProfileDetailsScreen = () => {
                   key={option}
                   style={[
                     styles.chip,
-                    editedProfile.whoToDate?.includes(option) && styles.chipSelected,
+                    editedProfile.whoToDate?.includes(option) &&
+                      styles.chipSelected,
                   ]}
                   onPress={() => {
                     const current = editedProfile.whoToDate || [];
@@ -484,17 +564,22 @@ const ProfileDetailsScreen = () => {
                       next = [...current.filter(i => i !== 'Everyone'), option];
                     }
                     setEditedProfile(prev => ({...prev, whoToDate: next}));
-                  }}
-                >
-                  <Text style={[
-                    styles.chipText,
-                    editedProfile.whoToDate?.includes(option) && styles.chipTextSelected
-                  ]}>{option}</Text>
+                  }}>
+                  <Text
+                    style={[
+                      styles.chipText,
+                      editedProfile.whoToDate?.includes(option) &&
+                        styles.chipTextSelected,
+                    ]}>
+                    {option}
+                  </Text>
                 </Pressable>
               ))}
             </View>
           ) : (
-            <Text style={styles.valueText}>{whoToDate.join(', ') || 'Not set'}</Text>
+            <Text style={styles.valueText}>
+              {whoToDate.join(', ') || 'Not set'}
+            </Text>
           )}
         </View>
 
@@ -504,7 +589,9 @@ const ProfileDetailsScreen = () => {
             <TextInput
               style={styles.input}
               value={editedProfile.datingIntention}
-              onChangeText={(text) => setEditedProfile(prev => ({...prev, datingIntention: text}))}
+              onChangeText={text =>
+                setEditedProfile(prev => ({...prev, datingIntention: text}))
+              }
               placeholder="e.g., Long-term relationship"
             />
           ) : (
@@ -521,28 +608,43 @@ const ProfileDetailsScreen = () => {
                   key={option}
                   style={[
                     styles.chip,
-                    editedProfile.relationshipType === option && styles.chipSelected,
+                    editedProfile.relationshipType === option &&
+                      styles.chipSelected,
                   ]}
-                  onPress={() => setEditedProfile(prev => ({...prev, relationshipType: option}))}
-                >
-                  <Text style={[
-                    styles.chipText,
-                    editedProfile.relationshipType === option && styles.chipTextSelected
-                  ]}>{option}</Text>
+                  onPress={() =>
+                    setEditedProfile(prev => ({
+                      ...prev,
+                      relationshipType: option,
+                    }))
+                  }>
+                  <Text
+                    style={[
+                      styles.chipText,
+                      editedProfile.relationshipType === option &&
+                        styles.chipTextSelected,
+                    ]}>
+                    {option}
+                  </Text>
                 </Pressable>
               ))}
             </View>
           ) : (
-            <Text style={styles.valueText}>{relationshipType || 'Not set'}</Text>
+            <Text style={styles.valueText}>
+              {relationshipType || 'Not set'}
+            </Text>
           )}
         </View>
 
         {/* Premium Upsell */}
-        <View style={styles.premiumSection}>
-          <Pressable style={styles.premiumButton}>
-            <Text style={styles.premiumButtonText}>💎 Upgrade to Premium</Text>
-          </Pressable>
-        </View>
+        {isOwnProfile && (
+          <View style={styles.premiumSection}>
+            <Pressable style={styles.premiumButton}>
+              <Text style={styles.premiumButtonText}>
+                💎 Upgrade to Premium
+              </Text>
+            </Pressable>
+          </View>
+        )}
 
         <View style={{height: 100}} />
       </ScrollView>
@@ -570,13 +672,23 @@ const styles = StyleSheet.create({
     borderBottomColor: '#eee',
   },
   backButton: {
+    width: 60,
     padding: spacing.sm,
+  },
+  headerLeft: {
+    width: 60,
+  },
+  headerRight: {
+    width: 60,
+    alignItems: 'flex-end',
   },
   backText: {
     fontSize: 24,
     color: '#1a1a1a',
   },
   headerTitle: {
+    flex: 1,
+    textAlign: 'center',
     fontSize: 18,
     fontFamily: typography.fontFamilyBold,
     color: '#1a1a1a',
@@ -752,4 +864,3 @@ const styles = StyleSheet.create({
 });
 
 export default ProfileDetailsScreen;
-

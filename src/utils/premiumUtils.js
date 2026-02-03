@@ -7,14 +7,20 @@ import {getSubscriptionStatus} from '../services/subscription/subscriptionServic
 export async function isUserPremium() {
   try {
     const userData = await AsyncStorage.getItem('@pryvo_user');
-    if (!userData) return false;
+    if (userData && userData !== 'undefined') {
+      try {
+        const user = JSON.parse(userData);
+        const userId = user.id;
 
-    const user = JSON.parse(userData);
-    const userId = user.id;
-
-    // Check subscription status from backend
-    const response = await getSubscriptionStatus(userId);
-    return response?.isPremium || false;
+        // Check subscription status from backend
+        const response = await getSubscriptionStatus(userId);
+        return response?.isPremium || false;
+      } catch (e) {
+        console.error('Failed to parse user data:', e);
+        return false;
+      }
+    }
+    return false;
   } catch (error) {
     console.error('Error checking premium status:', error);
     return false;
@@ -31,9 +37,23 @@ export async function hasPremiumFeature(featureName) {
   // Get subscription details to check specific features
   try {
     const userData = await AsyncStorage.getItem('@pryvo_user');
-    if (!userData) return false;
+    let user = null;
+    if (userData && userData !== 'undefined') {
+      try {
+        user = JSON.parse(userData);
+      } catch (e) {
+        console.error('Failed to parse user data:', e); // Original error message
+        return false; // Original return type
+      }
+    } else {
+      return false; // Original return type
+    }
 
-    const user = JSON.parse(userData);
+    if (!user) {
+      // If user is still null after checks
+      return false;
+    }
+
     const response = await getSubscriptionStatus(user.id);
 
     if (response?.subscription?.features) {
@@ -59,4 +79,3 @@ export const PREMIUM_FEATURES = {
   BOOST_PROFILE: 'boost_profile',
   UNDO_SWIPE: 'undo_swipe',
 };
-

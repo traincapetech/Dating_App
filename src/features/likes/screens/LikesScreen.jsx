@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, {useEffect, useState, useCallback} from 'react';
 import {
   View,
   Text,
@@ -10,13 +10,13 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native';
-import { colors, typography, spacing } from '../../../theme';
-import { getLikesReceived, likeUser } from '../../../services/swipeActions';
+import {useFocusEffect} from '@react-navigation/native';
+import {colors, typography, spacing} from '../../../theme';
+import {getLikesReceived, likeUser} from '../../../services/swipeActions';
 
-const LikesScreen = ({ navigation }) => {
+const LikesScreen = ({navigation}) => {
   const [likes, setLikes] = useState([]);
   const [likesCount, setLikesCount] = useState(0);
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -27,22 +27,29 @@ const LikesScreen = ({ navigation }) => {
   useFocusEffect(
     useCallback(() => {
       loadLikes();
-    }, [])
+    }, []),
   );
 
   const loadLikes = async () => {
     try {
       const userData = await AsyncStorage.getItem('@pryvo_user');
-      if (!userData) return;
-
-      const user = JSON.parse(userData);
-      setCurrentUserId(user.id);
+      if (userData && userData !== 'undefined') {
+        try {
+          const user = JSON.parse(userData);
+          setCurrentUserId(user.id);
+        } catch (e) {
+          console.error('Failed to parse user data in LikesScreen:', e);
+          return;
+        }
+      } else {
+        return;
+      }
 
       // For now, everyone is treated as premium (LIKES_VISIBLE_FREE = true on server)
       const isPremium = true; // Change this based on user subscription status
-      
+
       const response = await getLikesReceived(user.id, isPremium);
-      
+
       if (response.success) {
         setLikes(response.likes || []);
         setLikesCount(response.count || 0);
@@ -61,30 +68,26 @@ const LikesScreen = ({ navigation }) => {
     loadLikes();
   };
 
-  const handleLikeBack = async (likerId) => {
+  const handleLikeBack = async likerId => {
     try {
       const result = await likeUser(currentUserId, likerId);
-      
+
       if (result.isMatch) {
-        Alert.alert(
-          "It's a Match! 🎉",
-          "You can now start chatting!",
-          [
-            {
-              text: "Send Message",
-              onPress: () => {
-                navigation.navigate('ChatScreen', {
-                  matchId: result.match._id,
-                  theirId: likerId,
-                });
-              }
+        Alert.alert("It's a Match! 🎉", 'You can now start chatting!', [
+          {
+            text: 'Send Message',
+            onPress: () => {
+              navigation.navigate('ChatScreen', {
+                matchId: result.match._id,
+                theirId: likerId,
+              });
             },
-            { text: "Continue", style: "cancel" }
-          ]
-        );
-        
+          },
+          {text: 'Continue', style: 'cancel'},
+        ]);
+
         // Remove from likes list
-        setLikes(prev => prev.filter(l => l.oderId !== likerId));
+        setLikes(prev => prev.filter(l => l.senderId !== likerId));
         setLikesCount(prev => prev - 1);
       }
     } catch (error) {
@@ -112,14 +115,16 @@ const LikesScreen = ({ navigation }) => {
             </View>
           )}
         </View>
-        
+
         <View style={styles.premiumContainer}>
           <Text style={styles.premiumEmoji}>💕</Text>
-          <Text style={styles.premiumTitle}>{likesCount} people liked you!</Text>
+          <Text style={styles.premiumTitle}>
+            {likesCount} people liked you!
+          </Text>
           <Text style={styles.premiumSubtitle}>
             Upgrade to Premium to see who liked you and match instantly!
           </Text>
-          <Pressable 
+          <Pressable
             style={styles.premiumButton}
             onPress={() => navigation.navigate('SubscriptionUpsell')}>
             <Text style={styles.premiumButtonText}>💎 Upgrade to Premium</Text>
@@ -146,23 +151,27 @@ const LikesScreen = ({ navigation }) => {
     );
   }
 
-  const renderItem = ({ item }) => (
+  const renderItem = ({item}) => (
     <View style={styles.likeCard}>
       <Image
         source={{
-          uri: item.photo || 'https://ui-avatars.com/api/?background=667eea&color=fff&name=' + (item.name || 'U')
+          uri:
+            item.photo ||
+            'https://ui-avatars.com/api/?background=667eea&color=fff&name=' +
+              (item.name || 'U'),
         }}
         style={styles.avatar}
       />
       <View style={styles.infoContainer}>
         <Text style={styles.name}>
-          {item.name}{item.age ? `, ${item.age}` : ''}
+          {item.name}
+          {item.age ? `, ${item.age}` : ''}
         </Text>
         <Text style={styles.likedText}>Liked your profile</Text>
       </View>
-      <Pressable 
+      <Pressable
         style={styles.likeBackButton}
-        onPress={() => handleLikeBack(item.oderId)}>
+        onPress={() => handleLikeBack(item.senderId)}>
         <Text style={styles.likeBackText}>❤️ Like Back</Text>
       </Pressable>
     </View>
@@ -179,7 +188,7 @@ const LikesScreen = ({ navigation }) => {
 
       <FlatList
         data={likes}
-        keyExtractor={(item, index) => item.oderId || index.toString()}
+        keyExtractor={(item, index) => item.senderId || index.toString()}
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
         refreshControl={
@@ -329,4 +338,3 @@ const styles = StyleSheet.create({
 });
 
 export default LikesScreen;
-

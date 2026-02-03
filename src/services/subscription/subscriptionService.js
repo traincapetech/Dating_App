@@ -16,13 +16,13 @@ export const getAvailablePlans = async () => {
 /**
  * Get user's subscription status
  */
-export const getSubscriptionStatus = async (userId) => {
+export const getSubscriptionStatus = async userId => {
   try {
     const response = await apiClient.get(`/subscription/status/${userId}`);
     return response;
   } catch (error) {
     console.error('Get Subscription Status Error:', error?.message || error);
-    return { success: false, isPremium: false, subscription: null };
+    return {success: false, isPremium: false, subscription: null};
   }
 };
 
@@ -52,8 +52,8 @@ export const verifyPaymentAndCreateSubscription = async (
   paymentId,
   signature = '',
   gateway = 'stripe',
-  currency = 'INR',
-  autoRenew = true
+  currency = 'USD',
+  autoRenew = true,
 ) => {
   try {
     const response = await apiClient.post('/subscription/payment/verify', {
@@ -76,7 +76,13 @@ export const verifyPaymentAndCreateSubscription = async (
 /**
  * Create new subscription (for testing - bypasses payment)
  */
-export const createSubscription = async (userId, planId, paymentMethod = 'in_app', transactionId = null, autoRenew = true) => {
+export const createSubscription = async (
+  userId,
+  planId,
+  paymentMethod = 'in_app',
+  transactionId = null,
+  autoRenew = true,
+) => {
   try {
     const response = await apiClient.post('/subscription/create', {
       userId,
@@ -97,9 +103,12 @@ export const createSubscription = async (userId, planId, paymentMethod = 'in_app
  */
 export const cancelSubscription = async (subscriptionId, userId) => {
   try {
-    const response = await apiClient.post(`/subscription/cancel/${subscriptionId}`, {
-      userId,
-    });
+    const response = await apiClient.post(
+      `/subscription/cancel/${subscriptionId}`,
+      {
+        userId,
+      },
+    );
     return response;
   } catch (error) {
     console.error('Cancel Subscription Error:', error?.message || error);
@@ -110,26 +119,26 @@ export const cancelSubscription = async (subscriptionId, userId) => {
 /**
  * Get all subscriptions for a user
  */
-export const getUserSubscriptions = async (userId) => {
+export const getUserSubscriptions = async userId => {
   try {
     const response = await apiClient.get(`/subscription/user/${userId}`);
     return response;
   } catch (error) {
     console.error('Get User Subscriptions Error:', error?.message || error);
-    return { success: false, subscriptions: [] };
+    return {success: false, subscriptions: []};
   }
 };
 
 /**
  * Verify premium status
  */
-export const verifyPremiumStatus = async (userId) => {
+export const verifyPremiumStatus = async userId => {
   try {
     const response = await apiClient.get(`/subscription/verify/${userId}`);
     return response;
   } catch (error) {
     console.error('Verify Premium Status Error:', error?.message || error);
-    return { success: false, isPremium: false };
+    return {success: false, isPremium: false};
   }
 };
 
@@ -138,13 +147,15 @@ export const verifyPremiumStatus = async (userId) => {
  */
 export const setAutoRenewal = async (subscriptionId, enabled) => {
   try {
-    const response = await apiClient.post(`/subscription/auto-renew/${subscriptionId}`, {
-      enabled,
-    });
+    const response = await apiClient.post(
+      `/subscription/auto-renew/${subscriptionId}`,
+      {
+        enabled,
+      },
+    );
     return response;
   } catch (error) {
     console.error('Set Auto-Renewal Error:', error?.message || error);
     throw error;
   }
 };
-

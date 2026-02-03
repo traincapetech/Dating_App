@@ -25,12 +25,7 @@ const DatingPreferencesScreen = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const whoToDateOptions = [
-    'Men',
-    'Women',
-    'Nonbinary People',
-    'Everyone',
-  ];
+  const whoToDateOptions = ['Men', 'Women', 'Nonbinary People', 'Everyone'];
 
   const intentionOptions = [
     'Long-term Relationship',
@@ -64,14 +59,14 @@ const DatingPreferencesScreen = () => {
       // Get user ID from storage
       const userData = await AsyncStorage.getItem('@pryvo_user');
       let userId = null;
-      
-      if (userData) {
+
+      if (userData && userData !== 'undefined') {
         const user = JSON.parse(userData);
         userId = user.id;
       } else {
         // Try to get from token (decode JWT)
         const token = await AsyncStorage.getItem('@pryvo/token');
-        if (token) {
+        if (token && token !== 'undefined') {
           try {
             const payload = JSON.parse(atob(token.split('.')[1]));
             userId = payload.userId || payload.id;
@@ -89,14 +84,15 @@ const DatingPreferencesScreen = () => {
 
       // Save dating preferences to backend
       await saveDatingPreferences({...preferences, userId});
-      
+
       console.log('Dating preferences saved successfully');
-    navigation.navigate(AppRoute.PersonalDetails);
+      navigation.navigate(AppRoute.PersonalDetails);
     } catch (error) {
       console.error('Error saving dating preferences:', error);
       Alert.alert(
         'Error',
-        error?.message || 'Failed to save dating preferences. Please try again.',
+        error?.message ||
+          'Failed to save dating preferences. Please try again.',
       );
     } finally {
       setIsSubmitting(false);
@@ -109,9 +105,7 @@ const DatingPreferencesScreen = () => {
       showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <Text style={styles.title}>Who would you like to date?</Text>
-        <Text style={styles.subtitle}>
-          Select who you're open to meeting.
-        </Text>
+        <Text style={styles.subtitle}>Select who you're open to meeting.</Text>
       </View>
 
       <View style={styles.section}>
@@ -140,9 +134,7 @@ const DatingPreferencesScreen = () => {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>
-          What is your dating intention?
-        </Text>
+        <Text style={styles.sectionTitle}>What is your dating intention?</Text>
         {intentionOptions.map(option => (
           <Pressable
             key={option}
@@ -212,7 +204,8 @@ const DatingPreferencesScreen = () => {
             onPress={() =>
               setPreferences(prev => ({
                 ...prev,
-                showRelationshipTypeOnProfile: !prev.showRelationshipTypeOnProfile,
+                showRelationshipTypeOnProfile:
+                  !prev.showRelationshipTypeOnProfile,
               }))
             }>
             <Text style={styles.checkboxIcon}>
@@ -223,14 +216,17 @@ const DatingPreferencesScreen = () => {
         </View>
       </View>
 
-      <Pressable 
-        style={[styles.primaryButton, isSubmitting && styles.primaryButtonDisabled]} 
+      <Pressable
+        style={[
+          styles.primaryButton,
+          isSubmitting && styles.primaryButtonDisabled,
+        ]}
         onPress={handleContinue}
         disabled={isSubmitting}>
         {isSubmitting ? (
           <ActivityIndicator color={colors.surface} />
         ) : (
-        <Text style={styles.primaryButtonText}>Continue</Text>
+          <Text style={styles.primaryButtonText}>Continue</Text>
         )}
       </Pressable>
     </ScrollView>
@@ -341,4 +337,3 @@ const styles = StyleSheet.create({
 });
 
 export default DatingPreferencesScreen;
-

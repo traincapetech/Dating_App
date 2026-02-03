@@ -17,7 +17,10 @@ import {useNavigation} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
-import {uploadProfileImage, updateProfileApi} from '../../../services/profile/profileService';
+import {
+  uploadProfileImage,
+  updateProfileApi,
+} from '../../../services/profile/profileService';
 
 const MediaUploadScreen = () => {
   const navigation = useNavigation();
@@ -27,15 +30,26 @@ const MediaUploadScreen = () => {
   // Verify image picker module is available
   useEffect(() => {
     console.log('[MediaUpload] Component mounted');
-    console.log('[MediaUpload] launchCamera available:', typeof launchCamera === 'function');
-    console.log('[MediaUpload] launchImageLibrary available:', typeof launchImageLibrary === 'function');
-    
-    if (typeof launchCamera !== 'function' || typeof launchImageLibrary !== 'function') {
-      console.error('[MediaUpload] ERROR: Image picker functions are not available!');
+    console.log(
+      '[MediaUpload] launchCamera available:',
+      typeof launchCamera === 'function',
+    );
+    console.log(
+      '[MediaUpload] launchImageLibrary available:',
+      typeof launchImageLibrary === 'function',
+    );
+
+    if (
+      typeof launchCamera !== 'function' ||
+      typeof launchImageLibrary !== 'function'
+    ) {
+      console.error(
+        '[MediaUpload] ERROR: Image picker functions are not available!',
+      );
       Alert.alert(
         'Configuration Error',
         'Image picker module is not properly configured. Please rebuild the app.',
-        [{text: 'OK'}]
+        [{text: 'OK'}],
       );
     }
   }, []);
@@ -92,8 +106,10 @@ const MediaUploadScreen = () => {
       });
 
       if (croppedImage) {
-        const base64Data = croppedImage.data 
-          ? `data:${croppedImage.mime || 'image/jpeg'};base64,${croppedImage.data}`
+        const base64Data = croppedImage.data
+          ? `data:${croppedImage.mime || 'image/jpeg'};base64,${
+              croppedImage.data
+            }`
           : null;
 
         setMedia(prev => {
@@ -111,7 +127,10 @@ const MediaUploadScreen = () => {
     } catch (error) {
       if (error.message !== 'User cancelled image selection') {
         console.error('[Crop] Error:', error);
-        Alert.alert('Crop Error', 'Failed to crop image. Using original image.');
+        Alert.alert(
+          'Crop Error',
+          'Failed to crop image. Using original image.',
+        );
         // Continue with original image
       }
     }
@@ -120,11 +139,14 @@ const MediaUploadScreen = () => {
   const handleReorder = (index, direction) => {
     if (direction === 'up' && index === 0) return;
     if (direction === 'down' && index === media.length - 1) return;
-    
+
     setMedia(prev => {
       const newMedia = [...prev];
       const targetIndex = direction === 'up' ? index - 1 : index + 1;
-      [newMedia[index], newMedia[targetIndex]] = [newMedia[targetIndex], newMedia[index]];
+      [newMedia[index], newMedia[targetIndex]] = [
+        newMedia[targetIndex],
+        newMedia[index],
+      ];
       return newMedia;
     });
   };
@@ -136,11 +158,11 @@ const MediaUploadScreen = () => {
         const checkResult = await PermissionsAndroid.check(
           PermissionsAndroid.PERMISSIONS.CAMERA,
         );
-        
+
         if (checkResult) {
           return true; // Already granted
         }
-        
+
         // Request camera permission
         const cameraGranted = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.CAMERA,
@@ -152,7 +174,7 @@ const MediaUploadScreen = () => {
             buttonPositive: 'OK',
           },
         );
-        
+
         return cameraGranted === PermissionsAndroid.RESULTS.GRANTED;
       } catch (err) {
         console.error('Camera permission error:', err);
@@ -171,14 +193,14 @@ const MediaUploadScreen = () => {
         } else {
           permission = PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE;
         }
-        
+
         // Check if permission is already granted
         const checkResult = await PermissionsAndroid.check(permission);
-        
+
         if (checkResult) {
           return true; // Already granted
         }
-        
+
         // Request storage permission
         const storageGranted = await PermissionsAndroid.request(permission, {
           title: 'Storage Permission',
@@ -187,7 +209,7 @@ const MediaUploadScreen = () => {
           buttonNegative: 'Cancel',
           buttonPositive: 'OK',
         });
-        
+
         return storageGranted === PermissionsAndroid.RESULTS.GRANTED;
       } catch (err) {
         console.error('Storage permission error:', err);
@@ -200,18 +222,24 @@ const MediaUploadScreen = () => {
   const handleCamera = async index => {
     try {
       console.log('[Camera] Starting camera handler for index:', index);
-      
+
       // Verify function exists
       if (typeof launchCamera !== 'function') {
         console.error('[Camera] ERROR: launchCamera is not a function!');
-        Alert.alert('Error', 'Camera module is not available. Please rebuild the app.');
+        Alert.alert(
+          'Error',
+          'Camera module is not available. Please rebuild the app.',
+        );
         return;
       }
-      
+
       const hasPermission = await checkCameraPermission();
       if (!hasPermission) {
         console.log('[Camera] Permission denied');
-        Alert.alert('Permission Denied', 'Camera permission is required to take photos');
+        Alert.alert(
+          'Permission Denied',
+          'Camera permission is required to take photos',
+        );
         return;
       }
 
@@ -219,102 +247,121 @@ const MediaUploadScreen = () => {
         mediaType: 'photo',
         includeBase64: true,
         maxHeight: 1200, // Reduced to reduce file size
-        maxWidth: 1200,  // Reduced to reduce file size
-        quality: 0.7,    // Reduced to reduce file size
+        maxWidth: 1200, // Reduced to reduce file size
+        quality: 0.7, // Reduced to reduce file size
         saveToPhotos: true,
       };
 
-      console.log('[Camera] Launching camera with options:', JSON.stringify(options));
+      console.log(
+        '[Camera] Launching camera with options:',
+        JSON.stringify(options),
+      );
       console.log('[Camera] launchCamera function type:', typeof launchCamera);
-      
+
       // Ensure we're calling launchCamera correctly - wrap in try-catch
       try {
         console.log('[Camera] About to call launchCamera...');
         const result = launchCamera(options, response => {
           console.log('[Camera] Callback invoked!');
-        console.log('[Camera] Response:', {
-          didCancel: response.didCancel,
-          errorMessage: response.errorMessage,
-          hasAssets: !!response.assets,
-        });
-        
-        if (response.didCancel) {
-          console.log('[Camera] User cancelled');
-          return;
-        }
-        
-        if (response.errorMessage) {
-          console.error('[Camera] Error:', response.errorMessage);
-          Alert.alert('Camera Error', response.errorMessage);
-          return;
-        }
-
-        if (response.assets && response.assets[0]) {
-          const asset = response.assets[0];
-          console.log('[Camera] Asset selected:', {
-            uri: asset.uri,
-            type: asset.type,
-            hasBase64: !!asset.base64,
+          console.log('[Camera] Response:', {
+            didCancel: response.didCancel,
+            errorMessage: response.errorMessage,
+            hasAssets: !!response.assets,
           });
-          
-          // Fix 3: Validate URI to prevent crashes
-          const mediaUri = asset.uri || asset.fileName || (asset.base64 ? 'base64://' : null);
-          if (!mediaUri) {
-            Alert.alert('Error', 'Failed to get image data. Please try again.');
-            return;
-          }
-          
-          // Fix 4: Validate media type - prevent video uploads
-          const mediaType = asset.type?.startsWith('video/') ? 'video' : 'photo';
-          if (mediaType === 'video') {
-            Alert.alert('Videos not supported', 'Please pick an image instead.');
-            return;
-          }
-          
-          // Fix 5: Add proper base64 header
-          const base64Data = asset.base64 
-            ? `data:${asset.type || 'image/jpeg'};base64,${asset.base64}`
-            : null;
 
-          // Offer to crop the image
-          Alert.alert(
-            'Crop Image?',
-            'Would you like to crop this image?',
-            [
-              {
-                text: 'Skip',
-                onPress: () => {
-                  setMedia(prev => {
-                    const newMedia = [...prev];
-                    newMedia[index] = {
-                      uri: mediaUri,
-                      type: mediaType,
-                      fileName: asset.fileName || `media_${index}.jpg`,
-                      base64: base64Data,
-                      asset: asset,
-                    };
-                    return newMedia;
-                  });
+          if (response.didCancel) {
+            console.log('[Camera] User cancelled');
+            return;
+          }
+
+          if (response.errorMessage) {
+            console.error('[Camera] Error:', response.errorMessage);
+            Alert.alert('Camera Error', response.errorMessage);
+            return;
+          }
+
+          if (response.assets && response.assets[0]) {
+            const asset = response.assets[0];
+            console.log('[Camera] Asset selected:', {
+              uri: asset.uri,
+              type: asset.type,
+              hasBase64: !!asset.base64,
+            });
+
+            // Fix 3: Validate URI to prevent crashes
+            const mediaUri =
+              asset.uri ||
+              asset.fileName ||
+              (asset.base64 ? 'base64://' : null);
+            if (!mediaUri) {
+              Alert.alert(
+                'Error',
+                'Failed to get image data. Please try again.',
+              );
+              return;
+            }
+
+            // Fix 4: Validate media type - prevent video uploads
+            const mediaType = asset.type?.startsWith('video/')
+              ? 'video'
+              : 'photo';
+            if (mediaType === 'video') {
+              Alert.alert(
+                'Videos not supported',
+                'Please pick an image instead.',
+              );
+              return;
+            }
+
+            // Fix 5: Add proper base64 header
+            const base64Data = asset.base64
+              ? `data:${asset.type || 'image/jpeg'};base64,${asset.base64}`
+              : null;
+
+            // Offer to crop the image
+            Alert.alert(
+              'Crop Image?',
+              'Would you like to crop this image?',
+              [
+                {
+                  text: 'Skip',
+                  onPress: () => {
+                    setMedia(prev => {
+                      const newMedia = [...prev];
+                      newMedia[index] = {
+                        uri: mediaUri,
+                        type: mediaType,
+                        fileName: asset.fileName || `media_${index}.jpg`,
+                        base64: base64Data,
+                        asset: asset,
+                      };
+                      return newMedia;
+                    });
+                  },
                 },
-              },
-              {
-                text: 'Crop',
-                onPress: () => {
-                  handleImageCrop(mediaUri, index);
+                {
+                  text: 'Crop',
+                  onPress: () => {
+                    handleImageCrop(mediaUri, index);
+                  },
                 },
-              },
-            ],
-            {cancelable: true}
-          );
-        } else {
-          console.warn('[Camera] No assets in response');
-        }
+              ],
+              {cancelable: true},
+            );
+          } else {
+            console.warn('[Camera] No assets in response');
+          }
         });
         console.log('[Camera] launchCamera called, result:', result);
       } catch (launchError) {
         console.error('[Camera] Launch error:', launchError);
         console.error('[Camera] Error stack:', launchError.stack);
-        Alert.alert('Error', `Failed to launch camera: ${launchError.message || launchError.toString()}`);
+        Alert.alert(
+          'Error',
+          `Failed to launch camera: ${
+            launchError.message || launchError.toString()
+          }`,
+        );
       }
     } catch (error) {
       console.error('[Camera] Exception:', error);
@@ -325,18 +372,24 @@ const MediaUploadScreen = () => {
   const handleGallery = async index => {
     try {
       console.log('[Gallery] Starting gallery handler for index:', index);
-      
+
       // Verify function exists
       if (typeof launchImageLibrary !== 'function') {
         console.error('[Gallery] ERROR: launchImageLibrary is not a function!');
-        Alert.alert('Error', 'Gallery module is not available. Please rebuild the app.');
+        Alert.alert(
+          'Error',
+          'Gallery module is not available. Please rebuild the app.',
+        );
         return;
       }
-      
+
       const hasPermission = await checkStoragePermission();
       if (!hasPermission) {
         console.log('[Gallery] Permission denied');
-        Alert.alert('Permission Denied', 'Storage permission is required to select photos');
+        Alert.alert(
+          'Permission Denied',
+          'Storage permission is required to select photos',
+        );
         return;
       }
 
@@ -344,102 +397,127 @@ const MediaUploadScreen = () => {
         mediaType: 'photo',
         includeBase64: true,
         maxHeight: 1200, // Reduced from 2000 to reduce file size
-        maxWidth: 1200,  // Reduced from 2000 to reduce file size
-        quality: 0.7,    // Reduced from 0.8 to reduce file size
+        maxWidth: 1200, // Reduced from 2000 to reduce file size
+        quality: 0.7, // Reduced from 0.8 to reduce file size
         selectionLimit: 1,
       };
 
-      console.log('[Gallery] Launching image library with options:', JSON.stringify(options));
-      console.log('[Gallery] launchImageLibrary function type:', typeof launchImageLibrary);
-      
+      console.log(
+        '[Gallery] Launching image library with options:',
+        JSON.stringify(options),
+      );
+      console.log(
+        '[Gallery] launchImageLibrary function type:',
+        typeof launchImageLibrary,
+      );
+
       // Ensure we're calling launchImageLibrary correctly - wrap in try-catch
       try {
         console.log('[Gallery] About to call launchImageLibrary...');
         const result = launchImageLibrary(options, response => {
           console.log('[Gallery] Callback invoked!');
-        console.log('[Gallery] Response:', {
-          didCancel: response.didCancel,
-          errorMessage: response.errorMessage,
-          hasAssets: !!response.assets,
-        });
-        
-        if (response.didCancel) {
-          console.log('[Gallery] User cancelled');
-          return;
-        }
-        
-        if (response.errorMessage) {
-          console.error('[Gallery] Error:', response.errorMessage);
-          Alert.alert('Gallery Error', response.errorMessage);
-          return;
-        }
-
-        if (response.assets && response.assets[0]) {
-          const asset = response.assets[0];
-          console.log('[Gallery] Asset selected:', {
-            uri: asset.uri,
-            type: asset.type,
-            hasBase64: !!asset.base64,
+          console.log('[Gallery] Response:', {
+            didCancel: response.didCancel,
+            errorMessage: response.errorMessage,
+            hasAssets: !!response.assets,
           });
-          
-          // Fix 3: Validate URI to prevent crashes
-          const mediaUri = asset.uri || asset.fileName || (asset.base64 ? 'base64://' : null);
-          if (!mediaUri) {
-            Alert.alert('Error', 'Failed to get image data. Please try again.');
-            return;
-          }
-          
-          // Fix 4: Validate media type - prevent video uploads
-          const mediaType = asset.type?.startsWith('video/') ? 'video' : 'photo';
-          if (mediaType === 'video') {
-            Alert.alert('Videos not supported', 'Please pick an image instead.');
-            return;
-          }
-          
-          // Fix 5: Add proper base64 header
-          const base64Data = asset.base64 
-            ? `data:${asset.type || 'image/jpeg'};base64,${asset.base64}`
-            : null;
 
-          // Offer to crop the image
-          Alert.alert(
-            'Crop Image?',
-            'Would you like to crop this image?',
-            [
-              {
-                text: 'Skip',
-                onPress: () => {
-                  setMedia(prev => {
-                    const newMedia = [...prev];
-                    newMedia[index] = {
-                      uri: mediaUri,
-                      type: mediaType,
-                      fileName: asset.fileName || asset.uri?.split('/').pop() || `media_${index}.jpg`,
-                      base64: base64Data,
-                      asset: asset,
-                    };
-                    return newMedia;
-                  });
+          if (response.didCancel) {
+            console.log('[Gallery] User cancelled');
+            return;
+          }
+
+          if (response.errorMessage) {
+            console.error('[Gallery] Error:', response.errorMessage);
+            Alert.alert('Gallery Error', response.errorMessage);
+            return;
+          }
+
+          if (response.assets && response.assets[0]) {
+            const asset = response.assets[0];
+            console.log('[Gallery] Asset selected:', {
+              uri: asset.uri,
+              type: asset.type,
+              hasBase64: !!asset.base64,
+            });
+
+            // Fix 3: Validate URI to prevent crashes
+            const mediaUri =
+              asset.uri ||
+              asset.fileName ||
+              (asset.base64 ? 'base64://' : null);
+            if (!mediaUri) {
+              Alert.alert(
+                'Error',
+                'Failed to get image data. Please try again.',
+              );
+              return;
+            }
+
+            // Fix 4: Validate media type - prevent video uploads
+            const mediaType = asset.type?.startsWith('video/')
+              ? 'video'
+              : 'photo';
+            if (mediaType === 'video') {
+              Alert.alert(
+                'Videos not supported',
+                'Please pick an image instead.',
+              );
+              return;
+            }
+
+            // Fix 5: Add proper base64 header
+            const base64Data = asset.base64
+              ? `data:${asset.type || 'image/jpeg'};base64,${asset.base64}`
+              : null;
+
+            // Offer to crop the image
+            Alert.alert(
+              'Crop Image?',
+              'Would you like to crop this image?',
+              [
+                {
+                  text: 'Skip',
+                  onPress: () => {
+                    setMedia(prev => {
+                      const newMedia = [...prev];
+                      newMedia[index] = {
+                        uri: mediaUri,
+                        type: mediaType,
+                        fileName:
+                          asset.fileName ||
+                          asset.uri?.split('/').pop() ||
+                          `media_${index}.jpg`,
+                        base64: base64Data,
+                        asset: asset,
+                      };
+                      return newMedia;
+                    });
+                  },
                 },
-              },
-              {
-                text: 'Crop',
-                onPress: () => {
-                  handleImageCrop(mediaUri, index);
+                {
+                  text: 'Crop',
+                  onPress: () => {
+                    handleImageCrop(mediaUri, index);
+                  },
                 },
-              },
-            ],
-            {cancelable: true}
-          );
-        } else {
-          console.warn('[Gallery] No assets in response');
-        }
+              ],
+              {cancelable: true},
+            );
+          } else {
+            console.warn('[Gallery] No assets in response');
+          }
         });
         console.log('[Gallery] launchImageLibrary called, result:', result);
       } catch (launchError) {
         console.error('[Gallery] Launch error:', launchError);
         console.error('[Gallery] Error stack:', launchError.stack);
-        Alert.alert('Error', `Failed to launch gallery: ${launchError.message || launchError.toString()}`);
+        Alert.alert(
+          'Error',
+          `Failed to launch gallery: ${
+            launchError.message || launchError.toString()
+          }`,
+        );
       }
     } catch (error) {
       console.error('[Gallery] Exception:', error);
@@ -453,27 +531,23 @@ const MediaUploadScreen = () => {
 
   const handleRemoveMedia = (index, event) => {
     event.stopPropagation();
-    Alert.alert(
-      'Remove Media',
-      'Are you sure you want to remove this media?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
+    Alert.alert('Remove Media', 'Are you sure you want to remove this media?', [
+      {
+        text: 'Cancel',
+        style: 'cancel',
+      },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: () => {
+          setMedia(prev => {
+            const newMedia = [...prev];
+            newMedia[index] = null;
+            return newMedia;
+          });
         },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: () => {
-            setMedia(prev => {
-              const newMedia = [...prev];
-              newMedia[index] = null;
-              return newMedia;
-            });
-          },
-        },
-      ],
-    );
+      },
+    ]);
   };
 
   const handleContinue = async () => {
@@ -481,14 +555,14 @@ const MediaUploadScreen = () => {
     try {
       const userData = await AsyncStorage.getItem('@pryvo_user');
       let userId = null;
-      
-      if (userData) {
+
+      if (userData && userData !== 'undefined') {
         const user = JSON.parse(userData);
         userId = user.id;
       } else {
         // Try to get from token (decode JWT)
         const token = await AsyncStorage.getItem('@pryvo/token');
-        if (token) {
+        if (token && token !== 'undefined') {
           // Simple JWT decode (just get payload)
           try {
             const payload = JSON.parse(atob(token.split('.')[1]));
@@ -506,50 +580,78 @@ const MediaUploadScreen = () => {
 
       // Filter out null media items
       const mediaToUpload = media.filter(item => item !== null);
-      
+
       if (mediaToUpload.length === 0) {
-        Alert.alert('No Media', 'Please add at least one photo before continuing.');
+        Alert.alert(
+          'No Media',
+          'Please add at least one photo before continuing.',
+        );
         return;
       }
 
       setUploading(true);
-      
+
       // Upload images one by one in the correct order
       const uploadResults = [];
       const uploadErrors = [];
       const mediaWithOrder = [];
-      
+
       // Find the actual indices of non-null media items to preserve order
       media.forEach((item, originalIndex) => {
         if (item !== null) {
           mediaWithOrder.push({item, originalIndex});
         }
       });
-      
+
       for (let i = 0; i < mediaWithOrder.length; i++) {
         const {item, originalIndex} = mediaWithOrder[i];
         try {
-          console.log(`[MediaUpload] Uploading image ${i + 1}/${mediaWithOrder.length} (order: ${originalIndex})`);
-          
+          console.log(
+            `[MediaUpload] Uploading image ${i + 1}/${
+              mediaWithOrder.length
+            } (order: ${originalIndex})`,
+          );
+
           let result;
           // Prefer asset object (which includes base64), then base64, then URI
           if (item.asset) {
-            result = await uploadProfileImage(userId, item.asset, item.fileName);
+            result = await uploadProfileImage(
+              userId,
+              item.asset,
+              item.fileName,
+            );
           } else if (item.base64) {
-            result = await uploadProfileImage(userId, item.base64, item.fileName);
+            result = await uploadProfileImage(
+              userId,
+              item.base64,
+              item.fileName,
+            );
           } else {
             result = await uploadProfileImage(userId, item.uri, item.fileName);
           }
-          
-          uploadResults.push({index: originalIndex, order: i, success: true, result});
-          console.log(`[MediaUpload] Image ${i + 1} uploaded successfully with order ${i}`);
+
+          uploadResults.push({
+            index: originalIndex,
+            order: i,
+            success: true,
+            result,
+          });
+          console.log(
+            `[MediaUpload] Image ${
+              i + 1
+            } uploaded successfully with order ${i}`,
+          );
         } catch (error) {
           console.error(`[MediaUpload] Error uploading image ${i + 1}:`, error);
-          uploadErrors.push({index: originalIndex, order: i, error: error.message || 'Upload failed'});
+          uploadErrors.push({
+            index: originalIndex,
+            order: i,
+            error: error.message || 'Upload failed',
+          });
           // Continue with next image even if one fails
         }
       }
-      
+
       // After all uploads, update the profile with correct order
       if (uploadResults.length > 0) {
         try {
@@ -561,12 +663,14 @@ const MediaUploadScreen = () => {
               order: idx,
             }))
             .filter(item => item.url); // Only include items with valid URLs
-          
+
           if (mediaArray.length > 0) {
             await updateProfileApi({
               media: {media: mediaArray},
             });
-            console.log('[MediaUpload] Profile updated with correct media order');
+            console.log(
+              '[MediaUpload] Profile updated with correct media order',
+            );
           }
         } catch (error) {
           console.error('[MediaUpload] Error updating profile order:', error);
@@ -578,12 +682,16 @@ const MediaUploadScreen = () => {
       if (uploadResults.length > 0) {
         if (uploadErrors.length === 0) {
           // All successful
-          Alert.alert('Success', `All ${uploadResults.length} images uploaded successfully!`, [
-        {
-          text: 'OK',
-          onPress: () => navigation.navigate(AppRoute.SubscriptionUpsell),
-        },
-      ]);
+          Alert.alert(
+            'Success',
+            `All ${uploadResults.length} images uploaded successfully!`,
+            [
+              {
+                text: 'OK',
+                onPress: () => navigation.navigate(AppRoute.SubscriptionUpsell),
+              },
+            ],
+          );
         } else {
           // Partial success
           Alert.alert(
@@ -598,20 +706,27 @@ const MediaUploadScreen = () => {
                 text: 'Continue',
                 onPress: () => navigation.navigate(AppRoute.SubscriptionUpsell),
               },
-            ]
+            ],
           );
         }
       } else {
         // All failed
         Alert.alert(
           'Upload Failed',
-          `Failed to upload images. ${uploadErrors.length > 0 ? uploadErrors[0].error : 'Please try again.'}`,
-          [{text: 'OK'}]
+          `Failed to upload images. ${
+            uploadErrors.length > 0
+              ? uploadErrors[0].error
+              : 'Please try again.'
+          }`,
+          [{text: 'OK'}],
         );
       }
     } catch (error) {
       console.error('[MediaUpload] Unexpected error:', error);
-      Alert.alert('Error', error.message || 'An unexpected error occurred. Please try again.');
+      Alert.alert(
+        'Error',
+        error.message || 'An unexpected error occurred. Please try again.',
+      );
     } finally {
       setUploading(false);
     }
@@ -624,8 +739,8 @@ const MediaUploadScreen = () => {
       <View style={styles.header}>
         <Text style={styles.title}>Pick your photos and videos</Text>
         <Text style={styles.subtitle}>
-          There are 6 photos/videos we upload like headshots, full body, smiling,
-          just you, nature, candid.
+          There are 6 photos/videos we upload like headshots, full body,
+          smiling, just you, nature, candid.
         </Text>
       </View>
 
@@ -699,8 +814,11 @@ const MediaUploadScreen = () => {
         </Text>
       </View>
 
-      <Pressable 
-        style={[styles.primaryButton, uploading && styles.primaryButtonDisabled]} 
+      <Pressable
+        style={[
+          styles.primaryButton,
+          uploading && styles.primaryButtonDisabled,
+        ]}
         onPress={handleContinue}
         disabled={uploading}>
         {uploading ? (
@@ -884,4 +1002,3 @@ const styles = StyleSheet.create({
 });
 
 export default MediaUploadScreen;
-

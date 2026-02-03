@@ -15,7 +15,8 @@ export async function requestLocationPermission() {
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
           {
             title: 'Location Permission',
-            message: 'Pryvo needs access to your location to find matches nearby.',
+            message:
+              'Pryvo needs access to your location to find matches nearby.',
             buttonNeutral: 'Ask Me Later',
             buttonNegative: 'Cancel',
             buttonPositive: 'OK',
@@ -65,15 +66,11 @@ export async function getCurrentLocation() {
     }
 
     const position = await new Promise((resolve, reject) => {
-      Geolocation.getCurrentPosition(
-        resolve,
-        reject,
-        {
-          enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 10000,
-        },
-      );
+      Geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 10000,
+      });
     });
 
     return {
@@ -107,11 +104,17 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
 export async function updateUserLocation(latitude, longitude) {
   try {
     const userData = await AsyncStorage.getItem('@pryvo_user');
-    if (!userData) {
+    let user;
+    if (userData && userData !== 'undefined') {
+      try {
+        user = JSON.parse(userData);
+      } catch (e) {
+        console.error('Failed to parse user data in location service:', e);
+        return {success: false, message: 'Invalid user data'};
+      }
+    } else {
       return {success: false, message: 'User not found'};
     }
-
-    const user = JSON.parse(userData);
     const userId = user.id;
 
     // Update location in profile
@@ -138,11 +141,17 @@ export async function updateUserLocation(latitude, longitude) {
 export async function hasLocationChanged(latitude, longitude) {
   try {
     const lastLocationStr = await AsyncStorage.getItem(LOCATION_KEY);
-    if (!lastLocationStr) {
-      return true; // First time, consider it changed
+    if (!lastLocationStr || lastLocationStr === 'undefined') {
+      return true; // First time or invalid, consider it changed
     }
 
-    const lastLocation = JSON.parse(lastLocationStr);
+    let lastLocation;
+    try {
+      lastLocation = JSON.parse(lastLocationStr);
+    } catch (e) {
+      console.error('Failed to parse last location:', e);
+      return true;
+    }
     const distance = calculateDistance(
       lastLocation.latitude,
       lastLocation.longitude,
@@ -256,7 +265,10 @@ export function watchLocation(onLocationChange, options = {}) {
   }
 
   // Listen to app state changes
-  const subscription = AppState.addEventListener('change', handleAppStateChange);
+  const subscription = AppState.addEventListener(
+    'change',
+    handleAppStateChange,
+  );
 
   return {
     start: startWatching,
@@ -266,4 +278,3 @@ export function watchLocation(onLocationChange, options = {}) {
     },
   };
 }
-

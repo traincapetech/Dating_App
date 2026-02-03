@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Text, View, StyleSheet } from 'react-native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, {useState, useEffect} from 'react';
+import {Text, View, StyleSheet} from 'react-native';
+import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import HomeScreen from '../features/discovery/screens/HomeScreen';
 import LikesScreen from '../features/likes/screens/LikesScreen';
 import ChatsScreen from '../features/messages/screens/ChatsScreen';
 import ProfileScreen from '../features/profile/screens/ProfileScreen';
 import SettingsScreen from '../features/settings/screens/SettingsScreen';
-import { colors, typography } from '../theme';
-import { getLikesCount } from '../services/swipeActions';
+import {colors, typography} from '../theme';
+import {getLikesCount} from '../services/swipeActions';
 
 const Tab = createBottomTabNavigator();
 
@@ -27,8 +27,14 @@ const TabNavigator = () => {
   const loadLikesCount = async () => {
     try {
       const userData = await AsyncStorage.getItem('@pryvo_user');
-      if (userData) {
-        const user = JSON.parse(userData);
+      if (userData && userData !== 'undefined') {
+        let user;
+        try {
+          user = JSON.parse(userData);
+        } catch (e) {
+          console.error('Failed to parse user data in TabNavigator:', e);
+          return;
+        }
         const response = await getLikesCount(user.id);
         if (response.success) {
           setLikesCount(response.count || 0);
@@ -62,8 +68,8 @@ const TabNavigator = () => {
         name="Discover"
         component={HomeScreen}
         options={{
-          tabBarIcon: ({ color, size }) => (
-            <Text style={{ fontSize: size, color }}>🔥</Text>
+          tabBarIcon: ({color, size}) => (
+            <Text style={{fontSize: size, color}}>🔥</Text>
           ),
         }}
       />
@@ -74,9 +80,9 @@ const TabNavigator = () => {
           tabPress: () => loadLikesCount(),
         }}
         options={{
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({color, size}) => (
             <View>
-              <Text style={{ fontSize: size, color }}>💕</Text>
+              <Text style={{fontSize: size, color}}>💕</Text>
               {likesCount > 0 && (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>
@@ -92,8 +98,8 @@ const TabNavigator = () => {
         name="Messages"
         component={ChatsScreen}
         options={{
-          tabBarIcon: ({ color, size }) => (
-            <Text style={{ fontSize: size, color }}>💬</Text>
+          tabBarIcon: ({color, size}) => (
+            <Text style={{fontSize: size, color}}>💬</Text>
           ),
         }}
       />
@@ -101,8 +107,8 @@ const TabNavigator = () => {
         name="Profile"
         component={ProfileScreen}
         options={{
-          tabBarIcon: ({ color, size }) => (
-            <Text style={{ fontSize: size, color }}>👤</Text>
+          tabBarIcon: ({color, size}) => (
+            <Text style={{fontSize: size, color}}>👤</Text>
           ),
         }}
       />
@@ -110,8 +116,8 @@ const TabNavigator = () => {
         name="Settings"
         component={SettingsScreen}
         options={{
-          tabBarIcon: ({ color, size }) => (
-            <Text style={{ fontSize: size, color }}>⚙️</Text>
+          tabBarIcon: ({color, size}) => (
+            <Text style={{fontSize: size, color}}>⚙️</Text>
           ),
         }}
       />

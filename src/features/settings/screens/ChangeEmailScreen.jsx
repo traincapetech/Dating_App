@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
   View,
   Text,
@@ -11,10 +11,11 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {useNavigation} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors, typography, spacing } from '../../../theme';
-import { changeEmail } from '../../../services/auth/authService';
+import {colors, typography, spacing} from '../../../theme';
+import {changeEmail} from '../../../services/auth/authService';
 
 const ChangeEmailScreen = () => {
   const navigation = useNavigation();
@@ -44,25 +45,29 @@ const ChangeEmailScreen = () => {
 
     try {
       const userData = await AsyncStorage.getItem('@pryvo_user');
-      if (!userData) {
+      if (userData && userData !== 'undefined') {
+        try {
+          const user = JSON.parse(userData);
+          await changeEmail(user.id, newEmail.trim(), password);
+
+          Alert.alert('Success', 'Your email has been updated successfully', [
+            {
+              text: 'OK',
+              onPress: () => navigation.goBack(),
+            },
+          ]);
+        } catch (e) {
+          console.error('Failed to parse user data in ChangeEmailScreen:', e);
+          Alert.alert('Error', 'Invalid session. Please sign in again.');
+          navigation.reset({
+            index: 0,
+            routes: [{name: 'OnboardingIntro'}],
+          });
+        }
+      } else {
         Alert.alert('Error', 'User not found. Please sign in again.');
         navigation.goBack();
-        return;
       }
-
-      const user = JSON.parse(userData);
-      await changeEmail(user.id, newEmail.trim(), password);
-
-      Alert.alert(
-        'Success',
-        'Your email has been updated successfully',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
     } catch (error) {
       console.error('Error changing email:', error);
       console.error('Error details:', {
@@ -71,14 +76,16 @@ const ChangeEmailScreen = () => {
         data: error.data,
         stack: error.stack,
       });
-      
+
       let errorMessage = 'Failed to update email. Please try again.';
-      
+
       // Handle network errors
       if (error.isNetworkError) {
-        errorMessage = 'Network error. Please check your internet connection and try again.';
+        errorMessage =
+          'Network error. Please check your internet connection and try again.';
       } else if (error.isHtmlResponse) {
-        errorMessage = 'Server error. The email change feature may not be available on the server yet.';
+        errorMessage =
+          'Server error. The email change feature may not be available on the server yet.';
       } else if (error.message && error.message !== 'Something went wrong') {
         errorMessage = error.message;
       } else if (error.data?.message) {
@@ -86,7 +93,8 @@ const ChangeEmailScreen = () => {
       } else if (error.data?.error) {
         errorMessage = error.data.error;
       } else if (error.status === 401) {
-        errorMessage = 'Invalid password. Please check your password and try again.';
+        errorMessage =
+          'Invalid password. Please check your password and try again.';
       } else if (error.status === 409) {
         errorMessage = 'An account already exists with this email address.';
       } else if (error.status === 404) {
@@ -94,7 +102,7 @@ const ChangeEmailScreen = () => {
       } else if (error.status >= 500) {
         errorMessage = 'Server error. Please try again later.';
       }
-      
+
       Alert.alert('Error', errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -102,62 +110,70 @@ const ChangeEmailScreen = () => {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backText}>←</Text>
-        </Pressable>
-        <Text style={styles.headerTitle}>Change Email</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.description}>
-          Enter your new email address and current password to update your email.
-        </Text>
-
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>New Email</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter new email"
-            placeholderTextColor={colors.textSecondary}
-            value={newEmail}
-            onChangeText={setNewEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            editable={!isSubmitting}
-          />
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={styles.header}>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}>
+            <Text style={styles.backText}>←</Text>
+          </Pressable>
+          <Text style={styles.headerTitle}>Change Email</Text>
+          <View style={{width: 40}} />
         </View>
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Current Password</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter your password"
-            placeholderTextColor={colors.textSecondary}
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-            editable={!isSubmitting}
-          />
-        </View>
+        <ScrollView contentContainerStyle={styles.content}>
+          <Text style={styles.description}>
+            Enter your new email address and current password to update your
+            email.
+          </Text>
 
-        <Pressable
-          style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={isSubmitting}>
-          {isSubmitting ? (
-            <ActivityIndicator color={colors.surface} />
-          ) : (
-            <Text style={styles.submitButtonText}>Update Email</Text>
-          )}
-        </Pressable>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>New Email</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter new email"
+              placeholderTextColor={colors.textSecondary}
+              value={newEmail}
+              onChangeText={setNewEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              editable={!isSubmitting}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Current Password</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your password"
+              placeholderTextColor={colors.textSecondary}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              editable={!isSubmitting}
+            />
+          </View>
+
+          <Pressable
+            style={[
+              styles.submitButton,
+              isSubmitting && styles.submitButtonDisabled,
+            ]}
+            onPress={handleSubmit}
+            disabled={isSubmitting}>
+            {isSubmitting ? (
+              <ActivityIndicator color={colors.surface} />
+            ) : (
+              <Text style={styles.submitButtonText}>Update Email</Text>
+            )}
+          </Pressable>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
@@ -166,13 +182,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  flex: {
+    flex: 1,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.md,
+    paddingVertical: spacing.md,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
@@ -236,4 +254,3 @@ const styles = StyleSheet.create({
 });
 
 export default ChangeEmailScreen;
-

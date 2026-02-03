@@ -8,6 +8,7 @@ import {
   Switch,
   ActivityIndicator,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {colors, typography, spacing} from '../../../theme';
@@ -35,15 +36,16 @@ const DistanceFilterScreen = () => {
   const loadDistancePrefs = async () => {
     try {
       const raw = await AsyncStorage.getItem(DISTANCE_PREF_KEY);
-      if (!raw) return;
-      
+      if (!raw || raw === 'undefined') return;
+
       const parsed = JSON.parse(raw);
       const distance = clampDistance(parsed.maxDistance ?? 50);
-      const enabled = typeof parsed.useDistanceFilter === 'boolean' 
-        ? parsed.useDistanceFilter 
-        : true;
+      const enabled =
+        typeof parsed.useDistanceFilter === 'boolean'
+          ? parsed.useDistanceFilter
+          : true;
       const presetValue = parsed.selectedPreset || null;
-      
+
       setMaxDistance(distance);
       setUseDistanceFilter(enabled);
       setSelectedPreset(presetValue);
@@ -96,8 +98,9 @@ const DistanceFilterScreen = () => {
     setLoading(true);
     try {
       const userData = await AsyncStorage.getItem('@pryvo_user');
-      const excludeUserId = userData ? JSON.parse(userData).id : null;
-      
+      const excludeUserId =
+        userData && userData !== 'undefined' ? JSON.parse(userData).id : null;
+
       await getDiscoverProfiles(excludeUserId, {
         useMatching: false,
         maxDistance: useDistanceFilter ? maxDistance : undefined,
@@ -110,9 +113,11 @@ const DistanceFilterScreen = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Pressable
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}>
           <Text style={styles.backText}>←</Text>
         </Pressable>
         <Text style={styles.headerTitle}>Distance Filter</Text>
@@ -145,13 +150,15 @@ const DistanceFilterScreen = () => {
                     key={preset.value}
                     style={[
                       styles.presetChip,
-                      selectedPreset === preset.value && styles.presetChipActive,
+                      selectedPreset === preset.value &&
+                        styles.presetChipActive,
                     ]}
                     onPress={() => handleSelectPreset(preset.value)}>
                     <Text
                       style={[
                         styles.presetChipText,
-                        selectedPreset === preset.value && styles.presetChipTextActive,
+                        selectedPreset === preset.value &&
+                          styles.presetChipTextActive,
                       ]}>
                       {preset.label}
                     </Text>
@@ -179,7 +186,10 @@ const DistanceFilterScreen = () => {
 
             <View style={styles.section}>
               <Pressable
-                style={[styles.refreshButton, loading && styles.refreshButtonDisabled]}
+                style={[
+                  styles.refreshButton,
+                  loading && styles.refreshButtonDisabled,
+                ]}
                 onPress={handleRefresh}
                 disabled={loading}>
                 {loading ? (
@@ -192,7 +202,7 @@ const DistanceFilterScreen = () => {
           </>
         )}
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -206,8 +216,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.md,
+    paddingVertical: spacing.md,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
@@ -320,4 +329,3 @@ const styles = StyleSheet.create({
 });
 
 export default DistanceFilterScreen;
-

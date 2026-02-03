@@ -53,7 +53,9 @@ const NotificationPreferencesScreen = () => {
       const userId = await getUserId();
       if (userId) {
         try {
-          const response = await apiClient.get(`/notifications/preferences/${userId}`);
+          const response = await apiClient.get(
+            `/notifications/preferences/${userId}`,
+          );
           if (response?.success && response?.preferences) {
             setPreferences(response.preferences);
             return;
@@ -65,7 +67,7 @@ const NotificationPreferencesScreen = () => {
 
       // Fallback to local storage
       const stored = await AsyncStorage.getItem(NOTIFICATION_PREFS_KEY);
-      if (stored) {
+      if (stored && stored !== 'undefined') {
         setPreferences(JSON.parse(stored));
       }
     } catch (error) {
@@ -76,7 +78,7 @@ const NotificationPreferencesScreen = () => {
   const getUserId = async () => {
     try {
       const userData = await AsyncStorage.getItem('@pryvo_user');
-      if (userData) {
+      if (userData && userData !== 'undefined') {
         const user = JSON.parse(userData);
         return user.id;
       }
@@ -86,10 +88,13 @@ const NotificationPreferencesScreen = () => {
     }
   };
 
-  const savePreferences = async (newPrefs) => {
+  const savePreferences = async newPrefs => {
     try {
       // Save to local storage
-      await AsyncStorage.setItem(NOTIFICATION_PREFS_KEY, JSON.stringify(newPrefs));
+      await AsyncStorage.setItem(
+        NOTIFICATION_PREFS_KEY,
+        JSON.stringify(newPrefs),
+      );
 
       // Save to backend
       const userId = await getUserId();
@@ -142,14 +147,24 @@ const NotificationPreferencesScreen = () => {
     }
   };
 
-  const PreferenceRow = ({title, description, value, onValueChange, disabled}) => (
+  const PreferenceRow = ({
+    title,
+    description,
+    value,
+    onValueChange,
+    disabled,
+  }) => (
     <View style={styles.preferenceRow}>
       <View style={styles.preferenceContent}>
         <Text style={[styles.preferenceTitle, disabled && styles.disabledText]}>
           {title}
         </Text>
         {description && (
-          <Text style={[styles.preferenceDescription, disabled && styles.disabledText]}>
+          <Text
+            style={[
+              styles.preferenceDescription,
+              disabled && styles.disabledText,
+            ]}>
             {description}
           </Text>
         )}
@@ -167,7 +182,9 @@ const NotificationPreferencesScreen = () => {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Pressable
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}>
           <Text style={styles.backText}>←</Text>
         </Pressable>
         <Text style={styles.headerTitle}>Notification Preferences</Text>
@@ -180,8 +197,8 @@ const NotificationPreferencesScreen = () => {
           {paddingBottom: insets.bottom + spacing.lg},
         ]}>
         <Text style={styles.sectionDescription}>
-          Control which notifications you receive. Push notifications must be enabled
-          for any of these settings to work.
+          Control which notifications you receive. Push notifications must be
+          enabled for any of these settings to work.
         </Text>
 
         {/* Main Push Toggle */}
@@ -194,7 +211,7 @@ const NotificationPreferencesScreen = () => {
           </View>
           <Switch
             value={preferences.pushEnabled}
-            onValueChange={(value) => handleToggle('pushEnabled', value)}
+            onValueChange={value => handleToggle('pushEnabled', value)}
             trackColor={{false: colors.borderLight, true: colors.primary}}
             thumbColor={colors.surface}
           />
@@ -203,8 +220,8 @@ const NotificationPreferencesScreen = () => {
         {!hasSystemPermission && preferences.pushEnabled && (
           <View style={styles.warningBox}>
             <Text style={styles.warningText}>
-              ⚠️ Please enable notifications in your device settings to receive push
-              notifications.
+              ⚠️ Please enable notifications in your device settings to receive
+              push notifications.
             </Text>
           </View>
         )}
@@ -216,35 +233,35 @@ const NotificationPreferencesScreen = () => {
           title="New Matches"
           description="Get notified when someone likes you back"
           value={preferences.newMatches}
-          onValueChange={(value) => handleToggle('newMatches', value)}
+          onValueChange={value => handleToggle('newMatches', value)}
         />
 
         <PreferenceRow
           title="New Messages"
           description="Get notified when you receive a message"
           value={preferences.newMessages}
-          onValueChange={(value) => handleToggle('newMessages', value)}
+          onValueChange={value => handleToggle('newMessages', value)}
         />
 
         <PreferenceRow
           title="New Likes"
           description="Get notified when someone likes your profile"
           value={preferences.newLikes}
-          onValueChange={(value) => handleToggle('newLikes', value)}
+          onValueChange={value => handleToggle('newLikes', value)}
         />
 
         <PreferenceRow
           title="Super Likes"
           description="Get notified when someone super likes you"
           value={preferences.superLikes}
-          onValueChange={(value) => handleToggle('superLikes', value)}
+          onValueChange={value => handleToggle('superLikes', value)}
         />
 
         <PreferenceRow
           title="Profile Views"
           description="Get notified when someone views your profile"
           value={preferences.profileViews}
-          onValueChange={(value) => handleToggle('profileViews', value)}
+          onValueChange={value => handleToggle('profileViews', value)}
         />
       </ScrollView>
     </SafeAreaView>
@@ -361,4 +378,3 @@ const styles = StyleSheet.create({
 });
 
 export default NotificationPreferencesScreen;
-

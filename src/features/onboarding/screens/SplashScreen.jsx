@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   View,
   Text,
@@ -7,14 +7,34 @@ import {
   StatusBar,
   Dimensions,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import {colors, spacing, typography} from '../../../theme';
 import {AppRoute} from '../../../constants/routes';
+import {getAccessToken} from '../../../services/storage/tokenStorage';
 
 const {width, height} = Dimensions.get('window');
 
 const SplashScreen = ({navigation}) => {
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const token = await getAccessToken();
+        if (token) {
+          navigation?.reset({
+            index: 0,
+            routes: [{name: AppRoute.HomeTabs}],
+          });
+        }
+      } catch (error) {
+        console.error('Error checking session:', error);
+      }
+    };
+
+    checkSession();
+  }, [navigation]);
+
   const handleCreateAccount = () => {
     navigation?.navigate(AppRoute.SignUp);
   };
@@ -36,7 +56,7 @@ const SplashScreen = ({navigation}) => {
           source={{uri: backgroundImageUri}}
           style={styles.backgroundImage}
           resizeMode="cover"
-          onError={(error) => {
+          onError={error => {
             console.log('Background image failed to load:', error);
           }}
         />
@@ -76,9 +96,7 @@ const SplashScreen = ({navigation}) => {
             profiles and real conversations.
           </Text>
 
-          <Pressable
-            style={styles.primaryButton}
-            onPress={handleCreateAccount}>
+          <Pressable style={styles.primaryButton} onPress={handleCreateAccount}>
             <LinearGradient
               colors={[colors.primary, colors.primaryDark]}
               start={{x: 0, y: 0}}
@@ -132,6 +150,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.primary,
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   backgroundImage: {
     width: '100%',

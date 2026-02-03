@@ -62,7 +62,8 @@ const BasicInfoScreen = () => {
           PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
           {
             title: 'Location Permission',
-            message: 'Pryvo needs access to your location to show you matches nearby.',
+            message:
+              'Pryvo needs access to your location to show you matches nearby.',
             buttonNeutral: 'Ask Me Later',
             buttonNegative: 'Cancel',
             buttonPositive: 'OK',
@@ -92,19 +93,15 @@ const BasicInfoScreen = () => {
     setIsGettingLocation(true);
     try {
       const position = await new Promise((resolve, reject) => {
-        Geolocation.getCurrentPosition(
-          resolve,
-          reject,
-          {
-            enableHighAccuracy: true,
-            timeout: 15000,
-            maximumAge: 10000,
-          },
-        );
+        Geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 10000,
+        });
       });
 
       const {latitude, longitude, accuracy} = position.coords;
-      
+
       // Store GPS coordinates
       const locationData = {
         lat: latitude,
@@ -122,21 +119,31 @@ const BasicInfoScreen = () => {
           locationData.description = cityName;
           handleChange('location', cityName);
         } else {
-          handleChange('location', `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+          handleChange(
+            'location',
+            `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+          );
         }
       } catch (geocodeError) {
         console.warn('Reverse geocoding failed:', geocodeError);
         // Use coordinates as fallback
-        handleChange('location', `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+        handleChange(
+          'location',
+          `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+        );
       }
 
       handleChange('locationDetails', locationData);
-      Alert.alert('Location Found', 'Your location has been detected successfully!');
+      Alert.alert(
+        'Location Found',
+        'Your location has been detected successfully!',
+      );
     } catch (error) {
       console.error('Location error:', error);
       Alert.alert(
         'Location Error',
-        error.message || 'Failed to get your location. Please make sure GPS is enabled and try again.',
+        error.message ||
+          'Failed to get your location. Please make sure GPS is enabled and try again.',
       );
     } finally {
       setIsGettingLocation(false);
@@ -149,29 +156,32 @@ const BasicInfoScreen = () => {
       // Using Google Geocoding API for reverse geocoding
       const apiKey = 'AIzaSyDD9uRgqIVB8roh8-ob-AZiiXoFocAExvY';
       const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}&language=en`;
-      
+
       const response = await fetch(url);
       const data = await response.json();
-      
+
       if (data.status === 'OK' && data.results.length > 0) {
         // Extract city/locality from results
         const result = data.results[0];
         const addressComponents = result.address_components;
-        
+
         // Find city/locality
         let city = null;
         for (const component of addressComponents) {
-          if (component.types.includes('locality') || component.types.includes('administrative_area_level_1')) {
+          if (
+            component.types.includes('locality') ||
+            component.types.includes('administrative_area_level_1')
+          ) {
             city = component.long_name;
             break;
           }
         }
-        
+
         // Fallback to formatted address
         if (!city) {
           city = result.formatted_address.split(',')[0];
         }
-        
+
         return city;
       }
       return null;
@@ -247,7 +257,10 @@ const BasicInfoScreen = () => {
       await verifyEmailOTP(form.email, otpCode);
       setForm(prev => ({...prev, emailVerified: true}));
       setShowOTPInput(false);
-      Alert.alert('Email Verified', 'Your email has been verified successfully');
+      Alert.alert(
+        'Email Verified',
+        'Your email has been verified successfully',
+      );
     } catch (error) {
       Alert.alert('Verification Failed', error?.message || 'Invalid OTP code');
       setEmailOTP(['', '', '', '', '', '']);
@@ -271,14 +284,14 @@ const BasicInfoScreen = () => {
       // Get user ID from storage
       const userData = await AsyncStorage.getItem('@pryvo_user');
       let userId = null;
-      
-      if (userData) {
+
+      if (userData && userData !== 'undefined') {
         const user = JSON.parse(userData);
         userId = user.id;
       } else {
         // Try to get from token (decode JWT)
         const token = await AsyncStorage.getItem('@pryvo/token');
-        if (token) {
+        if (token && token !== 'undefined') {
           try {
             const payload = JSON.parse(atob(token.split('.')[1]));
             userId = payload.userId || payload.id;
@@ -290,7 +303,7 @@ const BasicInfoScreen = () => {
 
       if (!userId) {
         Alert.alert('Error', 'User ID not found. Please sign in again.');
-      setIsSubmitting(false);
+        setIsSubmitting(false);
         return;
       }
 
@@ -310,7 +323,7 @@ const BasicInfoScreen = () => {
 
       // Save to backend
       await saveBasicInfo(basicInfoData);
-      
+
       console.log('Basic info saved successfully');
       navigation.navigate(AppRoute.DatingPreferences);
     } catch (error) {
@@ -325,23 +338,30 @@ const BasicInfoScreen = () => {
   };
 
   // Calculate age from date of birth
-  const calculateAge = (dobString) => {
+  const calculateAge = dobString => {
     if (!dobString || dobString.length < 10) return null;
-    
+
     try {
       // Parse date (format: YYYY-MM-DD)
       const parts = dobString.split('-');
       if (parts.length !== 3) return null;
-      
-      const birthDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+
+      const birthDate = new Date(
+        parseInt(parts[0]),
+        parseInt(parts[1]) - 1,
+        parseInt(parts[2]),
+      );
       const today = new Date();
       let age = today.getFullYear() - birthDate.getFullYear();
       const monthDiff = today.getMonth() - birthDate.getMonth();
-      
-      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+
+      if (
+        monthDiff < 0 ||
+        (monthDiff === 0 && today.getDate() < birthDate.getDate())
+      ) {
         age--;
       }
-      
+
       return age;
     } catch (error) {
       console.error('Error calculating age:', error);
@@ -350,29 +370,50 @@ const BasicInfoScreen = () => {
   };
 
   // Verify user is 18+
-  const verifyAge = (dobString) => {
+  const verifyAge = dobString => {
     const age = calculateAge(dobString);
-    if (age === null) return { valid: false, message: 'Please enter a valid date of birth (YYYY-MM-DD)' };
-    if (age < 18) return { valid: false, message: 'You must be at least 18 years old to use Pryvo.' };
-    return { valid: true, age };
+    if (age === null)
+      return {
+        valid: false,
+        message: 'Please enter a valid date of birth (YYYY-MM-DD)',
+      };
+    if (age < 18)
+      return {
+        valid: false,
+        message: 'You must be at least 18 years old to use Pryvo.',
+      };
+    return {valid: true, age};
   };
 
   const canProceed = () => {
     switch (step) {
       case 1:
-        if (!form.firstName.trim() || !form.lastName.trim() || !form.dob.trim()) {
+        if (
+          !form.firstName.trim() ||
+          !form.lastName.trim() ||
+          !form.dob.trim()
+        ) {
           return false;
         }
         // Verify age is 18+
         const ageCheck = verifyAge(form.dob);
         return ageCheck.valid;
       case 2:
-        return form.email.trim() && /\S+@\S+\.\S+/.test(form.email) && form.emailVerified;
+        return (
+          form.email.trim() &&
+          /\S+@\S+\.\S+/.test(form.email) &&
+          form.emailVerified
+        );
       case 3:
         return true; // Notifications is optional
       case 4:
         // Require GPS coordinates
-        return form.locationDetails && form.locationDetails.lat && form.locationDetails.lng && form.locationDetails.source === 'gps';
+        return (
+          form.locationDetails &&
+          form.locationDetails.lat &&
+          form.locationDetails.lng &&
+          form.locationDetails.source === 'gps'
+        );
       case 5:
         return form.gender.trim();
       default:
@@ -405,46 +446,45 @@ const BasicInfoScreen = () => {
               style={styles.input}
               placeholderTextColor={colors.textSecondary}
             />
-          <Text style={[styles.label, {marginTop: spacing.lg}]}>
-            Date of birth (YYYY-MM-DD)
-          </Text>
-          <Text style={styles.hintText}>
-            You must be at least 18 years old to use Pryvo
-          </Text>
-          <TextInput
-            value={form.dob}
-            onChangeText={value => {
-              handleChange('dob', value);
-              // Validate age when DOB is entered
-              if (value.length >= 10) {
-                const ageCheck = verifyAge(value);
+            <Text style={[styles.label, {marginTop: spacing.lg}]}>
+              Date of birth (YYYY-MM-DD)
+            </Text>
+            <Text style={styles.hintText}>
+              You must be at least 18 years old to use Pryvo
+            </Text>
+            <TextInput
+              value={form.dob}
+              onChangeText={value => {
+                handleChange('dob', value);
+                // Validate age when DOB is entered
+                if (value.length >= 10) {
+                  const ageCheck = verifyAge(value);
+                  if (!ageCheck.valid) {
+                    Alert.alert('Age Verification Required', ageCheck.message, [
+                      {text: 'OK'},
+                    ]);
+                  }
+                }
+              }}
+              placeholder="1998-05-12"
+              keyboardType="numbers-and-punctuation"
+              style={styles.input}
+              placeholderTextColor={colors.textSecondary}
+            />
+            {form.dob.length >= 10 &&
+              (() => {
+                const ageCheck = verifyAge(form.dob);
                 if (!ageCheck.valid) {
-                  Alert.alert(
-                    'Age Verification Required',
-                    ageCheck.message,
-                    [{ text: 'OK' }]
+                  return (
+                    <Text style={styles.errorText}>{ageCheck.message}</Text>
                   );
                 }
-              }
-            }}
-            placeholder="1998-05-12"
-            keyboardType="numbers-and-punctuation"
-            style={styles.input}
-            placeholderTextColor={colors.textSecondary}
-          />
-          {form.dob.length >= 10 && (() => {
-            const ageCheck = verifyAge(form.dob);
-            if (!ageCheck.valid) {
-              return (
-                <Text style={styles.errorText}>{ageCheck.message}</Text>
-              );
-            }
-            return (
-              <Text style={styles.successText}>
-                ✓ Age verified: {ageCheck.age} years old
-              </Text>
-            );
-          })()}
+                return (
+                  <Text style={styles.successText}>
+                    ✓ Age verified: {ageCheck.age} years old
+                  </Text>
+                );
+              })()}
           </View>
         );
       case 2:
@@ -481,7 +521,10 @@ const BasicInfoScreen = () => {
                   onPress={handleSendEmailOTP}
                   disabled={isSendingOTP || !form.email.trim()}>
                   {isSendingOTP ? (
-                    <ActivityIndicator color={colors.textInverse} size="small" />
+                    <ActivityIndicator
+                      color={colors.textInverse}
+                      size="small"
+                    />
                   ) : (
                     <Text style={styles.otpButtonText}>Send OTP</Text>
                   )}
@@ -513,7 +556,10 @@ const BasicInfoScreen = () => {
                       onPress={handleVerifyEmailOTP}
                       disabled={isVerifyingOTP}>
                       {isVerifyingOTP ? (
-                        <ActivityIndicator color={colors.textInverse} size="small" />
+                        <ActivityIndicator
+                          color={colors.textInverse}
+                          size="small"
+                        />
                       ) : (
                         <Text style={styles.verifyButtonText}>Verify</Text>
                       )}
@@ -594,9 +640,10 @@ const BasicInfoScreen = () => {
         return (
           <View>
             <Text style={styles.subtitle}>
-              We'll use your device's GPS to detect your location. This helps us show you matches nearby.
+              We'll use your device's GPS to detect your location. This helps us
+              show you matches nearby.
             </Text>
-            
+
             <Pressable
               style={[
                 styles.locationButton,
@@ -607,7 +654,9 @@ const BasicInfoScreen = () => {
               {isGettingLocation ? (
                 <>
                   <ActivityIndicator color={colors.primary} size="small" />
-                  <Text style={styles.locationButtonText}>Detecting location...</Text>
+                  <Text style={styles.locationButtonText}>
+                    Detecting location...
+                  </Text>
                 </>
               ) : (
                 <>
@@ -615,7 +664,7 @@ const BasicInfoScreen = () => {
                   <Text style={styles.locationButtonText}>Get My Location</Text>
                 </>
               )}
-              </Pressable>
+            </Pressable>
 
             {form.location && form.locationDetails && (
               <View style={styles.selectedLocation}>
@@ -624,7 +673,8 @@ const BasicInfoScreen = () => {
                 </Text>
                 {form.locationDetails.lat && form.locationDetails.lng && (
                   <Text style={styles.locationCoordsText}>
-                    Coordinates: {form.locationDetails.lat.toFixed(6)}, {form.locationDetails.lng.toFixed(6)}
+                    Coordinates: {form.locationDetails.lat.toFixed(6)},{' '}
+                    {form.locationDetails.lng.toFixed(6)}
                   </Text>
                 )}
                 {form.locationDetails.accuracy && (
@@ -638,7 +688,8 @@ const BasicInfoScreen = () => {
             {!form.locationDetails && (
               <View style={styles.infoBox}>
                 <Text style={styles.infoBoxText}>
-                  💡 Make sure your GPS is enabled and you're in an area with good signal.
+                  💡 Make sure your GPS is enabled and you're in an area with
+                  good signal.
                 </Text>
               </View>
             )}
@@ -647,9 +698,7 @@ const BasicInfoScreen = () => {
       case 5:
         return (
           <View>
-            <Text style={styles.subtitle}>
-              What gender best describes you?
-            </Text>
+            <Text style={styles.subtitle}>What gender best describes you?</Text>
             {['Man', 'Woman', 'Non Binary'].map(gender => (
               <Pressable
                 key={gender}
@@ -719,9 +768,7 @@ const BasicInfoScreen = () => {
       </Pressable>
 
       {step === 3 && (
-        <Pressable
-          style={styles.skipButton}
-          onPress={() => setStep(4)}>
+        <Pressable style={styles.skipButton} onPress={() => setStep(4)}>
           <Text style={styles.skipText}>Skip for now</Text>
         </Pressable>
       )}
@@ -736,9 +783,7 @@ const BasicInfoScreen = () => {
           style={styles.flex}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
-          <View style={styles.container}>
-            {content}
-          </View>
+          <View style={styles.container}>{content}</View>
         </KeyboardAvoidingView>
       </SafeAreaView>
     );

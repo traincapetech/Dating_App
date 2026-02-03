@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -10,12 +10,14 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {useFocusEffect, useNavigation} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors, typography, spacing } from '../../../theme';
-import { getBlockedUsers, unblockUser } from '../../../services/blockService';
+import {colors, typography, spacing} from '../../../theme';
+import {getBlockedUsers, unblockUser} from '../../../services/blockService';
 
 const BlockedUsersScreen = () => {
+  const navigation = useNavigation();
   const [blockedUsers, setBlockedUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -24,13 +26,13 @@ const BlockedUsersScreen = () => {
   useFocusEffect(
     useCallback(() => {
       loadBlockedUsers();
-    }, [])
+    }, []),
   );
 
   const loadBlockedUsers = async () => {
     try {
       const userData = await AsyncStorage.getItem('@pryvo_user');
-      if (!userData) return;
+      if (!userData || userData === 'undefined') return;
 
       const user = JSON.parse(userData);
       setCurrentUserId(user.id);
@@ -47,34 +49,33 @@ const BlockedUsersScreen = () => {
   };
 
   const handleUnblock = (blockedId, name) => {
-    Alert.alert(
-      'Unblock User',
-      `Are you sure you want to unblock ${name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Unblock',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await unblockUser(currentUserId, blockedId);
-              await loadBlockedUsers();
-              Alert.alert('Success', 'User has been unblocked');
-            } catch (error) {
-              console.error('Error unblocking user:', error);
-              Alert.alert('Error', 'Failed to unblock user. Please try again.');
-            }
-          },
+    Alert.alert('Unblock User', `Are you sure you want to unblock ${name}?`, [
+      {text: 'Cancel', style: 'cancel'},
+      {
+        text: 'Unblock',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await unblockUser(currentUserId, blockedId);
+            await loadBlockedUsers();
+            Alert.alert('Success', 'User has been unblocked');
+          } catch (error) {
+            console.error('Error unblocking user:', error);
+            Alert.alert('Error', 'Failed to unblock user. Please try again.');
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
-  const renderItem = ({ item }) => (
+  const renderItem = ({item}) => (
     <View style={styles.userItem}>
       <Image
         source={{
-          uri: item.photo || 'https://ui-avatars.com/api/?background=667eea&color=fff&name=' + encodeURIComponent(item.name || 'User')
+          uri:
+            item.photo ||
+            'https://ui-avatars.com/api/?background=667eea&color=fff&name=' +
+              encodeURIComponent(item.name || 'User'),
         }}
         style={styles.avatar}
       />
@@ -97,39 +98,43 @@ const BlockedUsersScreen = () => {
 
   if (loading) {
     return (
-      <View style={styles.center}>
+      <SafeAreaView style={styles.center}>
         <ActivityIndicator size="large" color={colors.primary} />
-      </View>
+      </SafeAreaView>
     );
   }
 
+  const Header = () => (
+    <View style={styles.header}>
+      <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
+        <Text style={styles.backText}>←</Text>
+      </Pressable>
+      <Text style={styles.headerTitle}>Blocked Users</Text>
+      <View style={{width: 40}} />
+    </View>
+  );
+
   if (blockedUsers.length === 0) {
     return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Blocked Users</Text>
-        </View>
+      <SafeAreaView style={styles.container}>
+        <Header />
         <View style={styles.center}>
           <Text style={styles.emptyEmoji}>🚫</Text>
           <Text style={styles.emptyTitle}>No blocked users</Text>
-          <Text style={styles.emptyText}>
-            Users you block will appear here
-          </Text>
+          <Text style={styles.emptyText}>Users you block will appear here</Text>
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Blocked Users</Text>
-      </View>
+    <SafeAreaView style={styles.container}>
+      <Header />
       <FlatList
         data={blockedUsers}
-        keyExtractor={(item) => item.blockedId}
+        keyExtractor={item => item.blockedId}
         renderItem={renderItem}
-        contentContainerStyle={{ paddingVertical: spacing.sm }}
+        contentContainerStyle={{paddingVertical: spacing.sm}}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -142,7 +147,7 @@ const BlockedUsersScreen = () => {
           />
         }
       />
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -158,14 +163,24 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
     backgroundColor: '#fff',
   },
-  headerTitle: {
+  backButton: {
+    padding: spacing.sm,
+  },
+  backText: {
     fontSize: 24,
+    color: '#1a1a1a',
+  },
+  headerTitle: {
+    fontSize: 18,
     fontFamily: typography.fontFamilyBold,
     color: colors.textPrimary,
   },
@@ -232,4 +247,3 @@ const styles = StyleSheet.create({
 });
 
 export default BlockedUsersScreen;
-

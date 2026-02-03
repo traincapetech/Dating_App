@@ -8,10 +8,12 @@ import {
   Alert,
   ActivityIndicator,
   Switch,
+  StatusBar,
 } from 'react-native';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import LinearGradient from 'react-native-linear-gradient';
 import {colors, typography, spacing} from '../../../theme';
 import {
   getSubscriptionStatus,
@@ -37,490 +39,440 @@ const SubscriptionManagementScreen = () => {
     try {
       setLoading(true);
       const userData = await AsyncStorage.getItem('@pryvo_user');
-      if (!userData) {
-        Alert.alert('Error', 'User not found');
+      if (userData && userData !== 'undefined') {
+        const user = JSON.parse(userData);
+        setCurrentUserId(user.id);
+
+        const [statusResponse, historyResponse] = await Promise.all([
+          getSubscriptionStatus(user.id).catch(() => null),
+          getUserSubscriptions(user.id).catch(() => ({subscriptions: []})),
+        ]);
+
+        if (statusResponse?.success) {
+          setIsPremium(statusResponse.isPremium);
+          setSubscription(statusResponse.subscription);
+        }
+
+        setAllSubscriptions(historyResponse?.subscriptions || []);
+      } else {
         navigation.goBack();
-        return;
-      }
-
-      const user = JSON.parse(userData);
-      setCurrentUserId(user.id);
-
-      // Get current subscription status
-      const statusResponse = await getSubscriptionStatus(user.id);
-      if (statusResponse?.success) {
-        setIsPremium(statusResponse.isPremium);
-        setSubscription(statusResponse.subscription);
-      }
-
-      // Get all subscriptions history
-      const subscriptionsResponse = await getUserSubscriptions(user.id);
-      if (subscriptionsResponse?.success) {
-        setAllSubscriptions(subscriptionsResponse.subscriptions || []);
       }
     } catch (error) {
       console.error('Error loading subscription data:', error);
-      Alert.alert('Error', 'Failed to load subscription information');
     } finally {
       setLoading(false);
     }
   };
 
   const handleCancelSubscription = () => {
-    if (!subscription) {
-      Alert.alert('No Subscription', 'You do not have an active subscription');
-      return;
-    }
+    if (!subscription) return;
 
     Alert.alert(
       'Cancel Subscription',
-      subscription.autoRenew
-        ? 'Your subscription will remain active until the end of the current billing period, but will not renew automatically.'
-        : 'Are you sure you want to cancel your subscription?',
+      'Your Premium benefits will remain active until the end of your current period. Are you sure?',
       [
-        {text: 'Keep Subscription', style: 'cancel'},
+        {text: 'Keep Premium', style: 'cancel'},
         {
-          text: 'Cancel Subscription',
+          text: 'Cancel',
           style: 'destructive',
           onPress: async () => {
             try {
-              const response = await cancelSubscription(subscription.id, currentUserId);
+              const response = await cancelSubscription(
+                subscription.id,
+                currentUserId,
+              );
               if (response?.success) {
-                Alert.alert('Success', 'Subscription cancelled successfully', [
-                  {text: 'OK', onPress: () => loadSubscriptionData()},
-                ]);
-              } else {
-                throw new Error(response?.message || 'Failed to cancel subscription');
+                Alert.alert('Success', 'Auto-renewal has been cancelled.');
+                loadSubscriptionData();
               }
             } catch (error) {
-              Alert.alert('Error', error?.message || 'Failed to cancel subscription');
+              Alert.alert('Error', 'Failed to cancel subscription');
             }
           },
         },
-      ]
+      ],
     );
   };
 
-  const handleToggleAutoRenew = async (enabled) => {
+  const handleToggleAutoRenew = async enabled => {
     if (!subscription) return;
-
     try {
       const response = await setAutoRenewal(subscription.id, enabled);
-
       if (response?.success) {
         setSubscription({...subscription, autoRenew: enabled});
-        Alert.alert(
-          'Success',
-          `Auto-renewal ${enabled ? 'enabled' : 'disabled'} successfully`
-        );
-      } else {
-        throw new Error('Failed to update auto-renewal');
       }
     } catch (error) {
-      Alert.alert('Error', error?.message || 'Failed to update auto-renewal settings');
+      Alert.alert('Error', 'Failed to update auto-renewal');
     }
   };
 
-  const formatDate = (dateString) => {
+  const formatDate = dateString => {
     if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
+    return new Date(dateString).toLocaleDateString(undefined, {
       year: 'numeric',
-      month: 'long',
+      month: 'short',
       day: 'numeric',
     });
   };
 
-  const getStatusColor = (status) => {
+  const getStatusConfig = status => {
     switch (status) {
       case 'active':
-        return colors.success || '#4CAF50';
+        return {color: colors.success, label: 'Active'};
       case 'cancelled':
-        return colors.error || '#FF3B30';
+        return {color: colors.warning, label: 'Cancelled'};
       case 'expired':
-        return colors.textSecondary || '#999';
-      case 'refunded':
-        return '#FF9800';
+        return {color: colors.textTertiary, label: 'Expired'};
       default:
-        return colors.textSecondary;
+        return {
+          color: colors.textSecondary,
+          label: status?.toUpperCase() || 'Unknown',
+        };
     }
   };
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-        <View style={styles.header}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Text style={styles.backText}>←</Text>
-          </Pressable>
-          <Text style={styles.headerTitle}>Manage Subscription</Text>
-          <View style={{width: 40}} />
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
-      </SafeAreaView>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backText}>←</Text>
-        </Pressable>
-        <Text style={styles.headerTitle}>Manage Subscription</Text>
-        <View style={{width: 40}} />
-      </View>
+    <View style={styles.mainContainer}>
+      <StatusBar barStyle="dark-content" />
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <View style={styles.header}>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}>
+            <Text style={styles.backButtonText}>✕</Text>
+          </Pressable>
+          <Text style={styles.headerTitle}>Subscription</Text>
+          <View style={{width: 40}} />
+        </View>
 
-      <ScrollView
-        contentContainerStyle={[
-          styles.content,
-          {paddingBottom: insets.bottom + spacing.lg},
-        ]}>
-        {!isPremium && !subscription ? (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyStateIcon}>💎</Text>
-            <Text style={styles.emptyStateTitle}>No Active Subscription</Text>
-            <Text style={styles.emptyStateText}>
-              Upgrade to Premium to unlock all features and get unlimited likes!
-            </Text>
-            <Pressable
-              style={styles.upgradeButton}
-              onPress={() => navigation.navigate('SubscriptionUpsell')}>
-              <Text style={styles.upgradeButtonText}>Upgrade to Premium</Text>
-            </Pressable>
-          </View>
-        ) : (
-          <>
-            {/* Current Subscription */}
-            {subscription && (
-              <View style={styles.currentSubscription}>
-                <View style={styles.subscriptionHeader}>
-                  <View>
-                    <Text style={styles.subscriptionTitle}>
-                      {subscription.planName || 'Premium Subscription'}
-                    </Text>
-                    <View style={styles.statusBadge}>
-                      <View
-                        style={[
-                          styles.statusDot,
-                          {backgroundColor: getStatusColor(subscription.status)},
-                        ]}
-                      />
-                      <Text
-                        style={[
-                          styles.statusText,
-                          {color: getStatusColor(subscription.status)},
-                        ]}>
-                        {subscription.status?.toUpperCase() || 'ACTIVE'}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-
-                <View style={styles.subscriptionDetails}>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Plan</Text>
-                    <Text style={styles.detailValue}>
-                      {subscription.planName || subscription.planId}
-                    </Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Price</Text>
-                    <Text style={styles.detailValue}>
-                      ₹{subscription.price || 0} {subscription.currency || 'INR'}
-                    </Text>
-                  </View>
-                  <View style={styles.detailRow}>
-                    <Text style={styles.detailLabel}>Expires On</Text>
-                    <Text style={styles.detailValue}>
-                      {formatDate(subscription.expiresAt)}
-                    </Text>
-                  </View>
-                  {subscription.createdAt && (
-                    <View style={styles.detailRow}>
-                      <Text style={styles.detailLabel}>Started On</Text>
-                      <Text style={styles.detailValue}>
-                        {formatDate(subscription.createdAt)}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-
-                {/* Auto-Renewal Toggle */}
-                {subscription.status === 'active' && (
-                  <View style={styles.autoRenewContainer}>
-                    <View style={styles.autoRenewContent}>
-                      <Text style={styles.autoRenewTitle}>Auto-Renewal</Text>
-                      <Text style={styles.autoRenewDescription}>
-                        Automatically renew your subscription when it expires
-                      </Text>
-                    </View>
-                    <Switch
-                      value={subscription.autoRenew !== false}
-                      onValueChange={handleToggleAutoRenew}
-                      trackColor={{false: colors.borderLight, true: colors.primary}}
-                      thumbColor={colors.surface}
-                    />
-                  </View>
-                )}
-
-                {/* Boost Profile Button */}
-                {subscription.status === 'active' && (
-                  <Pressable
-                    style={styles.boostButton}
-                    onPress={() => navigation.navigate('BoostProfile')}>
-                    <Text style={styles.boostButtonText}>🚀 Boost Profile</Text>
-                  </Pressable>
-                )}
-
-                {/* Cancel Button */}
-                {subscription.status === 'active' && (
-                  <Pressable
-                    style={styles.cancelButton}
-                    onPress={handleCancelSubscription}>
-                    <Text style={styles.cancelButtonText}>Cancel Subscription</Text>
-                  </Pressable>
-                )}
-              </View>
-            )}
-
-            {/* Subscription History */}
-            {allSubscriptions.length > 0 && (
-              <View style={styles.historySection}>
-                <Text style={styles.sectionTitle}>Subscription History</Text>
-                {allSubscriptions.map((sub, index) => (
-                  <View key={sub.id || index} style={styles.historyItem}>
-                    <View style={styles.historyHeader}>
-                      <Text style={styles.historyPlan}>{sub.planName || sub.planId}</Text>
-                      <View
-                        style={[
-                          styles.historyStatusBadge,
-                          {backgroundColor: getStatusColor(sub.status) + '20'},
-                        ]}>
-                        <Text
-                          style={[
-                            styles.historyStatusText,
-                            {color: getStatusColor(sub.status)},
-                          ]}>
-                          {sub.status?.toUpperCase() || 'UNKNOWN'}
-                        </Text>
-                      </View>
-                    </View>
-                    <View style={styles.historyDetails}>
-                      <Text style={styles.historyDate}>
-                        {formatDate(sub.createdAt)} - {formatDate(sub.expiresAt)}
-                      </Text>
-                      <Text style={styles.historyPrice}>
-                        ₹{sub.price || 0} {sub.currency || 'INR'}
-                      </Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {/* Upgrade CTA for expired subscriptions */}
-            {subscription?.status === 'expired' && (
-              <View style={styles.upgradeSection}>
-                <Text style={styles.upgradeTitle}>Your subscription has expired</Text>
-                <Text style={styles.upgradeText}>
-                  Renew your Premium subscription to continue enjoying all features
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}>
+          {!isPremium ? (
+            <View style={styles.noSubSection}>
+              <LinearGradient
+                colors={[colors.primary, '#9B51E0']}
+                style={styles.upsellCard}>
+                <Text style={styles.upsellEmoji}>💎</Text>
+                <Text style={styles.upsellTitle}>Unlock Pryvo Premium</Text>
+                <Text style={styles.upsellText}>
+                  Get unlimited likes, see who likes you, and 3x more matches!
                 </Text>
                 <Pressable
-                  style={styles.upgradeButton}
+                  style={styles.upsellButton}
                   onPress={() => navigation.navigate('SubscriptionUpsell')}>
-                  <Text style={styles.upgradeButtonText}>Renew Subscription</Text>
+                  <Text style={styles.upsellButtonText}>View Plans</Text>
                 </Pressable>
+              </LinearGradient>
+            </View>
+          ) : (
+            <View style={styles.activeSubSection}>
+              <View style={styles.activeCard}>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.planName}>
+                    {subscription?.planName || 'Premium'}
+                  </Text>
+                  <View
+                    style={[
+                      styles.statusBadge,
+                      {
+                        backgroundColor:
+                          getStatusConfig(subscription?.status).color + '20',
+                      },
+                    ]}>
+                    <Text
+                      style={[
+                        styles.statusBadgeText,
+                        {color: getStatusConfig(subscription?.status).color},
+                      ]}>
+                      {getStatusConfig(subscription?.status).label}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.detailsList}>
+                  <View style={styles.detailItem}>
+                    <Text style={styles.detailLabel}>Expiry Date</Text>
+                    <Text style={styles.detailValue}>
+                      {formatDate(subscription?.expiresAt)}
+                    </Text>
+                  </View>
+                  <View style={styles.detailItem}>
+                    <Text style={styles.detailLabel}>Price Paid</Text>
+                    <Text style={styles.detailValue}>
+                      {subscription?.price} {subscription?.currency || 'USD'}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.divider} />
+
+                <View style={styles.row}>
+                  <View style={styles.autoRenewInfo}>
+                    <Text style={styles.autoRenewTitle}>Auto-Renewal</Text>
+                    <Text style={styles.autoRenewDesc}>
+                      Keep your benefits uninterrupted
+                    </Text>
+                  </View>
+                  <Switch
+                    value={subscription?.autoRenew !== false}
+                    onValueChange={handleToggleAutoRenew}
+                    trackColor={{false: '#D1D1D1', true: colors.primary}}
+                  />
+                </View>
               </View>
-            )}
-          </>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+
+              <View style={styles.actionButtons}>
+                <Pressable
+                  style={styles.upgradeBtn}
+                  onPress={() => navigation.navigate('SubscriptionUpsell')}>
+                  <Text style={styles.upgradeBtnText}>⭐ Upgrade Plan</Text>
+                </Pressable>
+
+                {subscription?.status === 'active' && (
+                  <Pressable
+                    style={styles.cancelBtn}
+                    onPress={handleCancelSubscription}>
+                    <Text style={styles.cancelBtnText}>Cancel Renewal</Text>
+                  </Pressable>
+                )}
+              </View>
+            </View>
+          )}
+
+          {allSubscriptions.length > 0 && (
+            <View style={styles.historySection}>
+              <Text style={styles.sectionTitle}>Billing History</Text>
+              {allSubscriptions.map((sub, idx) => (
+                <View key={sub.id || idx} style={styles.historyCard}>
+                  <View style={styles.historyInfo}>
+                    <Text style={styles.historyName}>
+                      {sub.planName || 'Premium'}
+                    </Text>
+                    <Text style={styles.historyDate}>
+                      {formatDate(sub.createdAt)}
+                    </Text>
+                  </View>
+                  <View style={styles.historyPrice}>
+                    <Text style={styles.historyAmount}>
+                      {sub.price} {sub.currency || 'USD'}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.historyStatus,
+                        {color: getStatusConfig(sub.status).color},
+                      ]}>
+                      {getStatusConfig(sub.status).label}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  mainContainer: {
+    flex: 1,
+    backgroundColor: colors.backgroundSecondary,
+  },
   safe: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     backgroundColor: colors.background,
   },
   backButton: {
-    padding: spacing.xs,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.backgroundSecondary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  backText: {
-    fontSize: 24,
-    color: colors.primary,
+  backButtonText: {
+    fontSize: 16,
+    color: colors.textPrimary,
   },
   headerTitle: {
     fontSize: typography.headings.h4,
     fontFamily: typography.fontFamilyBold,
     color: colors.textPrimary,
   },
+  scrollContent: {
+    padding: spacing.lg,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: colors.background,
   },
-  content: {
-    padding: spacing.lg,
+  noSubSection: {
+    marginBottom: spacing.xl,
   },
-  emptyState: {
+  upsellCard: {
+    padding: spacing.xl,
+    borderRadius: 30,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xxl,
+    shadowColor: colors.primary,
+    shadowOffset: {width: 0, height: 10},
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 8,
   },
-  emptyStateIcon: {
-    fontSize: 64,
+  upsellEmoji: {
+    fontSize: 50,
     marginBottom: spacing.md,
   },
-  emptyStateTitle: {
+  upsellTitle: {
     fontSize: typography.headings.h3,
     fontFamily: typography.fontFamilyBold,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
+    color: '#fff',
+    marginBottom: spacing.xs,
   },
-  emptyStateText: {
+  upsellText: {
     fontSize: typography.body.medium,
-    fontFamily: typography.fontFamilyRegular,
-    color: colors.textSecondary,
+    color: 'rgba(255,255,255,0.9)',
     textAlign: 'center',
     marginBottom: spacing.xl,
-    paddingHorizontal: spacing.lg,
   },
-  upgradeButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.xl,
+  upsellButton: {
+    backgroundColor: '#fff',
+    paddingHorizontal: spacing.xxl,
     paddingVertical: spacing.md,
-    borderRadius: 12,
+    borderRadius: 20,
   },
-  upgradeButtonText: {
-    color: colors.surface,
+  upsellButtonText: {
+    color: colors.primary,
     fontFamily: typography.fontFamilyBold,
     fontSize: typography.body.large,
   },
-  currentSubscription: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
+  activeSubSection: {
+    marginBottom: spacing.xl,
+  },
+  activeCard: {
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: spacing.xl,
     borderWidth: 1,
     borderColor: colors.borderLight,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  subscriptionHeader: {
-    marginBottom: spacing.md,
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xl,
   },
-  subscriptionTitle: {
+  planName: {
     fontSize: typography.headings.h3,
     fontFamily: typography.fontFamilyBold,
     color: colors.textPrimary,
-    marginBottom: spacing.xs,
   },
   statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.xs,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: spacing.xs,
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: 'bold',
   },
-  statusText: {
-    fontSize: typography.body.small,
-    fontFamily: typography.fontFamilyBold,
+  detailsList: {
+    marginBottom: spacing.xl,
   },
-  subscriptionDetails: {
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
-  },
-  detailRow: {
+  detailItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
   detailLabel: {
     fontSize: typography.body.medium,
-    fontFamily: typography.fontFamilyRegular,
     color: colors.textSecondary,
   },
   detailValue: {
     fontSize: typography.body.medium,
-    fontFamily: typography.fontFamilyMedium,
+    fontFamily: typography.fontFamilyBold,
     color: colors.textPrimary,
   },
-  autoRenewContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: spacing.md,
-    paddingTop: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
+  divider: {
+    height: 1,
+    backgroundColor: colors.borderLight,
+    marginBottom: spacing.lg,
   },
-  autoRenewContent: {
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  autoRenewInfo: {
     flex: 1,
-    marginRight: spacing.md,
   },
   autoRenewTitle: {
-    fontSize: typography.body.medium,
-    fontFamily: typography.fontFamilyMedium,
-    color: colors.textPrimary,
-    marginBottom: spacing.xs,
-  },
-  autoRenewDescription: {
-    fontSize: typography.body.small,
-    fontFamily: typography.fontFamilyRegular,
-    color: colors.textSecondary,
-  },
-  cancelButton: {
-    marginTop: spacing.md,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.error || '#FF3B30',
-    borderRadius: 12,
-  },
-  boostButton: {
-    marginTop: spacing.md,
-    marginBottom: spacing.sm,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-  },
-  boostButtonText: {
-    color: colors.surface,
-    fontFamily: typography.fontFamilyBold,
     fontSize: typography.body.large,
+    fontFamily: typography.fontFamilyBold,
+    color: colors.textPrimary,
   },
-  cancelButton: {
-    marginTop: spacing.md,
-    paddingVertical: spacing.md,
+  autoRenewDesc: {
+    fontSize: typography.body.small,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  actionButtons: {
+    marginTop: spacing.xl,
+    gap: spacing.md,
+  },
+  upgradeBtn: {
+    backgroundColor: colors.primary,
+    height: 56,
+    borderRadius: 16,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.error || '#FF3B30',
-    borderRadius: 12,
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
-  cancelButtonText: {
-    color: colors.error || '#FF3B30',
-    fontFamily: typography.fontFamilyMedium,
+  upgradeBtnText: {
+    color: '#fff',
+    fontSize: typography.button,
+    fontFamily: typography.fontFamilyBold,
+  },
+  cancelBtn: {
+    height: 56,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  cancelBtnText: {
+    color: colors.textSecondary,
     fontSize: typography.body.medium,
+    fontFamily: typography.fontFamilyMedium,
   },
   historySection: {
     marginTop: spacing.lg,
@@ -531,70 +483,44 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     marginBottom: spacing.md,
   },
-  historyItem: {
-    backgroundColor: colors.surface,
-    borderRadius: 12,
-    padding: spacing.md,
+  historyCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    padding: spacing.lg,
+    borderRadius: 16,
     marginBottom: spacing.sm,
     borderWidth: 1,
     borderColor: colors.borderLight,
   },
-  historyHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
+  historyInfo: {
+    flex: 1,
   },
-  historyPlan: {
+  historyName: {
     fontSize: typography.body.medium,
-    fontFamily: typography.fontFamilyMedium,
-    color: colors.textPrimary,
-  },
-  historyStatusBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  historyStatusText: {
-    fontSize: typography.caption,
     fontFamily: typography.fontFamilyBold,
-  },
-  historyDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: spacing.xs,
+    color: colors.textPrimary,
   },
   historyDate: {
     fontSize: typography.body.small,
-    fontFamily: typography.fontFamilyRegular,
     color: colors.textSecondary,
+    marginTop: 2,
   },
   historyPrice: {
-    fontSize: typography.body.small,
-    fontFamily: typography.fontFamilyMedium,
-    color: colors.textPrimary,
+    alignItems: 'flex-end',
   },
-  upgradeSection: {
-    backgroundColor: colors.secondary || '#F0F4FF',
-    borderRadius: 12,
-    padding: spacing.lg,
-    alignItems: 'center',
-    marginTop: spacing.lg,
-  },
-  upgradeTitle: {
-    fontSize: typography.headings.h4,
+  historyAmount: {
+    fontSize: typography.body.medium,
     fontFamily: typography.fontFamilyBold,
     color: colors.textPrimary,
-    marginBottom: spacing.xs,
   },
-  upgradeText: {
-    fontSize: typography.body.medium,
-    fontFamily: typography.fontFamilyRegular,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing.md,
+  historyStatus: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginTop: 2,
+    textTransform: 'uppercase',
   },
 });
 
 export default SubscriptionManagementScreen;
-

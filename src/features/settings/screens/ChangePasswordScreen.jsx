@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, {useState} from 'react';
 import {
   View,
   Text,
@@ -11,10 +11,11 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import {SafeAreaView} from 'react-native-safe-area-context';
+import {useNavigation} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors, typography, spacing } from '../../../theme';
-import { changePassword } from '../../../services/auth/authService';
+import {colors, typography, spacing} from '../../../theme';
+import {changePassword} from '../../../services/auth/authService';
 
 const ChangePasswordScreen = () => {
   const navigation = useNavigation();
@@ -35,12 +36,18 @@ const ChangePasswordScreen = () => {
     }
 
     if (newPassword.length < 6) {
-      Alert.alert('Invalid Password', 'Password must be at least 6 characters long');
+      Alert.alert(
+        'Invalid Password',
+        'Password must be at least 6 characters long',
+      );
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Password Mismatch', 'New password and confirm password do not match');
+      Alert.alert(
+        'Password Mismatch',
+        'New password and confirm password do not match',
+      );
       return;
     }
 
@@ -48,7 +55,7 @@ const ChangePasswordScreen = () => {
 
     try {
       const userData = await AsyncStorage.getItem('@pryvo_user');
-      if (!userData) {
+      if (!userData || userData === 'undefined') {
         Alert.alert('Error', 'User not found. Please sign in again.');
         navigation.goBack();
         return;
@@ -57,16 +64,12 @@ const ChangePasswordScreen = () => {
       const user = JSON.parse(userData);
       await changePassword(user.id, currentPassword, newPassword);
 
-      Alert.alert(
-        'Success',
-        'Your password has been updated successfully',
-        [
-          {
-            text: 'OK',
-            onPress: () => navigation.goBack(),
-          },
-        ]
-      );
+      Alert.alert('Success', 'Your password has been updated successfully', [
+        {
+          text: 'OK',
+          onPress: () => navigation.goBack(),
+        },
+      ]);
     } catch (error) {
       console.error('Error changing password:', error);
       console.error('Error details:', {
@@ -75,14 +78,17 @@ const ChangePasswordScreen = () => {
         data: error.data,
         stack: error.stack,
       });
-      
-      let errorMessage = 'Failed to update password. Please check your current password and try again.';
-      
+
+      let errorMessage =
+        'Failed to update password. Please check your current password and try again.';
+
       // Handle network errors
       if (error.isNetworkError) {
-        errorMessage = 'Network error. Please check your internet connection and try again.';
+        errorMessage =
+          'Network error. Please check your internet connection and try again.';
       } else if (error.isHtmlResponse) {
-        errorMessage = 'Server error. The password change feature may not be available on the server yet.';
+        errorMessage =
+          'Server error. The password change feature may not be available on the server yet.';
       } else if (error.message && error.message !== 'Something went wrong') {
         errorMessage = error.message;
       } else if (error.data?.message) {
@@ -96,7 +102,7 @@ const ChangePasswordScreen = () => {
       } else if (error.status >= 500) {
         errorMessage = 'Server error. Please try again later.';
       }
-      
+
       Alert.alert('Error', errorMessage);
     } finally {
       setIsSubmitting(false);
@@ -104,73 +110,80 @@ const ChangePasswordScreen = () => {
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={styles.header}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backText}>←</Text>
-        </Pressable>
-        <Text style={styles.headerTitle}>Change Password</Text>
-        <View style={{ width: 40 }} />
-      </View>
-
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.description}>
-          Enter your current password and choose a new password.
-        </Text>
-
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Current Password</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter current password"
-            placeholderTextColor={colors.textSecondary}
-            value={currentPassword}
-            onChangeText={setCurrentPassword}
-            secureTextEntry
-            editable={!isSubmitting}
-          />
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={styles.header}>
+          <Pressable
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}>
+            <Text style={styles.backText}>←</Text>
+          </Pressable>
+          <Text style={styles.headerTitle}>Change Password</Text>
+          <View style={{width: 40}} />
         </View>
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>New Password</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Enter new password (min 6 characters)"
-            placeholderTextColor={colors.textSecondary}
-            value={newPassword}
-            onChangeText={setNewPassword}
-            secureTextEntry
-            editable={!isSubmitting}
-          />
-        </View>
+        <ScrollView contentContainerStyle={styles.content}>
+          <Text style={styles.description}>
+            Enter your current password and choose a new password.
+          </Text>
 
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Confirm New Password</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Confirm new password"
-            placeholderTextColor={colors.textSecondary}
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-            editable={!isSubmitting}
-          />
-        </View>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Current Password</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter current password"
+              placeholderTextColor={colors.textSecondary}
+              value={currentPassword}
+              onChangeText={setCurrentPassword}
+              secureTextEntry
+              editable={!isSubmitting}
+            />
+          </View>
 
-        <Pressable
-          style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={isSubmitting}>
-          {isSubmitting ? (
-            <ActivityIndicator color={colors.surface} />
-          ) : (
-            <Text style={styles.submitButtonText}>Update Password</Text>
-          )}
-        </Pressable>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>New Password</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter new password (min 6 characters)"
+              placeholderTextColor={colors.textSecondary}
+              value={newPassword}
+              onChangeText={setNewPassword}
+              secureTextEntry
+              editable={!isSubmitting}
+            />
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={styles.label}>Confirm New Password</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Confirm new password"
+              placeholderTextColor={colors.textSecondary}
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+              editable={!isSubmitting}
+            />
+          </View>
+
+          <Pressable
+            style={[
+              styles.submitButton,
+              isSubmitting && styles.submitButtonDisabled,
+            ]}
+            onPress={handleSubmit}
+            disabled={isSubmitting}>
+            {isSubmitting ? (
+              <ActivityIndicator color={colors.surface} />
+            ) : (
+              <Text style={styles.submitButtonText}>Update Password</Text>
+            )}
+          </Pressable>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 };
 
@@ -179,13 +192,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  flex: {
+    flex: 1,
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.md,
+    paddingVertical: spacing.md,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
@@ -249,4 +264,3 @@ const styles = StyleSheet.create({
 });
 
 export default ChangePasswordScreen;
-

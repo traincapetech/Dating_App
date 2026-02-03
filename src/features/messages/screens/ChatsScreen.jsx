@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, {useEffect, useState, useCallback} from 'react';
 import {
   View,
   Text,
@@ -9,14 +9,14 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native';
-import { colors, typography, spacing } from '../../../theme';
-import { fetchMatches, fetchLastMessages } from '../../../services/chatService';
-import { initSocket } from '../../../services/socket';
+import {useFocusEffect} from '@react-navigation/native';
+import {colors, typography, spacing} from '../../../theme';
+import {fetchMatches, fetchLastMessages} from '../../../services/chatService';
+import {initSocket} from '../../../services/socket';
 
-const ChatsScreen = ({ navigation }) => {
+const ChatsScreen = ({navigation}) => {
   const [matches, setMatches] = useState([]);
   const [lastMessages, setLastMessages] = useState({});
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -27,29 +27,35 @@ const ChatsScreen = ({ navigation }) => {
   useFocusEffect(
     useCallback(() => {
       loadMatches();
-    }, [])
+    }, []),
   );
 
   useEffect(() => {
     // Initialize socket when component mounts
     const initializeSocket = async () => {
       const userData = await AsyncStorage.getItem('@pryvo_user');
-      if (userData) {
-        const user = JSON.parse(userData);
-        setCurrentUserId(user.id);
-        
-        const socket = initSocket(user.id);
-        
-        // Listen for new messages to update the list
-        socket.on('receiveMessage', (msg) => {
-          setLastMessages(prev => ({
-            ...prev,
-            [msg.matchId]: {
-              lastMessage: msg,
-              unreadCount: (prev[msg.matchId]?.unreadCount || 0) + (msg.receiverId === user.id ? 1 : 0)
-            }
-          }));
-        });
+      if (userData && userData !== 'undefined') {
+        try {
+          const user = JSON.parse(userData);
+          setCurrentUserId(user.id);
+
+          const socket = initSocket(user.id);
+
+          // Listen for new messages to update the list
+          socket.on('receiveMessage', msg => {
+            setLastMessages(prev => ({
+              ...prev,
+              [msg.matchId]: {
+                lastMessage: msg,
+                unreadCount:
+                  (prev[msg.matchId]?.unreadCount || 0) +
+                  (msg.receiverId === user.id ? 1 : 0),
+              },
+            }));
+          });
+        } catch (e) {
+          console.error('Failed to parse user data in ChatsScreen:', e);
+        }
       }
     };
 
@@ -59,29 +65,29 @@ const ChatsScreen = ({ navigation }) => {
   const loadMatches = async () => {
     try {
       const userData = await AsyncStorage.getItem('@pryvo_user');
-      if (!userData) return;
+      if (userData && userData !== 'undefined') {
+        const user = JSON.parse(userData);
+        setCurrentUserId(user.id);
 
-      const user = JSON.parse(userData);
-      setCurrentUserId(user.id);
+        const response = await fetchMatches(user.id);
+        const list = response?.matches || [];
 
-      const response = await fetchMatches(user.id);
-      const list = response?.matches || [];
+        setMatches(list);
 
-      setMatches(list);
+        // Load last messages for all matches
+        if (list.length > 0) {
+          const matchIds = list.map(m => m._id);
+          const lastMsgs = await fetchLastMessages(matchIds, user.id);
 
-      // Load last messages for all matches
-      if (list.length > 0) {
-        const matchIds = list.map(m => m._id);
-        const lastMsgs = await fetchLastMessages(matchIds, user.id);
-        
-        const msgMap = {};
-        lastMsgs.forEach(item => {
-          msgMap[item.matchId] = {
-            lastMessage: item.lastMessage,
-            unreadCount: item.unreadCount || 0
-          };
-        });
-        setLastMessages(msgMap);
+          const msgMap = {};
+          lastMsgs.forEach(item => {
+            msgMap[item.matchId] = {
+              lastMessage: item.lastMessage,
+              unreadCount: item.unreadCount || 0,
+            };
+          });
+          setLastMessages(msgMap);
+        }
       }
     } catch (error) {
       console.log('Error fetching matches', error);
@@ -96,25 +102,25 @@ const ChatsScreen = ({ navigation }) => {
     loadMatches();
   };
 
-  const formatTime = (timestamp) => {
+  const formatTime = timestamp => {
     if (!timestamp) return '';
-    
+
     const date = new Date(timestamp);
     const now = new Date();
     const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
     } else if (diffDays === 1) {
       return 'Yesterday';
     } else if (diffDays < 7) {
-      return date.toLocaleDateString([], { weekday: 'short' });
+      return date.toLocaleDateString([], {weekday: 'short'});
     } else {
-      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+      return date.toLocaleDateString([], {month: 'short', day: 'numeric'});
     }
   };
 
-  const getPreviewText = (message) => {
+  const getPreviewText = message => {
     if (!message) return 'Tap to start chatting';
     if (message.mediaUrl) return '📷 Photo';
     return message.text || 'Tap to start chatting';
@@ -140,8 +146,8 @@ const ChatsScreen = ({ navigation }) => {
     );
   }
 
-  const renderItem = ({ item }) => {
-    const theirId = item.users.find((u) => u !== currentUserId);
+  const renderItem = ({item}) => {
+    const theirId = item.users.find(u => u !== currentUserId);
     const matchData = lastMessages[item._id] || {};
     const lastMessage = matchData.lastMessage;
     const unreadCount = matchData.unreadCount || 0;
@@ -155,12 +161,13 @@ const ChatsScreen = ({ navigation }) => {
             theirId,
             theirName: item.theirName || `User ${theirId?.slice(0, 6) || ''}`,
           })
-        }
-      >
+        }>
         <View style={styles.avatarContainer}>
           <Image
-            source={{ 
-              uri: item.theirPhoto || 'https://ui-avatars.com/api/?background=667eea&color=fff&name=User' 
+            source={{
+              uri:
+                item.theirPhoto ||
+                'https://ui-avatars.com/api/?background=667eea&color=fff&name=User',
             }}
             style={styles.avatar}
           />
@@ -172,10 +179,12 @@ const ChatsScreen = ({ navigation }) => {
             </View>
           )}
         </View>
-        
+
         <View style={styles.textContainer}>
           <View style={styles.nameRow}>
-            <Text style={[styles.name, unreadCount > 0 && styles.nameBold]} numberOfLines={1}>
+            <Text
+              style={[styles.name, unreadCount > 0 && styles.nameBold]}
+              numberOfLines={1}>
               {item.theirName || `User ${theirId?.slice(0, 6) || ''}`}
             </Text>
             {lastMessage && (
@@ -184,10 +193,12 @@ const ChatsScreen = ({ navigation }) => {
               </Text>
             )}
           </View>
-          <Text 
-            style={[styles.lastMessage, unreadCount > 0 && styles.lastMessageUnread]} 
-            numberOfLines={1}
-          >
+          <Text
+            style={[
+              styles.lastMessage,
+              unreadCount > 0 && styles.lastMessageUnread,
+            ]}
+            numberOfLines={1}>
             {lastMessage?.senderId === currentUserId && '✓ '}
             {getPreviewText(lastMessage)}
           </Text>
@@ -201,12 +212,12 @@ const ChatsScreen = ({ navigation }) => {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Messages</Text>
       </View>
-      
+
       <FlatList
         data={matches}
-        keyExtractor={(item) => item._id}
+        keyExtractor={item => item._id}
         renderItem={renderItem}
-        contentContainerStyle={{ paddingVertical: spacing.sm }}
+        contentContainerStyle={{paddingVertical: spacing.sm}}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
