@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+﻿import React, {useState} from 'react';
 import {
   View,
   Text,
@@ -9,18 +9,23 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
-  Alert,
+  useWindowDimensions,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
 import {signIn} from '../../../services/auth';
 
 const SignInScreen = () => {
   const navigation = useNavigation();
+  const {height} = useWindowDimensions();
   const [form, setForm] = useState({email: '', password: ''});
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const headerSpacing = Math.min(72, height * 0.08);
+  const contentPaddingBottom = Platform.OS === 'ios' ? 70 : 50;
 
   const handleChange = (field, value) => {
     setForm(prev => ({...prev, [field]: value}));
@@ -44,12 +49,10 @@ const SignInScreen = () => {
     }
     setIsSubmitting(true);
     try {
-      const response = await signIn({
+      await signIn({
         email: form.email.trim().toLowerCase(),
         password: form.password,
       });
-      // Navigate directly to home screen for existing users
-      // They've already completed onboarding during sign up
       navigation.reset({
         index: 0,
         routes: [{name: AppRoute.HomeTabs}],
@@ -65,12 +68,19 @@ const SignInScreen = () => {
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 40}>
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[
+          styles.scrollContainer,
+          {
+            paddingTop: headerSpacing,
+            paddingBottom: contentPaddingBottom,
+          },
+        ]}
         keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text style={styles.title}>Welcome back</Text>
+          <Text style={styles.title}>Welcome back 👋</Text>
           <Text style={styles.subtitle}>
             Pick up where you left off with your conversations and matches.
           </Text>
@@ -80,62 +90,84 @@ const SignInScreen = () => {
 
         <View style={styles.fieldset}>
           <Text style={styles.label}>Email</Text>
-          <TextInput
-            value={form.email}
-            onChangeText={value => handleChange('email', value)}
-            placeholder="you@example.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            style={[styles.input, errors.email && styles.inputError]}
-            placeholderTextColor={colors.textSecondary}
-            returnKeyType="next"
-          />
-          {errors.email && (
-            <Text style={styles.errorText}>{errors.email}</Text>
-          )}
+          <View
+            style={[styles.inputContainer, errors.email && styles.inputError]}>
+            <MaterialCommunityIcons
+              name="email"
+              size={20}
+              color={colors.textPrimary}
+              style={styles.inputIcon}
+            />
+            <TextInput
+              value={form.email}
+              onChangeText={value => handleChange('email', value)}
+              placeholder="Email"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              style={styles.input}
+              placeholderTextColor={colors.textSecondary}
+              returnKeyType="next"
+            />
+          </View>
+          {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
         </View>
 
         <View style={styles.fieldset}>
           <Text style={styles.label}>Password</Text>
-          <TextInput
-            value={form.password}
-            onChangeText={value => handleChange('password', value)}
-            placeholder="Enter your password"
-            secureTextEntry
-            style={[styles.input, errors.password && styles.inputError]}
-            placeholderTextColor={colors.textSecondary}
-            returnKeyType="done"
-            onSubmitEditing={handleSubmit}
-          />
+          <View
+            style={[
+              styles.inputContainer,
+              errors.password && styles.inputError,
+            ]}>
+            <MaterialCommunityIcons
+              name="lock"
+              size={20}
+              color={colors.textPrimary}
+              style={styles.inputIcon}
+            />
+            <TextInput
+              value={form.password}
+              onChangeText={value => handleChange('password', value)}
+              placeholder="Password"
+              secureTextEntry
+              style={styles.input}
+              placeholderTextColor={colors.textSecondary}
+              returnKeyType="done"
+              onSubmitEditing={handleSubmit}
+            />
+          </View>
           {errors.password && (
             <Text style={styles.errorText}>{errors.password}</Text>
           )}
         </View>
 
-        <Pressable 
+        <Pressable
           style={styles.forgotPassword}
           onPress={() => navigation.navigate('ForgotPassword')}>
           <Text style={styles.forgotPasswordText}>Forgot password?</Text>
         </Pressable>
 
-        <Pressable
-          style={styles.primaryButton}
-          onPress={handleSubmit}
-          disabled={isSubmitting}>
-          {isSubmitting ? (
-            <ActivityIndicator color={colors.surface} />
-          ) : (
-            <Text style={styles.primaryButtonText}>Sign in</Text>
-          )}
-        </Pressable>
+        <View style={styles.actionsContainer}>
+          <Pressable
+            style={styles.primaryButton}
+            onPress={handleSubmit}
+            disabled={isSubmitting}>
+            {isSubmitting ? (
+              <ActivityIndicator color={colors.surface} />
+            ) : (
+              <Text style={styles.primaryButtonText}>Log in</Text>
+            )}
+          </Pressable>
 
-        <Pressable
-          style={styles.secondaryCta}
-          onPress={() => navigation.navigate(AppRoute.SignUp)}>
-          <Text style={styles.secondaryCtaText}>
-            Need an account? Create one
-          </Text>
-        </Pressable>
+          <Pressable
+            style={styles.secondaryCta}
+            onPress={() => navigation.navigate(AppRoute.SignUp)}>
+            <Text style={styles.secondaryCtaText}>
+              Need an account?{' '}
+              <Text style={styles.secondaryCtaHighlight}>Create one</Text>
+            </Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -146,9 +178,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
-  container: {
+  scrollContainer: {
     paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xxl,
+    flexGrow: 1,
   },
   header: {
     marginBottom: spacing.xl,
@@ -157,31 +189,41 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamilyBold,
     fontSize: typography.headings.h2,
     color: colors.textPrimary,
+    fontWeight: '700',
   },
   subtitle: {
+    marginTop: spacing.sm,
     fontFamily: typography.fontFamilyRegular,
     fontSize: typography.body.medium,
     color: colors.textSecondary,
-    marginTop: spacing.sm,
   },
   fieldset: {
     marginBottom: spacing.lg,
   },
   label: {
-    fontFamily: typography.fontFamilyMedium,
+    fontWeight: '600',
     fontSize: typography.body.medium,
     color: colors.textPrimary,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.md,
   },
-  input: {
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 14,
     paddingHorizontal: spacing.md,
+    backgroundColor: colors.inputBackground,
+  },
+  inputIcon: {
+    marginRight: spacing.sm,
+  },
+  input: {
+    flex: 1,
     paddingVertical: spacing.md,
+    paddingHorizontal: 0,
     fontSize: typography.body.medium,
     color: colors.textPrimary,
-    backgroundColor: colors.inputBackground,
   },
   inputError: {
     borderColor: colors.error,
@@ -193,18 +235,22 @@ const styles = StyleSheet.create({
   },
   forgotPassword: {
     alignSelf: 'flex-end',
+    marginBottom: spacing.xl,
   },
   forgotPasswordText: {
-    fontFamily: typography.fontFamilyMedium,
     fontSize: typography.body.small,
     color: colors.primary,
+    fontWeight: '600',
+  },
+  actionsContainer: {
+    marginTop: spacing.sm,
+    width: '100%',
   },
   primaryButton: {
     backgroundColor: colors.primary,
     paddingVertical: spacing.md,
     borderRadius: 18,
     alignItems: 'center',
-    marginTop: spacing.xl,
   },
   primaryButtonText: {
     color: colors.surface,
@@ -212,15 +258,17 @@ const styles = StyleSheet.create({
     fontSize: typography.body.large,
   },
   secondaryCta: {
-    marginTop: spacing.xl,
-    alignSelf: 'center',
+    marginTop: spacing.lg,
+    alignItems: 'center',
   },
   secondaryCtaText: {
-    fontFamily: typography.fontFamilyMedium,
     fontSize: typography.body.medium,
+    color: colors.textPrimary,
+  },
+  secondaryCtaHighlight: {
     color: colors.primary,
+    fontWeight: '700',
   },
 });
 
 export default SignInScreen;
-

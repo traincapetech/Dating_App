@@ -64,6 +64,14 @@ android {
     }
 }
 
+// Copy fonts from MaterialCommunityIcons
+task copyFonts(type: Copy) {
+    from "../../node_modules/react-native-vector-icons/Fonts"
+    into "src/main/assets/fonts"
+}
+
+preBuild.dependsOn copyFonts
+
 dependencies {
     // Core React Native (version managed by plugin)
     implementation("com.facebook.react:react-android")

@@ -4,6 +4,13 @@ import LinearGradient from 'react-native-linear-gradient';
 import { colors, typography, spacing } from '../../../../theme';
 
 const TermsScreen = () => {
+  const getCurrentDate = () => {
+    const date = new Date();
+    const options = { year: 'numeric', month: 'long' };
+    return date.toLocaleDateString('en-US', options);
+  };
+
+  const lastUpdatedDate = getCurrentDate();
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent />
@@ -15,7 +22,7 @@ const TermsScreen = () => {
       >
         <Text style={styles.headerTitle}>Terms of Service</Text>
         <Text style={styles.headerSubtitle}>
-          Last Updated: January 2025
+          Last Updated: {lastUpdatedDate}
         </Text>
       </LinearGradient>
 
@@ -262,7 +269,7 @@ const TermsScreen = () => {
           Help Centre: Available in-app
         </Text>
 
-        <Text style={styles.lastUpdated}>Last Updated: January 2025</Text>
+        <Text style={styles.lastUpdated}>Last Updated: {lastUpdatedDate}</Text>
         <View style={{ height: 50 }} />
       </ScrollView>
     </View>

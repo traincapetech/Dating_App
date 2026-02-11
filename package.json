@@ -28,6 +28,7 @@
     "@react-navigation/stack": "^7.6.3",
     "@stripe/stripe-react-native": "^0.57.2",
     "lottie-react-native": "7.3.5",
+    "nativewind": "^4.2.1",
     "react": "19.0.0",
     "react-native": "0.78.3",
     "react-native-geolocation-service": "^5.3.1",
@@ -42,7 +43,8 @@
     "react-native-screenshot-prevent": "^1.2.1",
     "react-native-vector-icons": "^10.3.0",
     "rn-emoji-keyboard": "^1.7.0",
-    "socket.io-client": "^4.8.1"
+    "socket.io-client": "^4.8.1",
+    "tailwindcss": "^3.4.19"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

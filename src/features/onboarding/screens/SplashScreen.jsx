@@ -1,22 +1,26 @@
-import React, {useEffect, useState} from 'react';
+﻿import React, {useEffect} from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Pressable,
-  StatusBar,
-  Dimensions,
   Image,
-  ActivityIndicator,
+  ScrollView,
+  useWindowDimensions,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
-import {colors, spacing, typography} from '../../../theme';
+import {colors, typography} from '../../../theme';
 import {AppRoute} from '../../../constants/routes';
 import {getAccessToken} from '../../../services/storage/tokenStorage';
-
-const {width, height} = Dimensions.get('window');
+import google from '../../../assets/images/google.png';
 
 const SplashScreen = ({navigation}) => {
+  const {width} = useWindowDimensions();
+  const heroImageSize = Math.min(width * 0.65, 250);
+  const heroFontSize = Math.min(32, Math.max(24, width * 0.08));
+  const bodyFontSize = Math.min(15, Math.max(14, width * 0.045));
+  const heroSpacingTop = width < 360 ? 20 : 40;
+  const actionCardWidth = Math.min(420, width - 32);
+
   useEffect(() => {
     const checkSession = async () => {
       try {
@@ -43,90 +47,72 @@ const SplashScreen = ({navigation}) => {
     navigation?.navigate(AppRoute.SignIn);
   };
 
-  const backgroundImageUri =
-    'https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80';
-
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent />
-
-      {/* Background Image */}
-      <View style={StyleSheet.absoluteFillObject}>
-        <Image
-          source={{uri: backgroundImageUri}}
-          style={styles.backgroundImage}
-          resizeMode="cover"
-          onError={error => {
-            console.log('Background image failed to load:', error);
-          }}
-        />
-      </View>
-
-      {/* Gradient Overlay */}
-      <LinearGradient
-        colors={[
-          'rgba(0,0,0,0.7)',
-          'rgba(254,60,114,0.6)',
-          'rgba(254,60,114,0.8)',
-        ]}
-        start={{x: 0, y: 0}}
-        end={{x: 0, y: 1}}
-        style={StyleSheet.absoluteFillObject}
-      />
-
-      {/* Content */}
-      <View style={styles.content}>
-        {/* Hero Section */}
-        <View style={styles.heroSection}>
-          <View style={styles.logoContainer}>
-            <Text style={styles.appName}>Pryvo</Text>
-            <View style={styles.logoUnderline} />
-          </View>
-          <Text style={styles.tagline}>Real connections begin with a vibe</Text>
-          <Text style={styles.subTagline}>
-            Find the people who feel like your next great story
+    <View className="flex-1 bg-white mono-sans">
+      <ScrollView
+        className="px-8 py-10"
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: 'space-between',
+          alignItems: 'center',
+        }}>
+        <View className="items-center" style={{marginTop: heroSpacingTop}}>
+          <Image
+            source={require('../../../assets/images/logo.png')}
+            style={{
+              width: heroImageSize,
+              height: heroImageSize,
+              resizeMode: 'contain',
+            }}
+          />
+          <Text
+            className="font-semibold text-center text-black shadow-lg"
+            style={{
+              fontSize: heroFontSize,
+              maxWidth: Math.min(width - 40, 380),
+            }}>
+            Find Your Perfect Match Today
+          </Text>
+          <Text
+            className="text-center text-gray-500 mt-5 px-4 leading-5 tracking-wide"
+            style={{
+              fontSize: bodyFontSize,
+              maxWidth: Math.min(width - 32, 360),
+            }}>
+            Discover Real Connections with Pryvo's intelligent matchmaking.
+            Start swiping to find your perfect match today!
           </Text>
         </View>
 
-        {/* Action Card */}
-        <View style={styles.actionCard}>
-          <Text style={styles.cardTitle}>Start Your Journey</Text>
-          <Text style={styles.cardDescription}>
-            Join thousands finding meaningful connections through authentic
-            profiles and real conversations.
-          </Text>
-
-          <Pressable style={styles.primaryButton} onPress={handleCreateAccount}>
-            <LinearGradient
-              colors={[colors.primary, colors.primaryDark]}
-              start={{x: 0, y: 0}}
-              end={{x: 1, y: 0}}
-              style={styles.buttonGradient}>
-              <Text style={styles.primaryButtonText}>Create Account</Text>
-            </LinearGradient>
+        <View
+          style={{
+            width: actionCardWidth,
+            alignItems: 'center',
+          }}>
+          <Pressable onPress={handleCreateAccount} className="w-full">
+            <View className="flex-row items-center justify-center border border-primary rounded-full bg-white px-6 py-3 mb-8">
+              <Image source={google} className="w-6 h-6" />
+              <Text className="text-black font-semibold text-lg ml-4">
+                Continue with Google
+              </Text>
+            </View>
+          </Pressable>
+          <Pressable onPress={handleCreateAccount} className="w-full">
+            <Text className="text-white font-semibold bg-primary px-6 py-3 mb-8 rounded-full text-lg text-center">
+              Log In
+            </Text>
           </Pressable>
 
-          <Pressable style={styles.secondaryButton} onPress={handleSignIn}>
-            <Text style={styles.secondaryButtonText}>Sign In</Text>
+          <Pressable onPress={handleSignIn}>
+            <Text className="text-black text-lg font-medium text-center mt-6">
+              Don't have an account?{' '}
+              <Text className="text-primary font-bold">Sign In</Text>
+            </Text>
           </Pressable>
 
-          {/* Feature Pills */}
-          <View style={styles.featuresContainer}>
-            <View style={styles.featurePill}>
-              <Text style={styles.featureIcon}>✨</Text>
-              <Text style={styles.featureText}>Curated Matches</Text>
-            </View>
-            <View style={styles.featurePill}>
-              <Text style={styles.featureIcon}>✓</Text>
-              <Text style={styles.featureText}>Verified</Text>
-            </View>
-            <View style={styles.featurePill}>
-              <Text style={styles.featureIcon}>🎬</Text>
-              <Text style={styles.featureText}>Video Prompts</Text>
-            </View>
-          </View>
-
-          <Text style={styles.disclaimer}>
+          <Text
+            className="text-sm text-center text-gray-600 mt-6 mb-12 px-4 leading-4"
+            style={{maxWidth: Math.min(width - 40, 360)}}>
             By continuing, you agree to our{' '}
             <Text
               style={styles.linkText}
@@ -141,166 +127,12 @@ const SplashScreen = ({navigation}) => {
             </Text>
           </Text>
         </View>
-      </View>
+      </ScrollView>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.primary,
-  },
-  loadingContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backgroundImage: {
-    width: '100%',
-    height: '100%',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xxxl + 20,
-    paddingBottom: spacing.xxl,
-    justifyContent: 'space-between',
-  },
-  heroSection: {
-    alignItems: 'center',
-    marginTop: spacing.xxl,
-  },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  appName: {
-    fontFamily: typography.fontFamilyBold,
-    fontSize: 52,
-    color: colors.textInverse,
-    letterSpacing: 3,
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: {width: 0, height: 2},
-    textShadowRadius: 8,
-  },
-  logoUnderline: {
-    width: 60,
-    height: 4,
-    backgroundColor: colors.textInverse,
-    borderRadius: 2,
-    marginTop: spacing.xs,
-  },
-  tagline: {
-    fontSize: typography.headings.h2,
-    fontFamily: typography.fontFamilyBold,
-    color: colors.textInverse,
-    textAlign: 'center',
-    marginTop: spacing.xl,
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: {width: 0, height: 1},
-    textShadowRadius: 6,
-  },
-  subTagline: {
-    fontSize: typography.body.large,
-    fontFamily: typography.fontFamilyRegular,
-    color: colors.textInverse,
-    textAlign: 'center',
-    marginTop: spacing.md,
-    opacity: 0.95,
-    paddingHorizontal: spacing.xl,
-    lineHeight: 24,
-  },
-  actionCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 32,
-    padding: spacing.xxl,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 20},
-    shadowOpacity: 0.3,
-    shadowRadius: 40,
-    elevation: 25,
-  },
-  cardTitle: {
-    fontSize: typography.headings.h3,
-    fontFamily: typography.fontFamilyBold,
-    color: colors.textPrimary,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-  },
-  cardDescription: {
-    fontSize: typography.body.medium,
-    fontFamily: typography.fontFamilyRegular,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: spacing.xl,
-  },
-  primaryButton: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    marginBottom: spacing.md,
-    shadowColor: colors.primary,
-    shadowOffset: {width: 0, height: 8},
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  buttonGradient: {
-    paddingVertical: spacing.md + 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryButtonText: {
-    color: colors.textInverse,
-    fontFamily: typography.fontFamilyBold,
-    fontSize: typography.body.large,
-    letterSpacing: 0.5,
-  },
-  secondaryButton: {
-    borderWidth: 2,
-    borderColor: colors.primary,
-    paddingVertical: spacing.md + 4,
-    borderRadius: 20,
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-    backgroundColor: 'transparent',
-  },
-  secondaryButtonText: {
-    color: colors.primary,
-    fontFamily: typography.fontFamilyBold,
-    fontSize: typography.body.medium,
-  },
-  featuresContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  featurePill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.backgroundSecondary,
-    paddingVertical: spacing.xs + 2,
-    paddingHorizontal: spacing.md,
-    borderRadius: 20,
-    gap: spacing.xs,
-  },
-  featureIcon: {
-    fontSize: 16,
-  },
-  featureText: {
-    fontSize: typography.caption + 1,
-    fontFamily: typography.fontFamilyMedium,
-    color: colors.textPrimary,
-  },
-  disclaimer: {
-    fontSize: typography.caption,
-    fontFamily: typography.fontFamilyRegular,
-    color: colors.textTertiary,
-    textAlign: 'center',
-    lineHeight: 16,
-  },
   linkText: {
     color: colors.primary,
     fontFamily: typography.fontFamilyMedium,
