@@ -20,7 +20,16 @@ module.exports = {
         // …more tokens from `colors.js`
       },
       fontFamily: {
-        'mona-sans': ['Mona Sans', 'sans-serif'],
+        'mona-sans-regular': ['MonaSans-Regular', 'sans-serif'],
+        'mona-sans-semibold': ['MonaSans-SemiBold', 'sans-serif'],
+        'mona-sans-bold': ['MonaSans-Bold', 'sans-serif'],
+        'poppins-regular': ['Poppins-Regular', 'sans-serif'],
+        'poppins-bold': ['Poppins-Bold', 'sans-serif'],
+        urbanist: ['Urbanist-Regular', 'sans-serif'],
+        'urbanist-bold': ['Urbanist-Bold', 'sans-serif'],
+        'urbanist-medium': ['Urbanist-Medium', 'sans-serif'],
+        'urbanist-semibold': ['Urbanist-SemiBold', 'sans-serif'],
+        'urbanist-light': ['Urbanist-Light', 'sans-serif'],
       },
     },
   },

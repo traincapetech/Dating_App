@@ -18,6 +18,7 @@ import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
 import {colors, typography, spacing} from '../../../theme';
 import LinearGradient from 'react-native-linear-gradient';
+import MaskedView from '@react-native-masked-view/masked-view';
 import {getDiscoverProfiles} from '../../../services/profile/profileService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MatchPopup from '../../../components/profile/MatchPopup.js';
@@ -26,12 +27,40 @@ import {
   passUser,
   getDailyLikeInfo,
 } from '../../../services/swipeActions';
-import {watchLocation} from '../../../services/location/locationService';
+import {
+  watchLocation,
+  getCurrentLocation,
+} from '../../../services/location/locationService';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - spacing.xl * 2;
-const CARD_HEIGHT = SCREEN_HEIGHT * 0.7;
+const CARD_HEIGHT = SCREEN_HEIGHT * 0.8;
 const SWIPE_THRESHOLD = 120;
+
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+  // Check for invalid or 0 coordinates (often default values)
+  if (!lat1 || !lon1 || !lat2 || !lon2) return null;
+  if (Math.abs(lat1) < 0.0001 && Math.abs(lon1) < 0.0001) return null;
+  if (Math.abs(lat2) < 0.0001 && Math.abs(lon2) < 0.0001) return null;
+
+  const R = 6371; // Radius of the earth in km
+  const dLat = deg2rad(lat2 - lat1);
+  const dLon = deg2rad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(deg2rad(lat1)) *
+      Math.cos(deg2rad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const d = R * c; // Distance in km
+  return Math.round(d);
+};
+
+const deg2rad = deg => {
+  return deg * (Math.PI / 180);
+};
 
 const HomeScreen = ({navigation}) => {
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -39,6 +68,7 @@ const HomeScreen = ({navigation}) => {
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const [currentLocation, setCurrentLocation] = useState(null);
   const [dailyLikeInfo, setDailyLikeInfo] = useState({
     count: 0,
     limit: 50,
@@ -74,8 +104,23 @@ const HomeScreen = ({navigation}) => {
 
   useEffect(() => {
     const init = async () => {
+      let loc = null;
+      // Try to get current location first
+      try {
+        loc = await getCurrentLocation();
+        if (loc) {
+          setCurrentLocation(loc);
+        }
+      } catch (e) {
+        console.log('Error getting initial location:', e);
+      }
+
       const prefs = await loadDistancePrefs();
-      await loadProfiles(prefs?.distance, prefs?.enabled ?? useDistanceFilter);
+      await loadProfiles(
+        prefs?.distance,
+        prefs?.enabled ?? useDistanceFilter,
+        loc,
+      );
       await loadDailyLikeInfo();
     };
     init();
@@ -84,11 +129,14 @@ const HomeScreen = ({navigation}) => {
     const locationWatcher = watchLocation(
       async location => {
         console.log('Location changed, refreshing profiles...', location);
+        setCurrentLocation(location);
+
         // Reload profiles with current distance preferences
         const prefs = await loadDistancePrefs();
         await loadProfiles(
           prefs?.distance,
           prefs?.enabled ?? useDistanceFilter,
+          location,
         );
       },
       {
@@ -131,7 +179,11 @@ const HomeScreen = ({navigation}) => {
   }, []);
 
   const loadProfiles = useCallback(
-    async (distanceOverride = null, distanceEnabled = useDistanceFilter) => {
+    async (
+      distanceOverride = null,
+      distanceEnabled = useDistanceFilter,
+      userLocationOverride = null,
+    ) => {
       try {
         setLoading(true);
 
@@ -199,44 +251,83 @@ const HomeScreen = ({navigation}) => {
           JSON.stringify(response, null, 2),
         );
 
+        const userLoc = userLocationOverride || currentLocation;
+
         if (response?.profiles) {
           const transformedProfiles = response.profiles
-            .map(profile => ({
-              id: profile.userId || profile.id,
-              userId: profile.userId,
-              name: profile.name || 'Unknown',
-              age: profile.age || null,
-              distance: profile.distance
-                ? `${Math.round(profile.distance)}`
-                : null,
-              bio: profile.bio || '',
-              interests: profile.interests || [],
-              photos: profile.photos || [],
-              matchPercentage: profile.matchScore
-                ? Math.round(profile.matchScore)
-                : null,
-              matchScore: profile.matchScore || null,
-              // Add extra fields for detailed view
-              jobTitle: profile.personalDetails?.jobTitle || '',
-              school: profile.personalDetails?.school || '',
-              location: profile.basicInfo?.location || '',
-              gender: profile.basicInfo?.gender || '',
-              height: profile.personalDetails?.height || '',
-              drink: profile.lifestyle?.drink || '',
-              smokeTobacco: profile.lifestyle?.smokeTobacco || '',
-              smokeWeed: profile.lifestyle?.smokeWeed || '',
-              religion: profile.lifestyle?.religiousBeliefs || '',
-              politics: profile.lifestyle?.politicalBeliefs || '',
-              datingIntention: profile.datingPreferences?.datingIntention || '',
-              relationshipType:
-                profile.datingPreferences?.relationshipType || '',
-              // Add profile prompts
-              prompts: [
-                profile.profilePrompts?.aboutMe,
-                profile.profilePrompts?.selfCare,
-                profile.profilePrompts?.gettingPersonal,
-              ].filter(p => p && p.answer),
-            }))
+            .map(profile => {
+              // Priority 1: Recalculate if we have both locations (client side trust)
+              // Priority 2: Use backend distance (handle potential meters vs km)
+              let distance = null;
+
+              // Check for coordinates to recalculate
+              const lat = parseFloat(
+                profile.latitude ||
+                  profile.location?.coordinates?.[1] ||
+                  profile.basicInfo?.locationDetails?.lat,
+              );
+              const lon = parseFloat(
+                profile.longitude ||
+                  profile.location?.coordinates?.[0] ||
+                  profile.basicInfo?.locationDetails?.lng,
+              );
+
+              if (userLoc && !isNaN(lat) && !isNaN(lon)) {
+                distance = calculateDistance(
+                  userLoc.latitude,
+                  userLoc.longitude,
+                  lat,
+                  lon,
+                );
+              } else if (
+                profile.distance !== undefined &&
+                profile.distance !== null
+              ) {
+                // Fallback to backend distance
+                let d = parseFloat(profile.distance);
+                // Heuristic: if distance > 500, assume meters and convert to km
+                if (d > 500) {
+                  d = d / 1000;
+                }
+                distance = Math.round(d);
+              }
+
+              return {
+                id: profile.userId || profile.id,
+                userId: profile.userId,
+                name: profile.name || 'Unknown',
+                age: profile.age || null,
+                distance: distance !== null ? `${distance}` : null,
+                bio: profile.bio || '',
+                interests: profile.interests || [],
+                photos: profile.photos || [],
+                matchPercentage: profile.matchScore
+                  ? Math.round(profile.matchScore)
+                  : null,
+                matchScore: profile.matchScore || null,
+                // Add extra fields for detailed view
+                jobTitle: profile.personalDetails?.jobTitle || '',
+                school: profile.personalDetails?.school || '',
+                location: profile.basicInfo?.location || '',
+                gender: profile.basicInfo?.gender || '',
+                height: profile.personalDetails?.height || '',
+                drink: profile.lifestyle?.drink || '',
+                smokeTobacco: profile.lifestyle?.smokeTobacco || '',
+                smokeWeed: profile.lifestyle?.smokeWeed || '',
+                religion: profile.lifestyle?.religiousBeliefs || '',
+                politics: profile.lifestyle?.politicalBeliefs || '',
+                datingIntention:
+                  profile.datingPreferences?.datingIntention || '',
+                relationshipType:
+                  profile.datingPreferences?.relationshipType || '',
+                // Add profile prompts
+                prompts: [
+                  profile.profilePrompts?.aboutMe,
+                  profile.profilePrompts?.selfCare,
+                  profile.profilePrompts?.gettingPersonal,
+                ].filter(p => p && p.answer),
+              };
+            })
             .filter(profile => profile.photos && profile.photos.length > 0);
 
           console.log(
@@ -254,7 +345,7 @@ const HomeScreen = ({navigation}) => {
         setLoading(false);
       }
     },
-    [maxDistance, useDistanceFilter],
+    [maxDistance, useDistanceFilter, currentLocation],
   );
 
   const loadDistancePrefs = async () => {
@@ -458,6 +549,15 @@ const HomeScreen = ({navigation}) => {
     }
   };
 
+  const handleRewind = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(prev => prev - 1);
+      translateX.setValue(0);
+      translateY.setValue(0);
+      opacity.setValue(1);
+    }
+  };
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -516,10 +616,10 @@ const HomeScreen = ({navigation}) => {
           backgroundColor={colors.background}
         />
         <View style={styles.container}>
-          <View style={styles.emptyContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.emptySubtitle}>Loading profiles...</Text>
-          </View>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.emptySubtitle, {marginTop: 20}]}>
+            Loading profiles...
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -532,30 +632,92 @@ const HomeScreen = ({navigation}) => {
           barStyle="dark-content"
           backgroundColor={colors.background}
         />
-        <View style={styles.container}>
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyTitle}>No more profiles</Text>
-            <Text style={styles.emptySubtitle}>
-              Check back later for more matches!
+        <View style={styles.header}>
+          <View style={{width: 40}} />
+          <Text className="text-4xl font-mona-sans-semibold tracking-[2px] text-black">
+            Pryvo
+          </Text>
+          <Pressable
+            onPress={() => navigation.navigate('AdvancedFilters')}
+            style={styles.filterIconButton}>
+            <Text style={styles.filterIcon}>
+              <MaterialCommunityIcons
+                name="filter-variant"
+                size={20}
+                color={colors.textPrimary}
+              />
             </Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.emptyContainer}>
+          <View style={{marginBottom: 20}}>
+            <MaterialCommunityIcons
+              name="account-search"
+              size={80}
+              color={colors.primary}
+            />
           </View>
+          <Text style={styles.emptyTitle}>No more profiles</Text>
+          <Text style={styles.emptySubtitle}>
+            We've run out of people nearby. Try adjusting your distance or age
+            filters to see more people.
+          </Text>
+          <Pressable
+            style={{
+              marginTop: 30,
+              backgroundColor: colors.primary,
+              paddingHorizontal: 24,
+              paddingVertical: 12,
+              borderRadius: 24,
+            }}
+            onPress={() => {
+              // Reset state for new profiles
+              setCurrentIndex(0);
+              translateX.setValue(0);
+              translateY.setValue(0);
+              opacity.setValue(1);
+              // Reload profiles
+              loadProfiles();
+            }}>
+            <Text
+              style={{
+                color: 'white',
+                fontFamily: typography.fontFamilyBold,
+                fontSize: 16,
+              }}>
+              Refresh Profiles
+            </Text>
+          </Pressable>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+    <SafeAreaView
+      className=""
+      style={styles.safe}
+      edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       {/* Header with Filter Icon */}
-      <View style={styles.header}>
+      <View className="" style={styles.header}>
         <View style={{width: 40}} />
-        <Text style={styles.headerLogo}>Pryvo</Text>
+        <Text className="text-4xl font-mona-sans-semibold tracking-[2px] text-black">
+          Pryvo
+        </Text>
         <Pressable
           onPress={() => navigation.navigate('AdvancedFilters')}
           style={styles.filterIconButton}>
-          <Text style={styles.filterIcon}>Tune</Text>
+          <Text style={styles.filterIcon}>
+            <MaterialCommunityIcons
+              name="filter-variant"
+              size={20}
+              color={colors.textPrimary}
+              style={styles.inputIcon}
+            />
+          </Text>
         </Pressable>
       </View>
 
@@ -602,18 +764,48 @@ const HomeScreen = ({navigation}) => {
               )}
 
               <LinearGradient
-                colors={['transparent', 'rgba(0,0,0,0.7)']}
+                colors={[
+                  'transparent',
+                  'rgba(0,0,0,0.4)',
+                  'rgba(0,0,0,0.8)',
+                  '#000000',
+                ]}
+                locations={[0, 0.5, 0.8, 1]}
                 style={styles.mainPhotoGradient}>
                 <View style={styles.mainPhotoInfo}>
-                  <Text style={styles.mainName}>
+                  <Text className="text-3xl font-mona-sans-regular  text-white">
                     {currentProfile.name}
-                    {currentProfile.age ? `, ${currentProfile.age}` : ''}
+                    {currentProfile.age ? `, (${currentProfile.age})` : ''}
                   </Text>
-                  {currentProfile.location && (
-                    <Text style={styles.mainLocation}>
-                      📍 {currentProfile.location}
-                    </Text>
-                  )}
+                  {(() => {
+                    const dist = currentProfile.distance
+                      ? parseFloat(currentProfile.distance)
+                      : null;
+                    // Show city if distance is large (>100 km)
+                    // Otherwise show distance
+                    const showCity = dist !== null && dist > 100;
+
+                    if (showCity && currentProfile.location) {
+                      return (
+                        <Text className="text-sm font-mona-sans-regular text-white">
+                          📍 {currentProfile.location}
+                        </Text>
+                      );
+                    } else if (dist !== null) {
+                      return (
+                        <Text className="text-sm font-mona-sans-regular text-white">
+                          📍 {dist} km away
+                        </Text>
+                      );
+                    } else if (currentProfile.location) {
+                      return (
+                        <Text className="text-sm font-mona-sans-regular text-white">
+                          📍 {currentProfile.location}
+                        </Text>
+                      );
+                    }
+                    return null;
+                  })()}
                 </View>
               </LinearGradient>
             </View>
@@ -802,9 +994,24 @@ const HomeScreen = ({navigation}) => {
       {/* Action Buttons */}
       <View style={styles.actionButtons}>
         <Pressable
-          style={[styles.actionButton, styles.passButtonContainer]}
-          onPress={() => processSwipe('left')}>
-          <Text style={styles.passIcon}>✕</Text>
+          style={[
+            styles.actionButton,
+            styles.rewindButtonContainer,
+            currentIndex === 0 && styles.likeButtonDisabled,
+          ]}
+          onPress={handleRewind}
+          disabled={currentIndex === 0}>
+          <MaterialCommunityIcons name="undo" size={24} color="#F5B900" />
+        </Pressable>
+        <Pressable
+          style={[
+            styles.actionButton,
+            styles.passButtonContainer,
+            !currentProfile && styles.likeButtonDisabled,
+          ]}
+          onPress={() => processSwipe('left')}
+          disabled={!currentProfile}>
+          <MaterialCommunityIcons name="close" size={28} color="red" />
         </Pressable>
         <Pressable
           style={[
@@ -814,7 +1021,7 @@ const HomeScreen = ({navigation}) => {
           ]}
           onPress={() => processSwipe('right')}
           disabled={dailyLikeInfo.remaining <= 0}>
-          <Text style={styles.likeIcon}>♥</Text>
+          <MaterialCommunityIcons name="heart" size={28} color="#9411fa" />
         </Pressable>
       </View>
 
@@ -850,6 +1057,11 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   cardContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -863,10 +1075,29 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     backgroundColor: colors.background,
   },
-  headerLogo: {
-    fontSize: 24,
+  headerLogoGradient: {
+    width: 170,
+    height: 60,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerLogoText: {
     fontFamily: typography.fontFamilyBold,
-    color: colors.primary,
+    letterSpacing: 1,
+    fontSize: 32,
+    color: '#000',
+  },
+  headerLogoMaskWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerLogoGradientBackground: {
+    flex: 1,
+    borderRadius: 999,
+  },
+  headerLogoMask: {
+    backgroundColor: 'transparent',
+    color: '#000',
   },
   filterIconButton: {
     width: 40,
@@ -950,9 +1181,10 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: '30%',
+    height: '50%',
     justifyContent: 'flex-end',
     padding: spacing.xl,
+    paddingBottom: 80,
   },
   mainPhotoInfo: {
     gap: 2,
@@ -1109,33 +1341,40 @@ const styles = StyleSheet.create({
     right: 0,
   },
   actionButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
+    // shadowColor: '#000',
+    // shadowOffset: {width: 0, height: 4},
+    // shadowOpacity: 0.2,
+    // shadowRadius: 8,
+    // elevation: 5,
+  },
+  rewindButtonContainer: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#F5B900', // Amber
   },
   passButtonContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: 'red',
   },
   likeButtonContainer: {
-    backgroundColor: '#FFD700', // Bumble Yellow/Gold
+    backgroundColor: 'transparent',
+    borderColor: '#9411fa',
+    borderWidth: 1, // Bumble Yellow/Gold
   },
   passIcon: {
-    fontSize: 24,
-    color: '#999',
+    fontSize: 20,
+    color: 'red',
     fontWeight: 'bold',
   },
   likeIcon: {
-    fontSize: 28,
-    color: '#fff',
+    fontSize: 22,
+    // color: 'black',
   },
   likeButtonDisabled: {
     opacity: 0.5,
@@ -1150,7 +1389,7 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   likePopup: {
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: '#ca88fd',
     borderRadius: 20,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,

@@ -10,6 +10,7 @@ import ProfileScreen from '../features/profile/screens/ProfileScreen';
 import SettingsScreen from '../features/settings/screens/SettingsScreen';
 import {colors, typography} from '../theme';
 import {getLikesCount} from '../services/swipeActions';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const Tab = createBottomTabNavigator();
 
@@ -50,12 +51,11 @@ const TabNavigator = () => {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textSecondary,
+        // tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: {
           backgroundColor: colors.surface,
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
-          paddingBottom: Math.max(insets.bottom, 8),
+
+          paddingBottom: Math.max(insets.bottom, 10),
           paddingTop: 8,
           height: 60 + Math.max(insets.bottom - 8, 0),
         },
@@ -65,16 +65,22 @@ const TabNavigator = () => {
         },
       }}>
       <Tab.Screen
-        name="Discover"
+        name="Home"
         component={HomeScreen}
         options={{
           tabBarIcon: ({color, size}) => (
-            <Text style={{fontSize: size, color}}>🔥</Text>
+            <Text style={{fontSize: size, color}}>
+              <MaterialCommunityIcons
+                name="home"
+                size={25}
+                style={styles.inputIcon}
+              />
+            </Text>
           ),
         }}
       />
       <Tab.Screen
-        name="Likes"
+        name="Maches"
         component={LikesScreen}
         listeners={{
           tabPress: () => loadLikesCount(),
@@ -82,7 +88,14 @@ const TabNavigator = () => {
         options={{
           tabBarIcon: ({color, size}) => (
             <View>
-              <Text style={{fontSize: size, color}}>💕</Text>
+              <Text style={{fontSize: size, color}}>
+                {' '}
+                <MaterialCommunityIcons
+                  name="heart"
+                  size={25}
+                  style={styles.inputIcon}
+                />
+              </Text>
               {likesCount > 0 && (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>
@@ -95,29 +108,33 @@ const TabNavigator = () => {
         }}
       />
       <Tab.Screen
-        name="Messages"
+        name="Chats"
         component={ChatsScreen}
         options={{
           tabBarIcon: ({color, size}) => (
-            <Text style={{fontSize: size, color}}>💬</Text>
+            <Text style={{fontSize: size, color}}>
+              {' '}
+              <MaterialCommunityIcons
+                name="chat"
+                size={25}
+                style={styles.inputIcon}
+              />
+            </Text>
           ),
         }}
       />
       <Tab.Screen
-        name="Profile"
+        name="User"
         component={ProfileScreen}
         options={{
           tabBarIcon: ({color, size}) => (
-            <Text style={{fontSize: size, color}}>👤</Text>
-          ),
-        }}
-      />
-      <Tab.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{
-          tabBarIcon: ({color, size}) => (
-            <Text style={{fontSize: size, color}}>⚙️</Text>
+            <Text style={{fontSize: size, color}}>
+              <MaterialCommunityIcons
+                name="account-circle"
+                size={25}
+                style={styles.inputIcon}
+              />
+            </Text>
           ),
         }}
       />
@@ -141,6 +158,9 @@ const styles = StyleSheet.create({
   badgeText: {
     color: '#fff',
     fontSize: 10,
+    fontWeight: 'bold',
+  },
+  inputIcon: {
     fontWeight: 'bold',
   },
 });

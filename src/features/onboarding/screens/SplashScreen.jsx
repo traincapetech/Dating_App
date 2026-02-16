@@ -7,6 +7,7 @@ import {
   Image,
   ScrollView,
   useWindowDimensions,
+  SafeAreaView,
 } from 'react-native';
 import {colors, typography} from '../../../theme';
 import {AppRoute} from '../../../constants/routes';
@@ -40,21 +41,22 @@ const SplashScreen = ({navigation}) => {
   }, [navigation]);
 
   const handleCreateAccount = () => {
-    navigation?.navigate(AppRoute.SignUp);
-  };
-
-  const handleSignIn = () => {
     navigation?.navigate(AppRoute.SignIn);
   };
 
+  const handleSignIn = () => {
+    navigation?.navigate(AppRoute.SignUp);
+  };
+
   return (
-    <View className="flex-1 bg-white mono-sans">
+    <SafeAreaView className="flex-1 bg-white mono-sans">
       <ScrollView
-        className="px-8 py-10"
+        className="px-8"
         contentContainerStyle={{
           flexGrow: 1,
           justifyContent: 'space-between',
           alignItems: 'center',
+         
         }}>
         <View className="items-center" style={{marginTop: heroSpacingTop}}>
           <Image
@@ -106,7 +108,7 @@ const SplashScreen = ({navigation}) => {
           <Pressable onPress={handleSignIn}>
             <Text className="text-black text-lg font-medium text-center mt-6">
               Don't have an account?{' '}
-              <Text className="text-primary font-bold">Sign In</Text>
+              <Text className="text-primary font-bold">Sign Up</Text>
             </Text>
           </Pressable>
 
@@ -128,7 +130,7 @@ const SplashScreen = ({navigation}) => {
           </Text>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 

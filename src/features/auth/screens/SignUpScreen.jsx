@@ -9,16 +9,18 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
-  Alert,
   Switch,
+  useWindowDimensions,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
 import {signUp} from '../../../services/auth';
 
 const SignUpScreen = () => {
   const navigation = useNavigation();
+  const {height} = useWindowDimensions();
   const [form, setForm] = useState({
     fullName: '',
     email: '',
@@ -30,6 +32,9 @@ const SignUpScreen = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [ageVerified, setAgeVerified] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
+
+  const headerSpacing = Math.min(72, height * 0.08);
+  const contentPaddingBottom = Platform.OS === 'ios' ? 70 : 50;
 
   const isValid = useMemo(() => {
     const requiredFilled =
@@ -80,7 +85,6 @@ const SignUpScreen = () => {
         phone: form.phone.trim(),
         password: form.password,
       });
-      // Navigate to phone input for verification
       navigation.navigate(AppRoute.PhoneInput);
     } catch (error) {
       const message = error?.message || 'Failed to create your account.';
@@ -93,12 +97,19 @@ const SignUpScreen = () => {
   return (
     <KeyboardAvoidingView
       style={styles.flex}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 40}>
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={[
+          styles.container,
+          {
+            paddingTop: headerSpacing,
+            paddingBottom: contentPaddingBottom,
+          },
+        ]}
         keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text style={styles.title}>Create Account</Text>
+          <Text style={styles.title}>Create Account 👋</Text>
           <Text style={styles.subtitle}>
             Build your profile and connect with matches tailored to your energy.
           </Text>
@@ -108,15 +119,27 @@ const SignUpScreen = () => {
 
         <View style={styles.fieldset}>
           <Text style={styles.label}>Full name</Text>
-          <TextInput
-            value={form.fullName}
-            onChangeText={value => handleChange('fullName', value)}
-            placeholder="e.g. Jordan Blake"
-            autoCapitalize="words"
-            style={[styles.input, errors.fullName && styles.inputError]}
-            placeholderTextColor={colors.textSecondary}
-            returnKeyType="next"
-          />
+          <View
+            style={[
+              styles.inputContainer,
+              errors.fullName && styles.inputError,
+            ]}>
+            <MaterialCommunityIcons
+              name="account"
+              size={20}
+              color={colors.textPrimary}
+              style={styles.inputIcon}
+            />
+            <TextInput
+              value={form.fullName}
+              onChangeText={value => handleChange('fullName', value)}
+              placeholder="e.g. Jordan Blake"
+              autoCapitalize="words"
+              style={styles.input}
+              placeholderTextColor={colors.textSecondary}
+              returnKeyType="next"
+            />
+          </View>
           {errors.fullName && (
             <Text style={styles.errorText}>{errors.fullName}</Text>
           )}
@@ -124,48 +147,74 @@ const SignUpScreen = () => {
 
         <View style={styles.fieldset}>
           <Text style={styles.label}>Email</Text>
-          <TextInput
-            value={form.email}
-            onChangeText={value => handleChange('email', value)}
-            placeholder="you@example.com"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            style={[styles.input, errors.email && styles.inputError]}
-            placeholderTextColor={colors.textSecondary}
-            returnKeyType="next"
-          />
-          {errors.email && (
-            <Text style={styles.errorText}>{errors.email}</Text>
-          )}
+          <View
+            style={[styles.inputContainer, errors.email && styles.inputError]}>
+            <MaterialCommunityIcons
+              name="email"
+              size={20}
+              color={colors.textPrimary}
+              style={styles.inputIcon}
+            />
+            <TextInput
+              value={form.email}
+              onChangeText={value => handleChange('email', value)}
+              placeholder="you@example.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              style={styles.input}
+              placeholderTextColor={colors.textSecondary}
+              returnKeyType="next"
+            />
+          </View>
+          {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
         </View>
 
         <View style={styles.fieldset}>
           <Text style={styles.label}>Phone number</Text>
-          <TextInput
-            value={form.phone}
-            onChangeText={value => handleChange('phone', value)}
-            placeholder="(555) 555-1234"
-            keyboardType="phone-pad"
-            style={[styles.input, errors.phone && styles.inputError]}
-            placeholderTextColor={colors.textSecondary}
-            returnKeyType="next"
-          />
-          {errors.phone && (
-            <Text style={styles.errorText}>{errors.phone}</Text>
-          )}
+          <View
+            style={[styles.inputContainer, errors.phone && styles.inputError]}>
+            <MaterialCommunityIcons
+              name="phone"
+              size={20}
+              color={colors.textPrimary}
+              style={styles.inputIcon}
+            />
+            <TextInput
+              value={form.phone}
+              onChangeText={value => handleChange('phone', value)}
+              placeholder="(555) 555-1234"
+              keyboardType="phone-pad"
+              style={styles.input}
+              placeholderTextColor={colors.textSecondary}
+              returnKeyType="next"
+            />
+          </View>
+          {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
         </View>
 
         <View style={styles.fieldset}>
           <Text style={styles.label}>Password</Text>
-          <TextInput
-            value={form.password}
-            onChangeText={value => handleChange('password', value)}
-            placeholder="Create a secure password"
-            secureTextEntry
-            style={[styles.input, errors.password && styles.inputError]}
-            placeholderTextColor={colors.textSecondary}
-            returnKeyType="next"
-          />
+          <View
+            style={[
+              styles.inputContainer,
+              errors.password && styles.inputError,
+            ]}>
+            <MaterialCommunityIcons
+              name="lock"
+              size={20}
+              color={colors.textPrimary}
+              style={styles.inputIcon}
+            />
+            <TextInput
+              value={form.password}
+              onChangeText={value => handleChange('password', value)}
+              placeholder="Create a secure password"
+              secureTextEntry
+              style={styles.input}
+              placeholderTextColor={colors.textSecondary}
+              returnKeyType="next"
+            />
+          </View>
           {errors.password && (
             <Text style={styles.errorText}>{errors.password}</Text>
           )}
@@ -173,22 +222,33 @@ const SignUpScreen = () => {
 
         <View style={styles.fieldset}>
           <Text style={styles.label}>Confirm password</Text>
-          <TextInput
-            value={form.confirmPassword}
-            onChangeText={value => handleChange('confirmPassword', value)}
-            placeholder="Re-enter your password"
-            secureTextEntry
-            style={[styles.input, errors.confirmPassword && styles.inputError]}
-            placeholderTextColor={colors.textSecondary}
-            returnKeyType="done"
-            onSubmitEditing={handleSubmit}
-          />
+          <View
+            style={[
+              styles.inputContainer,
+              errors.confirmPassword && styles.inputError,
+            ]}>
+            <MaterialCommunityIcons
+              name="lock-check"
+              size={20}
+              color={colors.textPrimary}
+              style={styles.inputIcon}
+            />
+            <TextInput
+              value={form.confirmPassword}
+              onChangeText={value => handleChange('confirmPassword', value)}
+              placeholder="Re-enter your password"
+              secureTextEntry
+              style={styles.input}
+              placeholderTextColor={colors.textSecondary}
+              returnKeyType="done"
+              onSubmitEditing={handleSubmit}
+            />
+          </View>
           {errors.confirmPassword && (
             <Text style={styles.errorText}>{errors.confirmPassword}</Text>
           )}
         </View>
 
-        {/* Age Verification */}
         <View style={styles.checkboxContainer}>
           <Switch
             value={ageVerified}
@@ -202,11 +262,8 @@ const SignUpScreen = () => {
             </Text>
           </View>
         </View>
-        {errors.age && (
-          <Text style={styles.errorText}>{errors.age}</Text>
-        )}
+        {errors.age && <Text style={styles.errorText}>{errors.age}</Text>}
 
-        {/* Terms & Privacy Acceptance */}
         <View style={styles.checkboxContainer}>
           <Switch
             value={termsAccepted}
@@ -221,8 +278,8 @@ const SignUpScreen = () => {
                 style={styles.linkText}
                 onPress={() => navigation.navigate('Terms')}>
                 Terms of Service
-              </Text>
-              {' '}and{' '}
+              </Text>{' '}
+              and{' '}
               <Text
                 style={styles.linkText}
                 onPress={() => navigation.navigate('Privacy')}>
@@ -231,12 +288,13 @@ const SignUpScreen = () => {
             </Text>
           </View>
         </View>
-        {errors.terms && (
-          <Text style={styles.errorText}>{errors.terms}</Text>
-        )}
+        {errors.terms && <Text style={styles.errorText}>{errors.terms}</Text>}
 
         <Pressable
-          style={[styles.primaryButton, !isValid && styles.primaryButtonDisabled]}
+          style={[
+            styles.primaryButton,
+            (!isValid || isSubmitting) && styles.primaryButtonDisabled,
+          ]}
           onPress={handleSubmit}
           disabled={!isValid || isSubmitting}>
           {isSubmitting ? (
@@ -250,7 +308,7 @@ const SignUpScreen = () => {
           style={styles.secondaryCta}
           onPress={() => navigation.navigate(AppRoute.SignIn)}>
           <Text style={styles.secondaryCtaText}>
-            Already have an account? Sign in
+            Already have an account? <Text className="text-primary font-bold">Sign in</Text>
           </Text>
         </Pressable>
       </ScrollView>
@@ -265,7 +323,7 @@ const styles = StyleSheet.create({
   },
   container: {
     paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xxl,
+    flexGrow: 1,
   },
   header: {
     marginBottom: spacing.xl,
@@ -274,12 +332,13 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamilyBold,
     fontSize: typography.headings.h2,
     color: colors.textPrimary,
+    fontWeight: '700',
   },
   subtitle: {
+    marginTop: spacing.sm,
     fontFamily: typography.fontFamilyRegular,
     fontSize: typography.body.medium,
     color: colors.textSecondary,
-    marginTop: spacing.sm,
   },
   fieldset: {
     marginBottom: spacing.lg,
@@ -288,17 +347,25 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamilyMedium,
     fontSize: typography.body.medium,
     color: colors.textPrimary,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.md,
   },
-  input: {
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 14,
     paddingHorizontal: spacing.md,
+    backgroundColor: colors.inputBackground,
+  },
+  inputIcon: {
+    marginRight: spacing.sm,
+  },
+  input: {
+    flex: 1,
     paddingVertical: spacing.md,
     fontSize: typography.body.medium,
     color: colors.textPrimary,
-    backgroundColor: colors.inputBackground,
   },
   inputError: {
     borderColor: colors.error,
@@ -330,7 +397,7 @@ const styles = StyleSheet.create({
   secondaryCtaText: {
     fontFamily: typography.fontFamilyMedium,
     fontSize: typography.body.medium,
-    color: colors.primary,
+    color: colors.textPrimary,
   },
   checkboxContainer: {
     flexDirection: 'row',
@@ -343,17 +410,16 @@ const styles = StyleSheet.create({
     marginLeft: spacing.sm,
   },
   checkboxText: {
-    fontFamily: typography.fontFamilyRegular,
+    fontFamily: typography.fontFamilyRegular, 
     fontSize: typography.body.small,
     color: colors.textPrimary,
     lineHeight: 20,
   },
   linkText: {
-    color: colors.primary,
+    color: colors.textPrimary,
     fontFamily: typography.fontFamilyMedium,
     textDecorationLine: 'underline',
   },
 });
 
 export default SignUpScreen;
-
