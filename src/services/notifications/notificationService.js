@@ -59,10 +59,17 @@ export async function requestNotificationPermission() {
         const granted = await PermissionsAndroid.request(
           PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
         );
-        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-          return false;
+        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+          // If system permission is granted, we consider it efficient for "permission" check
+          // We still need to init Firebase later for tokens, but permission itself is YES.
+          await AsyncStorage.setItem(NOTIFICATION_PERMISSION_KEY, 'granted');
+          return true;
         }
+        // If explicitly denied
+        return false;
       }
+      // For Android < 13, permission is effectively granted at install
+      return true;
     }
 
     if (!isFirebaseAvailable()) return false;
@@ -87,6 +94,16 @@ export async function requestNotificationPermission() {
 // Check if notification permission is granted
 export async function checkNotificationPermission() {
   try {
+    if (Platform.OS === 'android') {
+      if (Platform.Version >= 33) {
+        const granted = await PermissionsAndroid.check(
+          PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+        );
+        return granted;
+      }
+      return true; // Android < 13 implies granted
+    }
+
     if (!isFirebaseAvailable()) return false;
 
     const authStatus = await getMessaging().hasPermission();
@@ -112,21 +129,28 @@ export async function getFCMToken() {
     // Request permission first
     const hasPermission = await requestNotificationPermission();
     if (!hasPermission) {
-      throw new Error('Notification permission not granted');
+      // Don't throw, just return null if permission denied
+      console.log('Notification permission not granted, skipping token fetch');
+      return null;
     }
 
     // Get FCM token
-    const token = await getMessaging().getToken();
-
-    if (token) {
-      await AsyncStorage.setItem(NOTIFICATION_TOKEN_KEY, token);
-      return token;
+    try {
+      const token = await getMessaging().getToken();
+      if (token) {
+        await AsyncStorage.setItem(NOTIFICATION_TOKEN_KEY, token);
+        return token;
+      }
+    } catch (tokenError) {
+      console.warn('Failed to fetch FCM token:', tokenError);
+      // Suppress error to avoid crashing app on simulators without Play Services
+      return null;
     }
 
     return null;
   } catch (error) {
     console.error('Error getting FCM token:', error);
-    throw error;
+    return null;
   }
 }
 
@@ -230,7 +254,11 @@ export async function enableNotifications(userId = null) {
     const token = await getFCMToken();
 
     if (!token) {
-      throw new Error('Failed to get notification token');
+      console.warn(
+        'Failed to get notification token - notifications may not work',
+      );
+      // Return success: false but don't throw, so UI doesn't show error
+      return {success: false, reason: 'no_token'};
     }
 
     // Get userId if not provided
@@ -253,7 +281,8 @@ export async function enableNotifications(userId = null) {
     return {success: true, token};
   } catch (error) {
     console.error('Error enabling notifications:', error);
-    throw error;
+    // Suppress error for UI
+    return {success: false, error: error.message};
   }
 }
 

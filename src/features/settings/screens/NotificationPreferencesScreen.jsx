@@ -7,6 +7,8 @@ import {
   Pressable,
   Switch,
   Alert,
+  Linking,
+  AppState,
 } from 'react-native';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
@@ -40,6 +42,16 @@ const NotificationPreferencesScreen = () => {
   useEffect(() => {
     loadPreferences();
     checkSystemPermission();
+
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active') {
+        checkSystemPermission();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   const checkSystemPermission = async () => {
@@ -120,17 +132,48 @@ const NotificationPreferencesScreen = () => {
     // If enabling push notifications, request system permission
     if (key === 'pushEnabled' && value && !hasSystemPermission) {
       try {
-        await enableNotifications();
-        setHasSystemPermission(true);
-        Alert.alert(
-          'Notifications Enabled',
-          'You will now receive push notifications based on your preferences.',
-        );
+        const result = await enableNotifications();
+
+        if (result.success) {
+          setHasSystemPermission(true);
+          Alert.alert(
+            'Notifications Enabled',
+            'You will now receive push notifications based on your preferences.',
+          );
+        } else if (result.reason === 'no_token') {
+          // Silently fail or show mild warning for emulator
+          console.warn(
+            'Notifications enabled but token missing (likely emulator)',
+          );
+          // We still allow the toggle to be ON in preferences, just system permission might be partial
+        } else {
+          // Unknown error
+          throw new Error(result.error || 'Failed to enable notifications');
+        }
       } catch (error) {
-        Alert.alert(
-          'Permission Required',
-          'Please enable notifications in your device settings to receive push notifications.',
-        );
+        console.error('Error enabling notifications in preferences:', error);
+
+        // Only show Permission Required dialog if strictly permission related
+        if (
+          error.message?.includes('permission') ||
+          error.message?.includes('denied')
+        ) {
+          Alert.alert(
+            'Permission Required',
+            'Please enable notifications in your device settings to receive push notifications.',
+            [
+              {text: 'Cancel', style: 'cancel'},
+              {text: 'Open Settings', onPress: () => Linking.openSettings()},
+            ],
+          );
+        } else {
+          // Show generic error for other issues (e.g. token failure)
+          Alert.alert(
+            'Error',
+            error.message || 'Failed to enable notifications',
+          );
+        }
+
         setPreferences({...newPrefs, pushEnabled: false});
         await savePreferences({...newPrefs, pushEnabled: false});
       }

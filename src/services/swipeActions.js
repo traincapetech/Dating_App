@@ -8,13 +8,20 @@ import apiClient from './api/client';
  * @param {boolean} isPremium - Whether sender is premium
  * @param {object} likedContent - Optional: { type: 'photo'|'prompt', photoIndex, photoUrl, promptId, promptQuestion, promptAnswer, comment }
  */
-export const likeUser = async (senderId, receiverId, isPremium = false, likedContent = null) => {
+export const likeUser = async (
+  senderId,
+  receiverId,
+  isPremium = false,
+  likedContent = null,
+) => {
   try {
-    const payload = { senderId, receiverId, isPremium };
+    const payload = {senderId, receiverId, isPremium};
     if (likedContent) {
       payload.likedContent = likedContent;
     }
+    console.log('[SwipeActions] Sending like:', payload);
     const res = await apiClient.post('/swipe/like', payload);
+    console.log('[SwipeActions] Like response:', res);
     return res;
   } catch (err) {
     console.error('Like Error:', err?.message || err);
@@ -29,7 +36,7 @@ export const likeUser = async (senderId, receiverId, isPremium = false, likedCon
 
 export const passUser = async (userId, passedUserId) => {
   try {
-    const res = await apiClient.post('/swipe/pass', { userId, passedUserId });
+    const res = await apiClient.post('/swipe/pass', {userId, passedUserId});
     return res;
   } catch (err) {
     console.error('Pass Error:', err?.message || err);
@@ -39,31 +46,35 @@ export const passUser = async (userId, passedUserId) => {
 
 export const getLikesReceived = async (userId, isPremium = false) => {
   try {
-    const res = await apiClient.get(`/swipe/likes/${userId}?isPremium=${isPremium}`);
+    const res = await apiClient.get(
+      `/swipe/likes/${userId}?isPremium=${isPremium}`,
+    );
     return res;
   } catch (err) {
     console.error('Get Likes Error:', err?.message || err);
-    return { success: false, count: 0, likes: [] };
+    return {success: false, count: 0, likes: []};
   }
 };
 
-export const getLikesCount = async (userId) => {
+export const getLikesCount = async userId => {
   try {
     const res = await apiClient.get(`/swipe/likes-count/${userId}`);
     return res;
   } catch (err) {
     console.error('Get Likes Count Error:', err?.message || err);
-    return { success: false, count: 0 };
+    return {success: false, count: 0};
   }
 };
 
 export const getDailyLikeInfo = async (userId, isPremium = false) => {
   try {
-    const res = await apiClient.get(`/swipe/daily-likes/${userId}?isPremium=${isPremium}`);
+    const res = await apiClient.get(
+      `/swipe/daily-likes/${userId}?isPremium=${isPremium}`,
+    );
     return res;
   } catch (err) {
     console.error('Get Daily Like Info Error:', err?.message || err);
-    return { success: false, count: 0, limit: 50, remaining: 50 };
+    return {success: false, count: 0, limit: 50, remaining: 50};
   }
 };
 
@@ -71,9 +82,9 @@ export const getDailyLikeInfo = async (userId, isPremium = false) => {
  * Undo last swipe (premium only)
  * @param {string} userId - Current user ID
  */
-export const undoLastSwipe = async (userId) => {
+export const undoLastSwipe = async userId => {
   try {
-    const res = await apiClient.post('/swipe/undo', { userId });
+    const res = await apiClient.post('/swipe/undo', {userId});
     return res;
   } catch (err) {
     console.error('Undo Swipe Error:', err?.message || err);
@@ -90,12 +101,12 @@ export const undoLastSwipe = async (userId) => {
  * Get undo status (can user undo and what would be undone)
  * @param {string} userId - Current user ID
  */
-export const getUndoStatus = async (userId) => {
+export const getUndoStatus = async userId => {
   try {
     const res = await apiClient.get(`/swipe/undo-status/${userId}`);
     return res;
   } catch (err) {
     console.error('Undo Status Error:', err?.message || err);
-    return { success: false, canUndo: false };
+    return {success: false, canUndo: false};
   }
 };

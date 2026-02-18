@@ -37,6 +37,7 @@ import {
   blockAndReportUser,
   checkIfBlocked,
   unmatchUser,
+  deleteMessageApi,
 } from '../../../services/chatService';
 
 const REPORT_REASONS = [
@@ -389,6 +390,51 @@ const ChatScreen = ({route, navigation}) => {
     );
   };
 
+  const handleDeleteMessage = useCallback(
+    async messageId => {
+      console.log('[ChatScreen] Deleting message:', messageId);
+      Alert.alert(
+        'Delete Message',
+        'Are you sure you want to delete this message?',
+        [
+          {text: 'Cancel', style: 'cancel'},
+          {
+            text: 'Delete',
+            style: 'destructive',
+            onPress: async () => {
+              try {
+                // Optimistic update
+                setMessages(prev => prev.filter(m => m._id !== messageId));
+
+                console.log('[ChatScreen] Sending delete request to API...');
+                const result = await deleteMessageApi(messageId, currentUserId);
+                console.log('[ChatScreen] Delete result:', result);
+
+                if (result.success) {
+                  console.log('Message deleted successfully');
+                } else {
+                  console.warn('Failed to delete message:', result);
+                  Alert.alert(
+                    'Error',
+                    result.message || 'Failed to delete message',
+                  );
+                  // Revert if needed (fetching messages again would be safer)
+                  initChat();
+                }
+              } catch (error) {
+                console.error('Error deleting message:', error);
+                Alert.alert('Error', 'Failed to delete message');
+                // Revert if needed (fetching messages again would be safer)
+                initChat();
+              }
+            },
+          },
+        ],
+      );
+    },
+    [matchId, currentUserId], // Add missing dependencies if needed, or keep generic
+  );
+
   const getStatusIcon = message => {
     if (message.senderId !== currentUserId) return null;
 
@@ -411,7 +457,9 @@ const ChatScreen = ({route, navigation}) => {
     return (
       <View
         style={[styles.messageRow, isMe ? styles.rowRight : styles.rowLeft]}>
-        <View
+        <Pressable
+          onLongPress={() => (isMe ? handleDeleteMessage(item._id) : null)}
+          delayLongPress={500}
           style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleThem]}>
           {item.mediaUrl && (
             <Image
@@ -442,7 +490,7 @@ const ChatScreen = ({route, navigation}) => {
               </Text>
             )}
           </View>
-        </View>
+        </Pressable>
       </View>
     );
   };

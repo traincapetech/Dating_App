@@ -2317,11 +2317,11 @@ index 0000000..3a67af9
 +		"source" : "."
 +	}
 +}
-diff --git a/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/.cmake/api/v1/reply/index-2026-01-24T10-06-35-0299.json b/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/.cmake/api/v1/reply/index-2026-01-24T10-06-35-0299.json
+diff --git a/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/.cmake/api/v1/reply/index-2026-02-04T06-38-07-0077.json b/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/.cmake/api/v1/reply/index-2026-02-04T06-38-07-0077.json
 new file mode 100644
 index 0000000..55ac44f
 --- /dev/null
-+++ b/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/.cmake/api/v1/reply/index-2026-01-24T10-06-35-0299.json
++++ b/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/.cmake/api/v1/reply/index-2026-02-04T06-38-07-0077.json
 @@ -0,0 +1,92 @@
 +{
 +	"cmake" : 
@@ -2599,20 +2599,6 @@ index 0000000..840d380
 +	],
 +	"type" : "SHARED_LIBRARY"
 +}
-diff --git a/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/.ninja_deps b/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/.ninja_deps
-new file mode 100644
-index 0000000..ae351bb
-Binary files /dev/null and b/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/.ninja_deps differ
-diff --git a/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/.ninja_log b/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/.ninja_log
-new file mode 100644
-index 0000000..fd11cc5
---- /dev/null
-+++ b/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/.ninja_log
-@@ -0,0 +1,4 @@
-+# ninja log v5
-+1	14082	1769249213244832862	CMakeFiles/rnscreens.dir/Users/a/Desktop/Pryvo/node_modules/react-native-screens/cpp/RNScreensTurboModule.cpp.o	4a4e1f718d1d87de
-+2	16002	1769249215160521216	CMakeFiles/rnscreens.dir/src/main/cpp/jni-adapter.cpp.o	40a8afde0d781130
-+16003	16587	1769249215745093417	../../../../build/intermediates/cxx/Debug/6l5pe264/obj/arm64-v8a/librnscreens.so	b8b97dbfa69b2115
 diff --git a/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeCache.txt b/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeCache.txt
 new file mode 100644
 index 0000000..906fac2
@@ -4841,7 +4827,7 @@ index 0000000..8c7d863
 Binary files /dev/null and b/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/3.22.1-g37088a8/CompilerIdCXX/CMakeCXXCompilerId.o differ
 diff --git a/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/CMakeOutput.log b/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/CMakeOutput.log
 new file mode 100644
-index 0000000..a9c7e7b
+index 0000000..2ef39f0
 --- /dev/null
 +++ b/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/CMakeOutput.log
 @@ -0,0 +1,262 @@
@@ -4876,13 +4862,13 @@ index 0000000..a9c7e7b
 +Detecting C compiler ABI info compiled with the following output:
 +Change Dir: /Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/CMakeTmp
 +
-+Run Build Command(s):/Users/a/Library/Android/sdk/cmake/3.22.1/bin/ninja cmTC_64f33 && [1/2] Building C object CMakeFiles/cmTC_64f33.dir/CMakeCCompilerABI.c.o
++Run Build Command(s):/Users/a/Library/Android/sdk/cmake/3.22.1/bin/ninja cmTC_7cdcb && [1/2] Building C object CMakeFiles/cmTC_7cdcb.dir/CMakeCCompilerABI.c.o
 +Android (12285214, +pgo, -bolt, +lto, -mlgo, based on r522817b) clang version 18.0.2 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)
 +Target: aarch64-none-linux-android24
 +Thread model: posix
 +InstalledDir: /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin
 + (in-process)
-+ "/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang" -cc1 -triple aarch64-none-linux-android24 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCCompilerABI.c -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=non-leaf -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu generic -target-feature +neon -target-feature +v8a -target-feature +fix-cortex-a53-835769 -target-abi aapcs -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/CMakeTmp -v -ffunction-sections -fdata-sections -fcoverage-compilation-dir=/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/CMakeTmp -resource-dir /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18 -dependency-file CMakeFiles/cmTC_64f33.dir/CMakeCCompilerABI.c.o.d -MT CMakeFiles/cmTC_64f33.dir/CMakeCCompilerABI.c.o -sys-header-deps -D ANDROID -D _FORTIFY_SOURCE=2 -isysroot /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -internal-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/include -internal-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/local/include -internal-externc-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/aarch64-linux-android -internal-externc-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/include -internal-externc-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include -Wformat -ferror-limit 19 -femulated-tls -stack-protector 2 -fno-signed-char -fgnuc-version=4.2.1 -target-feature +outline-atomics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_64f33.dir/CMakeCCompilerABI.c.o -x c /Users/a/Library/Android/sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCCompilerABI.c
++ "/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang" -cc1 -triple aarch64-none-linux-android24 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCCompilerABI.c -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=non-leaf -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu generic -target-feature +neon -target-feature +v8a -target-feature +fix-cortex-a53-835769 -target-abi aapcs -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/CMakeTmp -v -ffunction-sections -fdata-sections -fcoverage-compilation-dir=/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/CMakeTmp -resource-dir /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18 -dependency-file CMakeFiles/cmTC_7cdcb.dir/CMakeCCompilerABI.c.o.d -MT CMakeFiles/cmTC_7cdcb.dir/CMakeCCompilerABI.c.o -sys-header-deps -D ANDROID -D _FORTIFY_SOURCE=2 -isysroot /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -internal-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/include -internal-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/local/include -internal-externc-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/aarch64-linux-android -internal-externc-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/include -internal-externc-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include -Wformat -ferror-limit 19 -femulated-tls -stack-protector 2 -fno-signed-char -fgnuc-version=4.2.1 -target-feature +outline-atomics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_7cdcb.dir/CMakeCCompilerABI.c.o -x c /Users/a/Library/Android/sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCCompilerABI.c
 +clang -cc1 version 18.0.2 based upon LLVM 18.0.2 default target x86_64-apple-darwin24.6.0
 +ignoring nonexistent directory "/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/local/include"
 +ignoring nonexistent directory "/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/include"
@@ -4892,12 +4878,12 @@ index 0000000..a9c7e7b
 + /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/aarch64-linux-android
 + /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include
 +End of search list.
-+[2/2] Linking C executable cmTC_64f33
++[2/2] Linking C executable cmTC_7cdcb
 +Android (12285214, +pgo, -bolt, +lto, -mlgo, based on r522817b) clang version 18.0.2 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)
 +Target: aarch64-none-linux-android24
 +Thread model: posix
 +InstalledDir: /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin
-+ "/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin/ld.lld" --sysroot=/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -EL --fix-cortex-a53-843419 -z now -z relro -z max-page-size=4096 --hash-style=gnu --eh-frame-hdr -m aarch64linux -pie -dynamic-linker /system/bin/linker64 -o cmTC_64f33 /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24/crtbegin_dynamic.o -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/aarch64 -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24 -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib --build-id=sha1 --no-rosegment --no-undefined-version --fatal-warnings --no-undefined CMakeFiles/cmTC_64f33.dir/CMakeCCompilerABI.c.o /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl -lc /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24/crtend_android.o
++ "/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin/ld.lld" --sysroot=/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -EL --fix-cortex-a53-843419 -z now -z relro -z max-page-size=4096 --hash-style=gnu --eh-frame-hdr -m aarch64linux -pie -dynamic-linker /system/bin/linker64 -o cmTC_7cdcb /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24/crtbegin_dynamic.o -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/aarch64 -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24 -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib --build-id=sha1 --no-rosegment --no-undefined-version --fatal-warnings --no-undefined CMakeFiles/cmTC_7cdcb.dir/CMakeCCompilerABI.c.o /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl -lc /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24/crtend_android.o
 +
 +
 +
@@ -4918,13 +4904,13 @@ index 0000000..a9c7e7b
 +  link line regex: [^( *|.*[/\])(ld\.lld|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\]+-)?ld|collect2)[^/\]*( |$)]
 +  ignore line: [Change Dir: /Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/CMakeTmp]
 +  ignore line: []
-+  ignore line: [Run Build Command(s):/Users/a/Library/Android/sdk/cmake/3.22.1/bin/ninja cmTC_64f33 && [1/2] Building C object CMakeFiles/cmTC_64f33.dir/CMakeCCompilerABI.c.o]
++  ignore line: [Run Build Command(s):/Users/a/Library/Android/sdk/cmake/3.22.1/bin/ninja cmTC_7cdcb && [1/2] Building C object CMakeFiles/cmTC_7cdcb.dir/CMakeCCompilerABI.c.o]
 +  ignore line: [Android (12285214  +pgo  -bolt  +lto  -mlgo  based on r522817b) clang version 18.0.2 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)]
 +  ignore line: [Target: aarch64-none-linux-android24]
 +  ignore line: [Thread model: posix]
 +  ignore line: [InstalledDir: /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin]
 +  ignore line: [ (in-process)]
-+  ignore line: [ "/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang" -cc1 -triple aarch64-none-linux-android24 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCCompilerABI.c -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=non-leaf -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu generic -target-feature +neon -target-feature +v8a -target-feature +fix-cortex-a53-835769 -target-abi aapcs -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/CMakeTmp -v -ffunction-sections -fdata-sections -fcoverage-compilation-dir=/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/CMakeTmp -resource-dir /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18 -dependency-file CMakeFiles/cmTC_64f33.dir/CMakeCCompilerABI.c.o.d -MT CMakeFiles/cmTC_64f33.dir/CMakeCCompilerABI.c.o -sys-header-deps -D ANDROID -D _FORTIFY_SOURCE=2 -isysroot /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -internal-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/include -internal-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/local/include -internal-externc-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/aarch64-linux-android -internal-externc-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/include -internal-externc-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include -Wformat -ferror-limit 19 -femulated-tls -stack-protector 2 -fno-signed-char -fgnuc-version=4.2.1 -target-feature +outline-atomics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_64f33.dir/CMakeCCompilerABI.c.o -x c /Users/a/Library/Android/sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCCompilerABI.c]
++  ignore line: [ "/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang" -cc1 -triple aarch64-none-linux-android24 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCCompilerABI.c -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=non-leaf -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu generic -target-feature +neon -target-feature +v8a -target-feature +fix-cortex-a53-835769 -target-abi aapcs -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/CMakeTmp -v -ffunction-sections -fdata-sections -fcoverage-compilation-dir=/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/CMakeTmp -resource-dir /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18 -dependency-file CMakeFiles/cmTC_7cdcb.dir/CMakeCCompilerABI.c.o.d -MT CMakeFiles/cmTC_7cdcb.dir/CMakeCCompilerABI.c.o -sys-header-deps -D ANDROID -D _FORTIFY_SOURCE=2 -isysroot /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -internal-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/include -internal-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/local/include -internal-externc-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/aarch64-linux-android -internal-externc-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/include -internal-externc-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include -Wformat -ferror-limit 19 -femulated-tls -stack-protector 2 -fno-signed-char -fgnuc-version=4.2.1 -target-feature +outline-atomics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_7cdcb.dir/CMakeCCompilerABI.c.o -x c /Users/a/Library/Android/sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCCompilerABI.c]
 +  ignore line: [clang -cc1 version 18.0.2 based upon LLVM 18.0.2 default target x86_64-apple-darwin24.6.0]
 +  ignore line: [ignoring nonexistent directory "/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/local/include"]
 +  ignore line: [ignoring nonexistent directory "/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/include"]
@@ -4934,12 +4920,12 @@ index 0000000..a9c7e7b
 +  ignore line: [ /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/aarch64-linux-android]
 +  ignore line: [ /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include]
 +  ignore line: [End of search list.]
-+  ignore line: [[2/2] Linking C executable cmTC_64f33]
++  ignore line: [[2/2] Linking C executable cmTC_7cdcb]
 +  ignore line: [Android (12285214  +pgo  -bolt  +lto  -mlgo  based on r522817b) clang version 18.0.2 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)]
 +  ignore line: [Target: aarch64-none-linux-android24]
 +  ignore line: [Thread model: posix]
 +  ignore line: [InstalledDir: /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin]
-+  link line: [ "/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin/ld.lld" --sysroot=/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -EL --fix-cortex-a53-843419 -z now -z relro -z max-page-size=4096 --hash-style=gnu --eh-frame-hdr -m aarch64linux -pie -dynamic-linker /system/bin/linker64 -o cmTC_64f33 /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24/crtbegin_dynamic.o -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/aarch64 -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24 -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib --build-id=sha1 --no-rosegment --no-undefined-version --fatal-warnings --no-undefined CMakeFiles/cmTC_64f33.dir/CMakeCCompilerABI.c.o /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl -lc /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24/crtend_android.o]
++  link line: [ "/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin/ld.lld" --sysroot=/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -EL --fix-cortex-a53-843419 -z now -z relro -z max-page-size=4096 --hash-style=gnu --eh-frame-hdr -m aarch64linux -pie -dynamic-linker /system/bin/linker64 -o cmTC_7cdcb /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24/crtbegin_dynamic.o -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/aarch64 -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24 -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib --build-id=sha1 --no-rosegment --no-undefined-version --fatal-warnings --no-undefined CMakeFiles/cmTC_7cdcb.dir/CMakeCCompilerABI.c.o /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl -lc /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24/crtend_android.o]
 +    arg [/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin/ld.lld] ==> ignore
 +    arg [--sysroot=/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot] ==> ignore
 +    arg [-EL] ==> ignore
@@ -4955,7 +4941,7 @@ index 0000000..a9c7e7b
 +    arg [-dynamic-linker] ==> ignore
 +    arg [/system/bin/linker64] ==> ignore
 +    arg [-o] ==> ignore
-+    arg [cmTC_64f33] ==> ignore
++    arg [cmTC_7cdcb] ==> ignore
 +    arg [/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24/crtbegin_dynamic.o] ==> obj [/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24/crtbegin_dynamic.o]
 +    arg [-L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/aarch64] ==> dir [/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/aarch64]
 +    arg [-L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24] ==> dir [/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24]
@@ -4966,7 +4952,7 @@ index 0000000..a9c7e7b
 +    arg [--no-undefined-version] ==> ignore
 +    arg [--fatal-warnings] ==> ignore
 +    arg [--no-undefined] ==> ignore
-+    arg [CMakeFiles/cmTC_64f33.dir/CMakeCCompilerABI.c.o] ==> ignore
++    arg [CMakeFiles/cmTC_7cdcb.dir/CMakeCCompilerABI.c.o] ==> ignore
 +    arg [/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a] ==> lib [/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a]
 +    arg [-l:libunwind.a] ==> lib [-l:libunwind.a]
 +    arg [-ldl] ==> lib [dl]
@@ -4990,13 +4976,13 @@ index 0000000..a9c7e7b
 +Detecting CXX compiler ABI info compiled with the following output:
 +Change Dir: /Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/CMakeTmp
 +
-+Run Build Command(s):/Users/a/Library/Android/sdk/cmake/3.22.1/bin/ninja cmTC_c453c && [1/2] Building CXX object CMakeFiles/cmTC_c453c.dir/CMakeCXXCompilerABI.cpp.o
++Run Build Command(s):/Users/a/Library/Android/sdk/cmake/3.22.1/bin/ninja cmTC_378ae && [1/2] Building CXX object CMakeFiles/cmTC_378ae.dir/CMakeCXXCompilerABI.cpp.o
 +Android (12285214, +pgo, -bolt, +lto, -mlgo, based on r522817b) clang version 18.0.2 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)
 +Target: aarch64-none-linux-android24
 +Thread model: posix
 +InstalledDir: /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin
 + (in-process)
-+ "/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++" -cc1 -triple aarch64-none-linux-android24 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCXXCompilerABI.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=non-leaf -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu generic -target-feature +neon -target-feature +v8a -target-feature +fix-cortex-a53-835769 -target-abi aapcs -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/CMakeTmp -v -ffunction-sections -fdata-sections -fcoverage-compilation-dir=/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/CMakeTmp -resource-dir /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18 -dependency-file CMakeFiles/cmTC_c453c.dir/CMakeCXXCompilerABI.cpp.o.d -MT CMakeFiles/cmTC_c453c.dir/CMakeCXXCompilerABI.cpp.o -sys-header-deps -D ANDROID -D _FORTIFY_SOURCE=2 -isysroot /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -internal-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/c++/v1 -internal-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/include -internal-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/local/include -internal-externc-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/aarch64-linux-android -internal-externc-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/include -internal-externc-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include -Wformat -fdeprecated-macro -ferror-limit 19 -femulated-tls -stack-protector 2 -fno-signed-char -fgnuc-version=4.2.1 -fcxx-exceptions -fexceptions -target-feature +outline-atomics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_c453c.dir/CMakeCXXCompilerABI.cpp.o -x c++ /Users/a/Library/Android/sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCXXCompilerABI.cpp
++ "/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++" -cc1 -triple aarch64-none-linux-android24 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCXXCompilerABI.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=non-leaf -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu generic -target-feature +neon -target-feature +v8a -target-feature +fix-cortex-a53-835769 -target-abi aapcs -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/CMakeTmp -v -ffunction-sections -fdata-sections -fcoverage-compilation-dir=/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/CMakeTmp -resource-dir /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18 -dependency-file CMakeFiles/cmTC_378ae.dir/CMakeCXXCompilerABI.cpp.o.d -MT CMakeFiles/cmTC_378ae.dir/CMakeCXXCompilerABI.cpp.o -sys-header-deps -D ANDROID -D _FORTIFY_SOURCE=2 -isysroot /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -internal-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/c++/v1 -internal-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/include -internal-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/local/include -internal-externc-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/aarch64-linux-android -internal-externc-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/include -internal-externc-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include -Wformat -fdeprecated-macro -ferror-limit 19 -femulated-tls -stack-protector 2 -fno-signed-char -fgnuc-version=4.2.1 -fcxx-exceptions -fexceptions -target-feature +outline-atomics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_378ae.dir/CMakeCXXCompilerABI.cpp.o -x c++ /Users/a/Library/Android/sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCXXCompilerABI.cpp
 +clang -cc1 version 18.0.2 based upon LLVM 18.0.2 default target x86_64-apple-darwin24.6.0
 +ignoring nonexistent directory "/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/local/include"
 +ignoring nonexistent directory "/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/include"
@@ -5007,12 +4993,12 @@ index 0000000..a9c7e7b
 + /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/aarch64-linux-android
 + /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include
 +End of search list.
-+[2/2] Linking CXX executable cmTC_c453c
++[2/2] Linking CXX executable cmTC_378ae
 +Android (12285214, +pgo, -bolt, +lto, -mlgo, based on r522817b) clang version 18.0.2 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)
 +Target: aarch64-none-linux-android24
 +Thread model: posix
 +InstalledDir: /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin
-+ "/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin/ld.lld" --sysroot=/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -EL --fix-cortex-a53-843419 -z now -z relro -z max-page-size=4096 --hash-style=gnu --eh-frame-hdr -m aarch64linux -pie -dynamic-linker /system/bin/linker64 -o cmTC_c453c /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24/crtbegin_dynamic.o -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/aarch64 -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24 -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib --build-id=sha1 --no-rosegment --no-undefined-version --fatal-warnings --no-undefined CMakeFiles/cmTC_c453c.dir/CMakeCXXCompilerABI.cpp.o -lc++ -lm /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl -lc /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24/crtend_android.o
++ "/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin/ld.lld" --sysroot=/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -EL --fix-cortex-a53-843419 -z now -z relro -z max-page-size=4096 --hash-style=gnu --eh-frame-hdr -m aarch64linux -pie -dynamic-linker /system/bin/linker64 -o cmTC_378ae /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24/crtbegin_dynamic.o -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/aarch64 -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24 -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib --build-id=sha1 --no-rosegment --no-undefined-version --fatal-warnings --no-undefined CMakeFiles/cmTC_378ae.dir/CMakeCXXCompilerABI.cpp.o -lc++ -lm /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl -lc /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24/crtend_android.o
 +
 +
 +
@@ -5035,13 +5021,13 @@ index 0000000..a9c7e7b
 +  link line regex: [^( *|.*[/\])(ld\.lld|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\]+-)?ld|collect2)[^/\]*( |$)]
 +  ignore line: [Change Dir: /Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/CMakeTmp]
 +  ignore line: []
-+  ignore line: [Run Build Command(s):/Users/a/Library/Android/sdk/cmake/3.22.1/bin/ninja cmTC_c453c && [1/2] Building CXX object CMakeFiles/cmTC_c453c.dir/CMakeCXXCompilerABI.cpp.o]
++  ignore line: [Run Build Command(s):/Users/a/Library/Android/sdk/cmake/3.22.1/bin/ninja cmTC_378ae && [1/2] Building CXX object CMakeFiles/cmTC_378ae.dir/CMakeCXXCompilerABI.cpp.o]
 +  ignore line: [Android (12285214  +pgo  -bolt  +lto  -mlgo  based on r522817b) clang version 18.0.2 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)]
 +  ignore line: [Target: aarch64-none-linux-android24]
 +  ignore line: [Thread model: posix]
 +  ignore line: [InstalledDir: /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin]
 +  ignore line: [ (in-process)]
-+  ignore line: [ "/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++" -cc1 -triple aarch64-none-linux-android24 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCXXCompilerABI.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=non-leaf -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu generic -target-feature +neon -target-feature +v8a -target-feature +fix-cortex-a53-835769 -target-abi aapcs -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/CMakeTmp -v -ffunction-sections -fdata-sections -fcoverage-compilation-dir=/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/CMakeTmp -resource-dir /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18 -dependency-file CMakeFiles/cmTC_c453c.dir/CMakeCXXCompilerABI.cpp.o.d -MT CMakeFiles/cmTC_c453c.dir/CMakeCXXCompilerABI.cpp.o -sys-header-deps -D ANDROID -D _FORTIFY_SOURCE=2 -isysroot /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -internal-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/c++/v1 -internal-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/include -internal-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/local/include -internal-externc-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/aarch64-linux-android -internal-externc-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/include -internal-externc-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include -Wformat -fdeprecated-macro -ferror-limit 19 -femulated-tls -stack-protector 2 -fno-signed-char -fgnuc-version=4.2.1 -fcxx-exceptions -fexceptions -target-feature +outline-atomics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_c453c.dir/CMakeCXXCompilerABI.cpp.o -x c++ /Users/a/Library/Android/sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCXXCompilerABI.cpp]
++  ignore line: [ "/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin/clang++" -cc1 -triple aarch64-none-linux-android24 -emit-obj -mrelax-all -disable-free -clear-ast-before-backend -disable-llvm-verifier -discard-value-names -main-file-name CMakeCXXCompilerABI.cpp -mrelocation-model pic -pic-level 2 -pic-is-pie -mframe-pointer=non-leaf -ffp-contract=on -fno-rounding-math -mconstructor-aliases -funwind-tables=2 -target-cpu generic -target-feature +neon -target-feature +v8a -target-feature +fix-cortex-a53-835769 -target-abi aapcs -debug-info-kind=constructor -dwarf-version=4 -debugger-tuning=gdb -fdebug-compilation-dir=/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/CMakeTmp -v -ffunction-sections -fdata-sections -fcoverage-compilation-dir=/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/CMakeTmp -resource-dir /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18 -dependency-file CMakeFiles/cmTC_378ae.dir/CMakeCXXCompilerABI.cpp.o.d -MT CMakeFiles/cmTC_378ae.dir/CMakeCXXCompilerABI.cpp.o -sys-header-deps -D ANDROID -D _FORTIFY_SOURCE=2 -isysroot /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -internal-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/c++/v1 -internal-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/include -internal-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/local/include -internal-externc-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/aarch64-linux-android -internal-externc-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/include -internal-externc-isystem /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include -Wformat -fdeprecated-macro -ferror-limit 19 -femulated-tls -stack-protector 2 -fno-signed-char -fgnuc-version=4.2.1 -fcxx-exceptions -fexceptions -target-feature +outline-atomics -D__GCC_HAVE_DWARF2_CFI_ASM=1 -o CMakeFiles/cmTC_378ae.dir/CMakeCXXCompilerABI.cpp.o -x c++ /Users/a/Library/Android/sdk/cmake/3.22.1/share/cmake-3.22/Modules/CMakeCXXCompilerABI.cpp]
 +  ignore line: [clang -cc1 version 18.0.2 based upon LLVM 18.0.2 default target x86_64-apple-darwin24.6.0]
 +  ignore line: [ignoring nonexistent directory "/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/local/include"]
 +  ignore line: [ignoring nonexistent directory "/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/include"]
@@ -5052,12 +5038,12 @@ index 0000000..a9c7e7b
 +  ignore line: [ /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include/aarch64-linux-android]
 +  ignore line: [ /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/include]
 +  ignore line: [End of search list.]
-+  ignore line: [[2/2] Linking CXX executable cmTC_c453c]
++  ignore line: [[2/2] Linking CXX executable cmTC_378ae]
 +  ignore line: [Android (12285214  +pgo  -bolt  +lto  -mlgo  based on r522817b) clang version 18.0.2 (https://android.googlesource.com/toolchain/llvm-project d8003a456d14a3deb8054cdaa529ffbf02d9b262)]
 +  ignore line: [Target: aarch64-none-linux-android24]
 +  ignore line: [Thread model: posix]
 +  ignore line: [InstalledDir: /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin]
-+  link line: [ "/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin/ld.lld" --sysroot=/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -EL --fix-cortex-a53-843419 -z now -z relro -z max-page-size=4096 --hash-style=gnu --eh-frame-hdr -m aarch64linux -pie -dynamic-linker /system/bin/linker64 -o cmTC_c453c /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24/crtbegin_dynamic.o -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/aarch64 -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24 -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib --build-id=sha1 --no-rosegment --no-undefined-version --fatal-warnings --no-undefined CMakeFiles/cmTC_c453c.dir/CMakeCXXCompilerABI.cpp.o -lc++ -lm /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl -lc /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24/crtend_android.o]
++  link line: [ "/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin/ld.lld" --sysroot=/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot -EL --fix-cortex-a53-843419 -z now -z relro -z max-page-size=4096 --hash-style=gnu --eh-frame-hdr -m aarch64linux -pie -dynamic-linker /system/bin/linker64 -o cmTC_378ae /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24/crtbegin_dynamic.o -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/aarch64 -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24 -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android -L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib --build-id=sha1 --no-rosegment --no-undefined-version --fatal-warnings --no-undefined CMakeFiles/cmTC_378ae.dir/CMakeCXXCompilerABI.cpp.o -lc++ -lm /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl -lc /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a -l:libunwind.a -ldl /Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24/crtend_android.o]
 +    arg [/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/bin/ld.lld] ==> ignore
 +    arg [--sysroot=/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot] ==> ignore
 +    arg [-EL] ==> ignore
@@ -5073,7 +5059,7 @@ index 0000000..a9c7e7b
 +    arg [-dynamic-linker] ==> ignore
 +    arg [/system/bin/linker64] ==> ignore
 +    arg [-o] ==> ignore
-+    arg [cmTC_c453c] ==> ignore
++    arg [cmTC_378ae] ==> ignore
 +    arg [/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24/crtbegin_dynamic.o] ==> obj [/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24/crtbegin_dynamic.o]
 +    arg [-L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/aarch64] ==> dir [/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/aarch64]
 +    arg [-L/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24] ==> dir [/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/sysroot/usr/lib/aarch64-linux-android/24]
@@ -5084,7 +5070,7 @@ index 0000000..a9c7e7b
 +    arg [--no-undefined-version] ==> ignore
 +    arg [--fatal-warnings] ==> ignore
 +    arg [--no-undefined] ==> ignore
-+    arg [CMakeFiles/cmTC_c453c.dir/CMakeCXXCompilerABI.cpp.o] ==> ignore
++    arg [CMakeFiles/cmTC_378ae.dir/CMakeCXXCompilerABI.cpp.o] ==> ignore
 +    arg [-lc++] ==> lib [c++]
 +    arg [-lm] ==> lib [m]
 +    arg [/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a] ==> lib [/Users/a/Library/Android/sdk/ndk/27.1.12297006/toolchains/llvm/prebuilt/darwin-x86_64/lib/clang/18/lib/linux/libclang_rt.builtins-aarch64-android.a]
@@ -5123,14 +5109,6 @@ index 0000000..3dccd73
 +++ b/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/cmake.check_cache
 @@ -0,0 +1 @@
 +# This file is generated by cmake for dependency checking of the CMakeCache.txt file
-diff --git a/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/rnscreens.dir/Users/a/Desktop/Pryvo/node_modules/react-native-screens/cpp/RNScreensTurboModule.cpp.o b/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/rnscreens.dir/Users/a/Desktop/Pryvo/node_modules/react-native-screens/cpp/RNScreensTurboModule.cpp.o
-new file mode 100644
-index 0000000..fc75775
-Binary files /dev/null and b/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/rnscreens.dir/Users/a/Desktop/Pryvo/node_modules/react-native-screens/cpp/RNScreensTurboModule.cpp.o differ
-diff --git a/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/rnscreens.dir/src/main/cpp/jni-adapter.cpp.o b/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/rnscreens.dir/src/main/cpp/jni-adapter.cpp.o
-new file mode 100644
-index 0000000..f1d9189
-Binary files /dev/null and b/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/rnscreens.dir/src/main/cpp/jni-adapter.cpp.o differ
 diff --git a/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/rules.ninja b/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/CMakeFiles/rules.ninja
 new file mode 100644
 index 0000000..0c59da6
@@ -5558,7 +5536,7 @@ index 0000000..387e443
 Binary files /dev/null and b/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/compile_commands.json.bin differ
 diff --git a/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/configure_fingerprint.bin b/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/configure_fingerprint.bin
 new file mode 100644
-index 0000000..0981285
+index 0000000..9a4af4f
 --- /dev/null
 +++ b/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/configure_fingerprint.bin
 @@ -0,0 +1,28 @@
@@ -5566,30 +5544,30 @@ index 0000000..0981285
 +}
 +{/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/additional_project_files.txtC
 +A
-+?com.android.build.gradle.internal.cxx.io.EncodedFileFingerPrint	„‹áû¾3 ÷Šáû¾3|
++?com.android.build.gradle.internal.cxx.io.EncodedFileFingerPrint	ÔºıºÂ3 ºıºÂ3|
 +z
-+x/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/android_gradle_build.json	…‹áû¾3Ò ùŠáû¾3
++x/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/android_gradle_build.json	ÔºıºÂ3Ò ¢ºıºÂ3
 +
-+}/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/android_gradle_build_mini.json	…‹áû¾3¶ ÿŠáû¾3n
++}/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/android_gradle_build_mini.json	ÔºıºÂ3¶ ÆºıºÂ3n
 +l
-+j/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/build.ninja	…‹áû¾3ğæ ø‰áû¾3r
++j/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/build.ninja	ÔºıºÂ3ğæ Í¹ıºÂ3r
 +p
-+n/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/build.ninja.txt	…‹áû¾3w
++n/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/build.ninja.txt	ÔºıºÂ3w
 +u
-+s/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/build_file_index.txt	…‹áû¾3¼ €‹áû¾3x
++s/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/build_file_index.txt	ÔºıºÂ3¼ ÎºıºÂ3x
 +v
-+t/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/compile_commands.json	…‹áû¾3È ÷‰áû¾3|
++t/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/compile_commands.json	ÔºıºÂ3È Ì¹ıºÂ3|
 +z
-+x/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/compile_commands.json.bin	…‹áû¾3	 ÷‰áû¾3ƒ
++x/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/compile_commands.json.bin	ÔºıºÂ3	 Ì¹ıºÂ3ƒ
 +€
-+~/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/metadata_generation_command.txt	…‹áû¾3
-+û	 ÿŠáû¾3u
++~/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/metadata_generation_command.txt	ÔºıºÂ3
++û	 ÍºıºÂ3u
 +s
-+q/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/prefab_config.json	…‹áû¾3¦ €‹áû¾3z
++q/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/prefab_config.json	ÔºıºÂ3¦ ÍºıºÂ3z
 +x
-+v/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/symbol_folder_index.txt	…‹áû¾3u €‹áû¾3S
++v/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/symbol_folder_index.txt	ÔºıºÂ3u ÍºıºÂ3S
 +Q
-+O/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/CMakeLists.txt	…‹áû¾3ù ¸¾û¾3
++O/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/CMakeLists.txt	ÔºıºÂ3ù Ü¯øºÂ3
 \ No newline at end of file
 diff --git a/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/metadata_generation_command.txt b/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a/metadata_generation_command.txt
 new file mode 100644
@@ -6028,16 +6006,6 @@ diff --git a/node_modules/react-native-screens/android/build/intermediates/compi
 new file mode 100644
 index 0000000..14611da
 Binary files /dev/null and b/node_modules/react-native-screens/android/build/intermediates/compiled_local_resources/debug/compileDebugLibraryResources/out/drawable_rns_rounder_top_corners_shape.xml.flat differ
-diff --git a/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/build_command_rnscreens b/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/build_command_rnscreens
-new file mode 100755
-index 0000000..97bf0e4
---- /dev/null
-+++ b/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/build_command_rnscreens
-@@ -0,0 +1,4 @@
-+/Users/a/Library/Android/sdk/cmake/3.22.1/bin/ninja \
-+  -C \
-+  /Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a \
-+  rnscreens
 diff --git a/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/build_model.json b/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/build_model.json
 new file mode 100644
 index 0000000..174af53
@@ -6252,19 +6220,6 @@ index 0000000..174af53
 +  "intermediatesParentFolder": "/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264"
 +}
 \ No newline at end of file
-diff --git a/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/build_stderr_rnscreens.txt b/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/build_stderr_rnscreens.txt
-new file mode 100644
-index 0000000..e69de29
-diff --git a/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/build_stdout_rnscreens.txt b/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/build_stdout_rnscreens.txt
-new file mode 100644
-index 0000000..4473021
---- /dev/null
-+++ b/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/build_stdout_rnscreens.txt
-@@ -0,0 +1,4 @@
-+ninja: Entering directory `/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a'
-+[1/3] Building CXX object CMakeFiles/rnscreens.dir/Users/a/Desktop/Pryvo/node_modules/react-native-screens/cpp/RNScreensTurboModule.cpp.o
-+[2/3] Building CXX object CMakeFiles/rnscreens.dir/src/main/cpp/jni-adapter.cpp.o
-+[3/3] Linking CXX shared library ../../../../build/intermediates/cxx/Debug/6l5pe264/obj/arm64-v8a/librnscreens.so
 diff --git a/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/configure_command b/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/configure_command
 new file mode 100755
 index 0000000..fd6f836
@@ -6315,27 +6270,29 @@ index 0000000..2c7564d
 +-- Configuring done
 +-- Generating done
 +-- Build files have been written to: /Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/.cxx/Debug/6l5pe264/arm64-v8a
-diff --git a/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/generate_cxx_metadata_666_timing.txt b/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/generate_cxx_metadata_666_timing.txt
+diff --git a/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/generate_cxx_metadata_2134_timing.txt b/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/generate_cxx_metadata_2134_timing.txt
 new file mode 100644
-index 0000000..09bd0d3
+index 0000000..fef0f25
 --- /dev/null
-+++ b/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/generate_cxx_metadata_666_timing.txt
-@@ -0,0 +1,12 @@
++++ b/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/generate_cxx_metadata_2134_timing.txt
+@@ -0,0 +1,14 @@
 +# C/C++ build system timings
 +generate_cxx_metadata
 +  generate-prefab-packages
-+    exec-prefab 4926ms
-+  generate-prefab-packages completed in 4934ms
++    [gap of 167ms]
++    exec-prefab 1643ms
++    [gap of 15ms]
++  generate-prefab-packages completed in 1825ms
 +  execute-generate-process
-+    exec-configure 4419ms
-+    [gap of 11ms]
-+  execute-generate-process completed in 4432ms
-+  [gap of 40ms]
-+generate_cxx_metadata completed in 9576ms
++    exec-configure 2775ms
++    [gap of 85ms]
++  execute-generate-process completed in 2863ms
++  [gap of 22ms]
++generate_cxx_metadata completed in 4730ms
 +
 diff --git a/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/metadata_generation_record.json b/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/metadata_generation_record.json
 new file mode 100644
-index 0000000..ee5d570
+index 0000000..792174d
 --- /dev/null
 +++ b/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/metadata_generation_record.json
 @@ -0,0 +1,184 @@
@@ -6381,7 +6338,7 @@ index 0000000..ee5d570
 +  },
 +  {
 +    "level_": 0,
-+    "message_": "/usr/local/Cellar/openjdk@17/17.0.17/libexec/openjdk.jdk/Contents/Home/bin/java \\\n  --class-path \\\n  /Users/a/.gradle/caches/modules-2/files-2.1/com.google.prefab/cli/2.1.0/aa32fec809c44fa531f01dcfb739b5b3304d3050/cli-2.1.0-all.jar \\\n  com.google.prefab.cli.AppKt \\\n  --build-system \\\n  cmake \\\n  --platform \\\n  android \\\n  --abi \\\n  arm64-v8a \\\n  --os-version \\\n  24 \\\n  --stl \\\n  c++_shared \\\n  --ndk-version \\\n  27 \\\n  --output \\\n  /var/folders/xt/mvp1sh_50m96995139wgjmjm0000gn/T/agp-prefab-staging9901277810279389903/staged-cli-output \\\n  /Users/a/.gradle/caches/transforms-4/14527eca02e33d9d652ea9e2b122b1db/transformed/react-android-0.78.3-debug/prefab \\\n  /Users/a/.gradle/caches/transforms-4/244961dc225bc7e6d1e5aea32057dc18/transformed/fbjni-0.7.0/prefab\n",
++    "message_": "/usr/local/Cellar/openjdk@17/17.0.17/libexec/openjdk.jdk/Contents/Home/bin/java \\\n  --class-path \\\n  /Users/a/.gradle/caches/modules-2/files-2.1/com.google.prefab/cli/2.1.0/aa32fec809c44fa531f01dcfb739b5b3304d3050/cli-2.1.0-all.jar \\\n  com.google.prefab.cli.AppKt \\\n  --build-system \\\n  cmake \\\n  --platform \\\n  android \\\n  --abi \\\n  arm64-v8a \\\n  --os-version \\\n  24 \\\n  --stl \\\n  c++_shared \\\n  --ndk-version \\\n  27 \\\n  --output \\\n  /var/folders/xt/mvp1sh_50m96995139wgjmjm0000gn/T/agp-prefab-staging16436404567915355414/staged-cli-output \\\n  /Users/a/.gradle/caches/transforms-4/14527eca02e33d9d652ea9e2b122b1db/transformed/react-android-0.78.3-debug/prefab \\\n  /Users/a/.gradle/caches/transforms-4/244961dc225bc7e6d1e5aea32057dc18/transformed/fbjni-0.7.0/prefab\n",
 +    "file_": "/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/CMakeLists.txt",
 +    "tag_": "debug|arm64-v8a",
 +    "diagnosticCode_": 0,
@@ -6526,7 +6483,7 @@ index 0000000..ee5d570
 \ No newline at end of file
 diff --git a/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/prefab_command b/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/prefab_command
 new file mode 100755
-index 0000000..65a913e
+index 0000000..f52b199
 --- /dev/null
 +++ b/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/prefab_command
 @@ -0,0 +1,20 @@
@@ -6547,7 +6504,7 @@ index 0000000..65a913e
 +  --ndk-version \
 +  27 \
 +  --output \
-+  /var/folders/xt/mvp1sh_50m96995139wgjmjm0000gn/T/agp-prefab-staging9901277810279389903/staged-cli-output \
++  /var/folders/xt/mvp1sh_50m96995139wgjmjm0000gn/T/agp-prefab-staging16436404567915355414/staged-cli-output \
 +  /Users/a/.gradle/caches/transforms-4/14527eca02e33d9d652ea9e2b122b1db/transformed/react-android-0.78.3-debug/prefab \
 +  /Users/a/.gradle/caches/transforms-4/244961dc225bc7e6d1e5aea32057dc18/transformed/fbjni-0.7.0/prefab
 diff --git a/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/prefab_stderr.txt b/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/prefab_stderr.txt
@@ -6556,25 +6513,13 @@ index 0000000..e69de29
 diff --git a/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/prefab_stdout.txt b/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/logs/arm64-v8a/prefab_stdout.txt
 new file mode 100644
 index 0000000..e69de29
-diff --git a/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/obj/arm64-v8a/libc++_shared.so b/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/obj/arm64-v8a/libc++_shared.so
-new file mode 100755
-index 0000000..2c72c65
-Binary files /dev/null and b/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/obj/arm64-v8a/libc++_shared.so differ
-diff --git a/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/obj/arm64-v8a/libjsi.so b/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/obj/arm64-v8a/libjsi.so
-new file mode 100644
-index 0000000..0936f93
-Binary files /dev/null and b/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/obj/arm64-v8a/libjsi.so differ
-diff --git a/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/obj/arm64-v8a/librnscreens.so b/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/obj/arm64-v8a/librnscreens.so
-new file mode 100755
-index 0000000..e9424ed
-Binary files /dev/null and b/node_modules/react-native-screens/android/build/intermediates/cxx/Debug/6l5pe264/obj/arm64-v8a/librnscreens.so differ
 diff --git a/node_modules/react-native-screens/android/build/intermediates/incremental/debug/packageDebugResources/compile-file-map.properties b/node_modules/react-native-screens/android/build/intermediates/incremental/debug/packageDebugResources/compile-file-map.properties
 new file mode 100644
-index 0000000..7d6dab2
+index 0000000..1972c20
 --- /dev/null
 +++ b/node_modules/react-native-screens/android/build/intermediates/incremental/debug/packageDebugResources/compile-file-map.properties
 @@ -0,0 +1,33 @@
-+#Sat Jan 24 15:35:41 IST 2026
++#Wed Feb 04 12:07:50 IST 2026
 +com.swmansion.rnscreens.react-native-screens-res-6\:/anim/rns_ios_from_right_foreground_close.xml=/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/build/intermediates/packaged_res/debug/packageDebugResources/anim/rns_ios_from_right_foreground_close.xml
 +com.swmansion.rnscreens.react-native-screens-res-6\:/anim/rns_fade_in.xml=/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/build/intermediates/packaged_res/debug/packageDebugResources/anim/rns_fade_in.xml
 +com.swmansion.rnscreens.react-native-screens-res-6\:/anim/rns_standard_accelerate_interpolator.xml=/Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/build/intermediates/packaged_res/debug/packageDebugResources/anim/rns_standard_accelerate_interpolator.xml
@@ -7407,7 +7352,7 @@ index 0000000..fa1b55d
 \ No newline at end of file
 diff --git a/node_modules/react-native-screens/android/build/kotlin/compileDebugKotlin/local-state/build-history.bin b/node_modules/react-native-screens/android/build/kotlin/compileDebugKotlin/local-state/build-history.bin
 new file mode 100644
-index 0000000..9638d99
+index 0000000..f5a15c8
 Binary files /dev/null and b/node_modules/react-native-screens/android/build/kotlin/compileDebugKotlin/local-state/build-history.bin differ
 diff --git a/node_modules/react-native-screens/android/build/outputs/logs/manifest-merger-debug-report.txt b/node_modules/react-native-screens/android/build/outputs/logs/manifest-merger-debug-report.txt
 new file mode 100644
@@ -7432,24 +7377,23 @@ index 0000000..7598a6e
 +	android:minSdkVersion
 +		INJECTED from /Users/a/Desktop/Pryvo/node_modules/react-native-screens/android/src/main/AndroidManifest.xml
 diff --git a/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStackFragment.kt b/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStackFragment.kt
-index f3d0009..28fad44 100644
+index f3d0009..1822ca9 100644
 --- a/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStackFragment.kt
 +++ b/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/ScreenStackFragment.kt
-@@ -793,7 +793,8 @@ class ScreenStackFragment :
+@@ -793,7 +793,7 @@ class ScreenStackFragment :
          // We set pointer events to BOX_NONE, because we don't want the ScreensCoordinatorLayout
          // to be target of react gestures and effectively prevent interaction with screens
          // underneath the current screen (useful in `modal` & `formSheet` presentation).
 -        override fun getPointerEvents(): PointerEvents = PointerEvents.BOX_NONE
-+        override val pointerEvents: PointerEvents
-+            get() = PointerEvents.BOX_NONE
++        override val pointerEvents: PointerEvents get() = PointerEvents.BOX_NONE
      }
  
      private class ScreensAnimation(
 diff --git a/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/bottomsheet/BottomSheetDialogRootView.kt b/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/bottomsheet/BottomSheetDialogRootView.kt
-index d32ac1e..b2eff73 100644
+index d32ac1e..0502f21 100644
 --- a/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/bottomsheet/BottomSheetDialogRootView.kt
 +++ b/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/bottomsheet/BottomSheetDialogRootView.kt
-@@ -68,7 +68,7 @@ class BottomSheetDialogRootView(
+@@ -68,17 +68,15 @@ class BottomSheetDialogRootView(
      }
  
      override fun onChildStartedNativeGesture(
@@ -7458,7 +7402,20 @@ index d32ac1e..b2eff73 100644
          event: MotionEvent,
      ) {
          jsTouchDispatcher.onChildStartedNativeGesture(event, eventDispatcher)
-@@ -92,7 +92,7 @@ class BottomSheetDialogRootView(
+-        jsPointerDispatcher?.onChildStartedNativeGesture(view, event, eventDispatcher)
++        if (view != null) {
++            jsPointerDispatcher?.onChildStartedNativeGesture(view, event, eventDispatcher)
++        }
+     }
+ 
+-    @Deprecated("Deprecated by React Native")
+-    override fun onChildStartedNativeGesture(event: MotionEvent): Unit =
+-        throw IllegalStateException("Deprecated onChildStartedNativeGesture was called")
+-
+     override fun onChildEndedNativeGesture(
+         view: View,
+         event: MotionEvent,
+@@ -92,7 +90,7 @@ class BottomSheetDialogRootView(
          // need to keep receiving events.
      }
  
@@ -7468,30 +7425,28 @@ index d32ac1e..b2eff73 100644
          // TODO: Determine where it is initially created & verify its lifecycle
          //        reactContext?.reactApplicationContext?.handleException(RuntimeException(throwable))
 diff --git a/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/bottomsheet/DimmingView.kt b/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/bottomsheet/DimmingView.kt
-index 7ef4861..14f7bd2 100644
+index 7ef4861..3db4d7a 100644
 --- a/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/bottomsheet/DimmingView.kt
 +++ b/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/bottomsheet/DimmingView.kt
-@@ -59,7 +59,8 @@ class DimmingView(
+@@ -59,7 +59,7 @@ class DimmingView(
          y: Float,
      ) = blockGestures
  
 -    override fun getPointerEvents(): PointerEvents = if (blockGestures) PointerEvents.AUTO else PointerEvents.NONE
-+    override val pointerEvents: PointerEvents
-+        get() = if (blockGestures) PointerEvents.AUTO else PointerEvents.NONE
++    override val pointerEvents: PointerEvents get() = if (blockGestures) PointerEvents.AUTO else PointerEvents.NONE
  
      companion object {
          const val TAG = "DimmingView"
 diff --git a/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/bottomsheet/GestureTransparentViewGroup.kt b/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/bottomsheet/GestureTransparentViewGroup.kt
-index 78c6e3b..9eb21ec 100644
+index 78c6e3b..4aa91ec 100644
 --- a/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/bottomsheet/GestureTransparentViewGroup.kt
 +++ b/node_modules/react-native-screens/android/src/main/java/com/swmansion/rnscreens/bottomsheet/GestureTransparentViewGroup.kt
-@@ -15,7 +15,8 @@ class GestureTransparentViewGroup(
+@@ -15,7 +15,7 @@ class GestureTransparentViewGroup(
      context: Context,
  ) : FrameLayout(context),
      ReactPointerEventsView {
 -    override fun getPointerEvents(): PointerEvents = PointerEvents.BOX_NONE
-+    override val pointerEvents: PointerEvents
-+        get() = PointerEvents.BOX_NONE
++    override val pointerEvents: PointerEvents get() = PointerEvents.BOX_NONE
  
      companion object {
          const val TAG = "GestureTransparentFrameLayout"

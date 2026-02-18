@@ -35,23 +35,28 @@ const LikesScreen = ({navigation}) => {
   const loadLikes = async () => {
     try {
       setGlobalLoading(true);
-      const userData = await AsyncStorage.getItem('@pryvo_user');
-      if (userData && userData !== 'undefined') {
-        try {
-          const user = JSON.parse(userData);
-          setCurrentUserId(user.id);
-        } catch (e) {
-          console.error('Failed to parse user data in LikesScreen:', e);
+      let userId = currentUserId;
+
+      if (!userId) {
+        const userData = await AsyncStorage.getItem('@pryvo_user');
+        if (userData && userData !== 'undefined') {
+          try {
+            const user = JSON.parse(userData);
+            userId = user.id;
+            setCurrentUserId(userId);
+          } catch (e) {
+            console.error('Failed to parse user data in LikesScreen:', e);
+            return;
+          }
+        } else {
           return;
         }
-      } else {
-        return;
       }
 
       // For now, everyone is treated as premium (LIKES_VISIBLE_FREE = true on server)
-      const isPremium = true; // Change this based on user subscription status
+      const isPremium = true;
 
-      const response = await getLikesReceived(user.id, isPremium);
+      const response = await getLikesReceived(userId, isPremium);
 
       if (response.success) {
         setLikes(response.likes || []);
@@ -74,7 +79,9 @@ const LikesScreen = ({navigation}) => {
 
   const handleLikeBack = async likerId => {
     try {
+      console.log('[LikesScreen] Liking back user:', likerId);
       const result = await likeUser(currentUserId, likerId);
+      console.log('[LikesScreen] Like result:', result);
 
       if (result.isMatch) {
         Alert.alert("It's a Match! 🎉", 'You can now start chatting!', [
@@ -93,6 +100,8 @@ const LikesScreen = ({navigation}) => {
         // Remove from likes list
         setLikes(prev => prev.filter(l => l.senderId !== likerId));
         setLikesCount(prev => prev - 1);
+      } else {
+        console.log('[LikesScreen] Not a match? Result:', result);
       }
     } catch (error) {
       console.log('Error liking back:', error);

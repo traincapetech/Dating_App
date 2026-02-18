@@ -109,6 +109,50 @@ export const createMatch = async (req, res) => {
       users: [userA, userB],
     });
 
+    // Send email notifications (using same pattern as likeController)
+    try {
+      // Import at top level instead of dynamic imports
+      const Profile = (await import('../models/Profile.js')).default;
+      const User = (await import('../models/User.js')).default;
+      const {sendMatchEmail} = await import(
+        '../services/emailNotificationService.js'
+      );
+
+      // Helper function to get profile info (same as likeController)
+      const getProfileInfo = async userId => {
+        const profile = await Profile.findOne({userId});
+        const user = await User.findById(userId);
+
+        return {
+          name:
+            profile?.basicInfo?.firstName ||
+            user?.fullName ||
+            user?.name ||
+            'Someone',
+          photo: profile?.media?.media?.[0]?.url || null,
+          email: user?.email,
+        };
+      };
+
+      const infoA = await getProfileInfo(userA);
+      const infoB = await getProfileInfo(userB);
+
+      // Send emails to both users
+      if (infoA.email) {
+        sendMatchEmail(infoA.email, infoB.name, infoB.photo).catch(err =>
+          console.error('Match email error:', err),
+        );
+      }
+      if (infoB.email) {
+        sendMatchEmail(infoB.email, infoA.name, infoA.photo).catch(err =>
+          console.error('Match email error:', err),
+        );
+      }
+    } catch (emailError) {
+      console.error('Failed to send match emails:', emailError);
+      // Don't block response
+    }
+
     res.status(201).json({success: true, match, existing: false});
   } catch (error) {
     console.error(error);

@@ -1,6 +1,9 @@
 import React from 'react';
 import {View, Text, StyleSheet} from 'react-native';
-import {NavigationContainer} from '@react-navigation/native';
+import {
+  NavigationContainer,
+  useNavigationContainerRef,
+} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 // Use literal route names to avoid undefined values
 import SplashScreen from '../features/onboarding/screens/SplashScreen.jsx';
@@ -9,7 +12,7 @@ import SignInScreen from '../features/auth/screens/SignInScreen.jsx';
 import ForgotPasswordScreen from '../features/auth/screens/ForgotPasswordScreen.jsx';
 import ResetPasswordScreen from '../features/auth/screens/ResetPasswordScreen.jsx';
 import TermsScreen from '../features/onboarding/screens/static/TermsScreen.js';
-import PrivacyScreen from '../features/onboarding/screens/static/PrivacyScreen.js'; 
+import PrivacyScreen from '../features/onboarding/screens/static/PrivacyScreen.js';
 import PhoneInputScreen from '../features/onboarding/screens/PhoneInputScreen.jsx';
 import OTPVerificationScreen from '../features/onboarding/screens/OTPVerificationScreen.jsx';
 import WelcomeScreen from '../features/onboarding/screens/WelcomeScreen.jsx';
@@ -37,6 +40,8 @@ import SubscriptionManagementScreen from '../features/settings/screens/Subscript
 import BoostProfileScreen from '../features/settings/screens/BoostProfileScreen.jsx';
 import AdvancedFiltersScreen from '../features/settings/screens/AdvancedFiltersScreen.jsx';
 import {colors, typography} from '../theme';
+import {setupNotificationHandlers} from '../services/notifications/notificationService';
+import {useEffect} from 'react';
 
 const Stack = createNativeStackNavigator();
 
@@ -50,34 +55,37 @@ const PlaceholderScreen = ({route}) => {
 };
 
 const AppNavigator = () => {
+  const navigationRef = useNavigationContainerRef();
+
+  useEffect(() => {
+    // Wait for navigation to be ready
+    if (navigationRef.isReady()) {
+      const unsubscribe = setupNotificationHandlers(navigationRef);
+      return () => {
+        if (unsubscribe) unsubscribe();
+      };
+    }
+  }, [navigationRef]);
+
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator
         initialRouteName="OnboardingIntro"
         screenOptions={{headerShown: false}}>
-        <Stack.Screen
-          name="OnboardingIntro"
-          component={SplashScreen}
-        />
+        <Stack.Screen name="OnboardingIntro" component={SplashScreen} />
         <Stack.Screen name="SignUp" component={SignUpScreen} />
         <Stack.Screen name="SignIn" component={SignInScreen} />
         <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
         <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
         <Stack.Screen name="Terms" component={TermsScreen} />
-        <Stack.Screen name="Privacy" component={PrivacyScreen} />  
-        <Stack.Screen
-          name="PhoneInput"
-          component={PhoneInputScreen}
-        />
+        <Stack.Screen name="Privacy" component={PrivacyScreen} />
+        <Stack.Screen name="PhoneInput" component={PhoneInputScreen} />
         <Stack.Screen
           name="OTPVerification"
           component={OTPVerificationScreen}
         />
         <Stack.Screen name="Welcome" component={WelcomeScreen} />
-        <Stack.Screen
-          name="BasicInfo"
-          component={BasicInfoScreen}
-        />
+        <Stack.Screen name="BasicInfo" component={BasicInfoScreen} />
         <Stack.Screen
           name="DatingPreferences"
           component={DatingPreferencesScreen}
@@ -87,14 +95,8 @@ const AppNavigator = () => {
           component={PersonalDetailsScreen}
         />
         <Stack.Screen name="Lifestyle" component={LifestyleScreen} />
-        <Stack.Screen
-          name="ProfilePrompts"
-          component={ProfilePromptsScreen}
-        />
-        <Stack.Screen
-          name="MediaUpload"
-          component={MediaUploadScreen}
-        />
+        <Stack.Screen name="ProfilePrompts" component={ProfilePromptsScreen} />
+        <Stack.Screen name="MediaUpload" component={MediaUploadScreen} />
         <Stack.Screen
           name="SubscriptionUpsell"
           component={SubscriptionUpsellScreen}
@@ -109,10 +111,19 @@ const AppNavigator = () => {
         <Stack.Screen name="BlockedUsers" component={BlockedUsersScreen} />
         <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
         <Stack.Screen name="DistanceFilter" component={DistanceFilterScreen} />
-        <Stack.Screen name="NotificationPreferences" component={NotificationPreferencesScreen} />
-        <Stack.Screen name="SubscriptionManagement" component={SubscriptionManagementScreen} />
+        <Stack.Screen
+          name="NotificationPreferences"
+          component={NotificationPreferencesScreen}
+        />
+        <Stack.Screen
+          name="SubscriptionManagement"
+          component={SubscriptionManagementScreen}
+        />
         <Stack.Screen name="BoostProfile" component={BoostProfileScreen} />
-        <Stack.Screen name="AdvancedFilters" component={AdvancedFiltersScreen} />
+        <Stack.Screen
+          name="AdvancedFilters"
+          component={AdvancedFiltersScreen}
+        />
         <Stack.Screen name="HelpCentre" component={HelpCentreScreen} />
         <Stack.Screen name="ReportProblem" component={ReportProblemScreen} />
       </Stack.Navigator>

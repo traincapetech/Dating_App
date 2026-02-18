@@ -636,7 +636,7 @@ const HomeScreen = ({navigation}) => {
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
         const {dx, dy} = gestureState;
         // Only respond to horizontal swipes if movement is primarily horizontal
@@ -822,7 +822,6 @@ const HomeScreen = ({navigation}) => {
           ]}>
           <ScrollView
             showsVerticalScrollIndicator={false}
-            bounces={false}
             scrollEventThrottle={16}>
             {/* 1. Main Photo with Name Overlay */}
             <View style={styles.mainPhotoContainer}>

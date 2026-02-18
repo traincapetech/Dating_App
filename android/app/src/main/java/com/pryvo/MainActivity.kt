@@ -23,7 +23,8 @@ class MainActivity : ReactActivity() {
       DefaultReactActivityDelegate(this, mainComponentName, fabricEnabled)
 
   override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(savedInstanceState)
+    // Fix for react-native-screens crash: discard saved instance state
+    super.onCreate(null)
     try {
       Log.d("MainActivity", "MainActivity created, component name: ${mainComponentName}")
     } catch (e: Exception) {

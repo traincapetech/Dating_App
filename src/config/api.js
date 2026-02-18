@@ -20,7 +20,10 @@ const LOCAL_API_URL = 'http://192.168.1.210:3000/api';
 const LOCAL_SOCKET_URL = 'http://192.168.1.210:3000';
 
 // Set to true for production, false for local development
-const IS_PRODUCTION = true;
+const IS_PRODUCTION = false;
+
+console.log(`[Config] API_BASE_URL: ${API_BASE_URL}`);
+console.log(`[Config] SOCKET_URL: ${SOCKET_URL}`);
 
 // Auto-detect for Android emulator
 const getApiBaseUrl = () => {

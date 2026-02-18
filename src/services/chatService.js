@@ -8,14 +8,14 @@ import apiClient from './api/client';
  */
 export const fetchMessages = async (matchId, userId) => {
   if (!matchId) return [];
-  
+
   try {
     const res = await apiClient.get(`/chat/${matchId}`, {
-      headers: { 'x-user-id': userId }
+      headers: {'x-user-id': userId},
     });
     return res?.messages || res || [];
   } catch (err) {
-    console.log("❌ fetchMessages error:", err?.message);
+    console.log('❌ fetchMessages error:', err?.message);
     // Return empty array for non-critical errors, throw for access denied
     if (err?.status === 403) {
       throw err;
@@ -28,7 +28,14 @@ export const fetchMessages = async (matchId, userId) => {
  * Send a message
  * @param {object} params - Message parameters
  */
-export const sendMessageApi = async ({ matchId, senderId, receiverId, text, mediaUrl, mediaType }) => {
+export const sendMessageApi = async ({
+  matchId,
+  senderId,
+  receiverId,
+  text,
+  mediaUrl,
+  mediaType,
+}) => {
   const res = await apiClient.post('/chat', {
     matchId,
     senderId,
@@ -47,9 +54,9 @@ export const sendMessageApi = async ({ matchId, senderId, receiverId, text, medi
  */
 export const markMessagesAsSeen = async (matchId, userId) => {
   try {
-    await apiClient.post(`/chat/${matchId}/seen`, { userId });
+    await apiClient.post(`/chat/${matchId}/seen`, {userId});
   } catch (err) {
-    console.log("❌ markMessagesAsSeen error:", err?.message);
+    console.log('❌ markMessagesAsSeen error:', err?.message);
   }
 };
 
@@ -57,15 +64,15 @@ export const markMessagesAsSeen = async (matchId, userId) => {
  * Fetch matches for a user
  * @param {string} userId - User ID
  */
-export const fetchMatches = async (userId) => {
-  if (!userId) return { matches: [] };
-  
+export const fetchMatches = async userId => {
+  if (!userId) return {matches: []};
+
   try {
     const res = await apiClient.get(`/match/${userId}`);
-    return res || { matches: [] };
+    return res || {matches: []};
   } catch (err) {
-    console.log("❌ fetchMatches error:", err?.message);
-    return { matches: [] };
+    console.log('❌ fetchMatches error:', err?.message);
+    return {matches: []};
   }
 };
 
@@ -76,14 +83,18 @@ export const fetchMatches = async (userId) => {
  */
 export const fetchLastMessages = async (matchIds, userId) => {
   if (!matchIds || matchIds.length === 0) return [];
-  
+
   try {
-    const res = await apiClient.post('/chat/last-messages', { matchIds }, {
-      headers: { 'x-user-id': userId }
-    });
+    const res = await apiClient.post(
+      '/chat/last-messages',
+      {matchIds},
+      {
+        headers: {'x-user-id': userId},
+      },
+    );
     return res?.lastMessages || [];
   } catch (err) {
-    console.log("❌ fetchLastMessages error:", err?.message);
+    console.log('❌ fetchLastMessages error:', err?.message);
     return [];
   }
 };
@@ -98,7 +109,7 @@ export const uploadChatMedia = async (imageBase64, userId, matchId) => {
   const res = await apiClient.post('/media/chat', {
     image: imageBase64,
     userId,
-    matchId
+    matchId,
   });
   return res;
 };
@@ -113,7 +124,7 @@ export const blockUser = async (blockerId, blockedId, reason = null) => {
   const res = await apiClient.post('/users/block', {
     blockerId,
     blockedId,
-    reason
+    reason,
   });
   return res;
 };
@@ -126,7 +137,7 @@ export const blockUser = async (blockerId, blockedId, reason = null) => {
 export const unblockUser = async (blockerId, blockedId) => {
   const res = await apiClient.post('/users/unblock', {
     blockerId,
-    blockedId
+    blockedId,
   });
   return res;
 };
@@ -135,13 +146,19 @@ export const unblockUser = async (blockerId, blockedId) => {
  * Report a user
  * @param {object} params - Report parameters
  */
-export const reportUser = async ({ reporterId, reportedId, matchId, reason, description }) => {
+export const reportUser = async ({
+  reporterId,
+  reportedId,
+  matchId,
+  reason,
+  description,
+}) => {
   const res = await apiClient.post('/users/report', {
     reporterId,
     reportedId,
     matchId,
     reason,
-    description
+    description,
   });
   return res;
 };
@@ -150,13 +167,19 @@ export const reportUser = async ({ reporterId, reportedId, matchId, reason, desc
  * Block and report a user
  * @param {object} params - Block and report parameters
  */
-export const blockAndReportUser = async ({ blockerId, blockedId, matchId, reason, description }) => {
+export const blockAndReportUser = async ({
+  blockerId,
+  blockedId,
+  matchId,
+  reason,
+  description,
+}) => {
   const res = await apiClient.post('/users/block-and-report', {
     blockerId,
     blockedId,
     matchId,
     reason,
-    description
+    description,
   });
   return res;
 };
@@ -171,8 +194,8 @@ export const checkIfBlocked = async (userId, otherUserId) => {
     const res = await apiClient.get(`/users/check/${userId}/${otherUserId}`);
     return res;
   } catch (err) {
-    console.log("❌ checkIfBlocked error:", err?.message);
-    return { isBlocked: false };
+    console.log('❌ checkIfBlocked error:', err?.message);
+    return {isBlocked: false};
   }
 };
 
@@ -183,10 +206,27 @@ export const checkIfBlocked = async (userId, otherUserId) => {
  */
 export const unmatchUser = async (matchId, userId) => {
   try {
-    const res = await apiClient.post(`/match/${matchId}/unmatch`, { userId });
+    const res = await apiClient.post(`/match/${matchId}/unmatch`, {userId});
     return res;
   } catch (err) {
-    console.log("❌ unmatchUser error:", err?.message);
+    console.log('❌ unmatchUser error:', err?.message);
+    throw err;
+  }
+};
+
+/**
+ * Delete a message
+ * @param {string} messageId - The message ID to delete
+ * @param {string} userId - Current user ID
+ */
+export const deleteMessageApi = async (messageId, userId) => {
+  try {
+    const res = await apiClient.delete(`/chat/${messageId}`, {
+      data: {userId}, // Pass userId in body for ownership check
+    });
+    return res;
+  } catch (err) {
+    console.log('❌ deleteMessageApi error:', err?.message);
     throw err;
   }
 };
@@ -204,4 +244,5 @@ export default {
   blockAndReportUser,
   checkIfBlocked,
   unmatchUser,
+  deleteMessageApi,
 };

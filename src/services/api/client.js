@@ -4,7 +4,11 @@ const defaultHeaders = {
   'Content-Type': 'application/json',
 };
 
-async function request(path, {method = 'GET', body, headers = {}, token} = {}) {
+async function request(
+  path,
+  {method = 'GET', body, data: reqData, headers = {}, token} = {},
+) {
+  const finalBody = body || reqData;
   const finalHeaders = {...defaultHeaders, ...headers};
   if (token) {
     finalHeaders.Authorization = `Bearer ${token}`;
@@ -12,11 +16,13 @@ async function request(path, {method = 'GET', body, headers = {}, token} = {}) {
 
   let response;
   try {
+    console.log(`[API Request] ${method} ${path}`);
     response = await fetch(`${API_BASE_URL}${path}`, {
       method,
       headers: finalHeaders,
-      body: body ? JSON.stringify(body) : undefined,
+      body: finalBody ? JSON.stringify(finalBody) : undefined,
     });
+    console.log(`[API Response] ${method} ${path} -> ${response.status}`);
   } catch (networkError) {
     // Handle network errors (connection refused, timeout, etc.)
     console.error('[API Client] Network error:', networkError);
