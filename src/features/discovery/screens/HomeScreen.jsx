@@ -30,12 +30,14 @@ import {
 import {
   watchLocation,
   getCurrentLocation,
+  reverseGeocode,
 } from '../../../services/location/locationService';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import {useLoading} from '../../../context/LoadingContext';
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - spacing.xl * 2;
-const CARD_HEIGHT = SCREEN_HEIGHT * 0.8;
+const CARD_HEIGHT = SCREEN_HEIGHT * 0.76;
 const SWIPE_THRESHOLD = 120;
 
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
@@ -63,10 +65,11 @@ const deg2rad = deg => {
 };
 
 const HomeScreen = ({navigation}) => {
+  const {setLoading: setGlobalLoading} = useLoading();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [photoIndex, setPhotoIndex] = useState({});
   const [profiles, setProfiles] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoadingLocal] = useState(true);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [currentLocation, setCurrentLocation] = useState(null);
   const [dailyLikeInfo, setDailyLikeInfo] = useState({
@@ -153,6 +156,66 @@ const HomeScreen = ({navigation}) => {
     };
   }, []);
 
+  const geocodeProfile = useCallback(
+    async index => {
+      const profile = profiles[index];
+      if (!profile || profile.cityGeocoded) return;
+
+      const lat = profile.latitude;
+      const lng = profile.longitude;
+
+      if (lat && lng) {
+        // Check if current display location is coordinates or empty
+        const isCoordinates =
+          /^\s*[-+]?\d+(\.\d+)?\s*,\s*[-+]?\d+(\.\d+)?\s*$/.test(
+            profile.location || '',
+          );
+        if (isCoordinates || !profile.city || profile.city === '') {
+          const city = await reverseGeocode(lat, lng);
+          if (city) {
+            setProfiles(prev => {
+              const next = [...prev];
+              // Safety check in case profiles changed while geocoding
+              if (next[index] && next[index].id === profile.id) {
+                next[index] = {
+                  ...next[index],
+                  city: city,
+                  cityGeocoded: true,
+                };
+              }
+              return next;
+            });
+          } else {
+            // Mark as geocoded even if it fails to avoid constant retries
+            setProfiles(prev => {
+              const next = [...prev];
+              if (next[index]) next[index].cityGeocoded = true;
+              return next;
+            });
+          }
+        } else {
+          setProfiles(prev => {
+            const next = [...prev];
+            if (next[index]) next[index].cityGeocoded = true;
+            return next;
+          });
+        }
+      }
+    },
+    [profiles],
+  );
+
+  useEffect(() => {
+    if (profiles.length > 0) {
+      // Geocode current and next 2 for smoothness
+      [currentIndex, currentIndex + 1, currentIndex + 2].forEach(idx => {
+        if (profiles[idx]) {
+          geocodeProfile(idx);
+        }
+      });
+    }
+  }, [currentIndex, profiles.length, geocodeProfile]);
+
   const loadDailyLikeInfo = useCallback(async () => {
     try {
       const userData = await AsyncStorage.getItem('@pryvo_user');
@@ -185,7 +248,8 @@ const HomeScreen = ({navigation}) => {
       userLocationOverride = null,
     ) => {
       try {
-        setLoading(true);
+        setLoadingLocal(true);
+        setGlobalLoading(true);
 
         // Get current user ID
         const userData = await AsyncStorage.getItem('@pryvo_user');
@@ -309,6 +373,7 @@ const HomeScreen = ({navigation}) => {
                 jobTitle: profile.personalDetails?.jobTitle || '',
                 school: profile.personalDetails?.school || '',
                 location: profile.basicInfo?.location || '',
+                city: profile.basicInfo?.locationDetails?.city || '',
                 gender: profile.basicInfo?.gender || '',
                 height: profile.personalDetails?.height || '',
                 drink: profile.lifestyle?.drink || '',
@@ -320,6 +385,16 @@ const HomeScreen = ({navigation}) => {
                   profile.datingPreferences?.datingIntention || '',
                 relationshipType:
                   profile.datingPreferences?.relationshipType || '',
+                latitude: parseFloat(
+                  profile.latitude ||
+                    profile.location?.coordinates?.[1] ||
+                    profile.basicInfo?.locationDetails?.lat,
+                ),
+                longitude: parseFloat(
+                  profile.longitude ||
+                    profile.location?.coordinates?.[0] ||
+                    profile.basicInfo?.locationDetails?.lng,
+                ),
                 // Add profile prompts
                 prompts: [
                   profile.profilePrompts?.aboutMe,
@@ -342,7 +417,8 @@ const HomeScreen = ({navigation}) => {
         console.error('Error loading profiles:', error);
         Alert.alert('Error', 'Failed to load profiles. Please try again.');
       } finally {
-        setLoading(false);
+        setLoadingLocal(false);
+        setGlobalLoading(false);
       }
     },
     [maxDistance, useDistanceFilter, currentLocation],
@@ -615,12 +691,7 @@ const HomeScreen = ({navigation}) => {
           barStyle="dark-content"
           backgroundColor={colors.background}
         />
-        <View style={styles.container}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.emptySubtitle, {marginTop: 20}]}>
-            Loading profiles...
-          </Text>
-        </View>
+        <View style={styles.container} />
       </SafeAreaView>
     );
   }
@@ -778,33 +849,58 @@ const HomeScreen = ({navigation}) => {
                     {currentProfile.age ? `, (${currentProfile.age})` : ''}
                   </Text>
                   {(() => {
-                    const dist = currentProfile.distance
+                    let dist = currentProfile.distance
                       ? parseFloat(currentProfile.distance)
                       : null;
-                    // Show city if distance is large (>100 km)
-                    // Otherwise show distance
-                    const showCity = dist !== null && dist > 100;
 
-                    if (showCity && currentProfile.location) {
-                      return (
-                        <Text className="text-sm font-mona-sans-regular text-white">
-                          📍 {currentProfile.location}
-                        </Text>
-                      );
-                    } else if (dist !== null) {
-                      return (
-                        <Text className="text-sm font-mona-sans-regular text-white">
-                          📍 {dist} km away
-                        </Text>
-                      );
-                    } else if (currentProfile.location) {
-                      return (
-                        <Text className="text-sm font-mona-sans-regular text-white">
-                          📍 {currentProfile.location}
-                        </Text>
+                    // Recalculate distance if missing but we have coordinates
+                    if (
+                      dist === null &&
+                      currentLocation &&
+                      !isNaN(currentProfile.latitude) &&
+                      !isNaN(currentProfile.longitude)
+                    ) {
+                      dist = calculateDistance(
+                        currentLocation.latitude,
+                        currentLocation.longitude,
+                        currentProfile.latitude,
+                        currentProfile.longitude,
                       );
                     }
-                    return null;
+
+                    const locationStr =
+                      currentProfile.city || currentProfile.location || '';
+
+                    // Improved coordinate detection: check for numeric format like "28.6074, 77.0819"
+                    const isCoordinates =
+                      /^\s*[-+]?\d+(\.\d+)?\s*,\s*[-+]?\d+(\.\d+)?\s*$/.test(
+                        locationStr,
+                      );
+
+                    const displayLocation = isCoordinates
+                      ? currentProfile.city || ''
+                      : locationStr;
+
+                    if (!displayLocation && (dist === null || dist < 0))
+                      return null;
+
+                    // For dating apps, huge distances (e.g. 12000km) look like a bug.
+                    // We show "Far away" for anything over 1000km.
+                    const distanceLabel =
+                      dist !== null && dist > 0
+                        ? dist > 1000
+                          ? 'Far away'
+                          : `${dist} km away`
+                        : null;
+
+                    const finalLocation = displayLocation || 'Nearby';
+
+                    return (
+                      <Text className="text-sm font-mona-sans-regular text-white">
+                        📍 {finalLocation}
+                        {distanceLabel ? ` • ${distanceLabel}` : ''}
+                      </Text>
+                    );
                   })()}
                 </View>
               </LinearGradient>
@@ -993,35 +1089,47 @@ const HomeScreen = ({navigation}) => {
 
       {/* Action Buttons */}
       <View style={styles.actionButtons}>
+        {/* Pass (Cancel) Icon */}
         <Pressable
-          style={[
-            styles.actionButton,
-            styles.rewindButtonContainer,
-            currentIndex === 0 && styles.likeButtonDisabled,
-          ]}
-          onPress={handleRewind}
-          disabled={currentIndex === 0}>
-          <MaterialCommunityIcons name="undo" size={24} color="#F5B900" />
-        </Pressable>
-        <Pressable
-          style={[
-            styles.actionButton,
-            styles.passButtonContainer,
-            !currentProfile && styles.likeButtonDisabled,
-          ]}
+          style={[styles.actionButton, styles.passButtonContainer]}
           onPress={() => processSwipe('left')}
           disabled={!currentProfile}>
-          <MaterialCommunityIcons name="close" size={28} color="red" />
+          <MaterialCommunityIcons
+            name="close"
+            size={32}
+            color="red"
+            style={{opacity: !currentProfile ? 0.5 : 1}}
+          />
         </Pressable>
+
+        {/* Like Icon (Middle, Larger) */}
         <Pressable
           style={[
             styles.actionButton,
             styles.likeButtonContainer,
-            dailyLikeInfo.remaining <= 0 && styles.likeButtonDisabled,
+            styles.largeActionButton,
           ]}
           onPress={() => processSwipe('right')}
           disabled={dailyLikeInfo.remaining <= 0}>
-          <MaterialCommunityIcons name="heart" size={28} color="#9411fa" />
+          <MaterialCommunityIcons
+            name="heart"
+            size={48}
+            color="#9411fa"
+            style={{opacity: dailyLikeInfo.remaining <= 0 ? 0.5 : 1}}
+          />
+        </Pressable>
+
+        {/* Rewind (Back) Icon */}
+        <Pressable
+          style={[styles.actionButton, styles.rewindButtonContainer]}
+          onPress={handleRewind}
+          disabled={currentIndex === 0}>
+          <MaterialCommunityIcons
+            name="undo"
+            size={28}
+            color="#F5B900"
+            style={{opacity: currentIndex === 0 ? 0.5 : 1}}
+          />
         </Pressable>
       </View>
 
@@ -1333,52 +1441,51 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: spacing.xl,
-    paddingVertical: spacing.lg,
-    backgroundColor: 'transparent',
     position: 'absolute',
-    bottom: 20,
+    // Sitting perfectly on the border line
+    bottom: -5,
     left: 0,
     right: 0,
+    zIndex: 999,
   },
   actionButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 65,
+    height: 65,
+    borderRadius: 32.5,
+    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
-    // shadowColor: '#000',
-    // shadowOffset: {width: 0, height: 4},
-    // shadowOpacity: 0.2,
-    // shadowRadius: 8,
-    // elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 6},
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 12,
+  },
+  largeActionButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 15,
   },
   rewindButtonContainer: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#F5B900', // Amber
+    backgroundColor: '#ffffff',
   },
   passButtonContainer: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: 'red',
+    // No extra styles needed
   },
   likeButtonContainer: {
-    backgroundColor: 'transparent',
-    borderColor: '#9411fa',
-    borderWidth: 1, // Bumble Yellow/Gold
+    // No extra styles needed
   },
   passIcon: {
-    fontSize: 20,
+    fontSize: 24,
     color: 'red',
     fontWeight: 'bold',
   },
   likeIcon: {
-    fontSize: 22,
-    // color: 'black',
+    fontSize: 28,
   },
   likeButtonDisabled: {
-    opacity: 0.5,
-    backgroundColor: '#ccc',
+    // Moved opacity to icons so the white background stays solid
   },
   likePopupContainer: {
     position: 'absolute',

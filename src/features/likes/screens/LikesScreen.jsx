@@ -15,8 +15,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useFocusEffect} from '@react-navigation/native';
 import {colors, typography, spacing} from '../../../theme';
 import {getLikesReceived, likeUser} from '../../../services/swipeActions';
+import {useLoading} from '../../../context/LoadingContext';
 
 const LikesScreen = ({navigation}) => {
+  const {setLoading: setGlobalLoading} = useLoading();
   const [likes, setLikes] = useState([]);
   const [likesCount, setLikesCount] = useState(0);
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -32,6 +34,7 @@ const LikesScreen = ({navigation}) => {
 
   const loadLikes = async () => {
     try {
+      setGlobalLoading(true);
       const userData = await AsyncStorage.getItem('@pryvo_user');
       if (userData && userData !== 'undefined') {
         try {
@@ -59,6 +62,7 @@ const LikesScreen = ({navigation}) => {
       console.log('Error fetching likes:', error);
     } finally {
       setLoading(false);
+      setGlobalLoading(false);
       setRefreshing(false);
     }
   };
@@ -99,7 +103,7 @@ const LikesScreen = ({navigation}) => {
   if (loading) {
     return (
       <SafeAreaView style={styles.center} edges={['top', 'left', 'right']}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <View />
       </SafeAreaView>
     );
   }

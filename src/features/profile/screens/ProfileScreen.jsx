@@ -15,11 +15,13 @@ import {useNavigation, useFocusEffect} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {colors, typography, spacing} from '../../../theme';
 import {getProfile} from '../../../services/profile/profileService';
+import {useLoading} from '../../../context/LoadingContext';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
 const ProfileScreen = () => {
   const navigation = useNavigation();
+  const {setLoading: setGlobalLoading} = useLoading();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -33,7 +35,10 @@ const ProfileScreen = () => {
 
   const loadProfile = async () => {
     try {
-      if (!refreshing) setLoading(true);
+      if (!refreshing) {
+        setLoading(true);
+        setGlobalLoading(true);
+      }
 
       const userData = await AsyncStorage.getItem('@pryvo_user');
       let currentUserId = null;
@@ -70,6 +75,7 @@ const ProfileScreen = () => {
       console.error('Error loading profile:', error);
     } finally {
       setLoading(false);
+      setGlobalLoading(false);
       setRefreshing(false);
     }
   };
@@ -148,7 +154,7 @@ const ProfileScreen = () => {
       <SafeAreaView
         style={[styles.container, styles.centerContent]}
         edges={['top', 'left', 'right']}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <View />
       </SafeAreaView>
     );
   }

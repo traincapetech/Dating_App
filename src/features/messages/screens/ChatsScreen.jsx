@@ -15,8 +15,10 @@ import {useFocusEffect} from '@react-navigation/native';
 import {colors, typography, spacing} from '../../../theme';
 import {fetchMatches, fetchLastMessages} from '../../../services/chatService';
 import {initSocket} from '../../../services/socket';
+import {useLoading} from '../../../context/LoadingContext';
 
 const ChatsScreen = ({navigation}) => {
+  const {setLoading: setGlobalLoading} = useLoading();
   const [matches, setMatches] = useState([]);
   const [lastMessages, setLastMessages] = useState({});
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -64,6 +66,7 @@ const ChatsScreen = ({navigation}) => {
 
   const loadMatches = async () => {
     try {
+      setGlobalLoading(true);
       const userData = await AsyncStorage.getItem('@pryvo_user');
       if (userData && userData !== 'undefined') {
         const user = JSON.parse(userData);
@@ -93,6 +96,7 @@ const ChatsScreen = ({navigation}) => {
       console.log('Error fetching matches', error);
     } finally {
       setLoading(false);
+      setGlobalLoading(false);
       setRefreshing(false);
     }
   };
@@ -129,7 +133,7 @@ const ChatsScreen = ({navigation}) => {
   if (loading) {
     return (
       <SafeAreaView style={styles.center} edges={['top', 'left', 'right']}>
-        <ActivityIndicator size="large" color={colors.primary} />
+        <View />
       </SafeAreaView>
     );
   }

@@ -16,9 +16,11 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
 import {signIn} from '../../../services/auth';
+import {useLoading} from '../../../context/LoadingContext';
 
 const SignInScreen = () => {
   const navigation = useNavigation();
+  const {setLoading} = useLoading();
   const {height} = useWindowDimensions();
   const [form, setForm] = useState({email: '', password: ''});
   const [errors, setErrors] = useState({});
@@ -48,6 +50,7 @@ const SignInScreen = () => {
       return;
     }
     setIsSubmitting(true);
+    setLoading(true);
     try {
       await signIn({
         email: form.email.trim().toLowerCase(),
@@ -62,6 +65,7 @@ const SignInScreen = () => {
       setErrors(prev => ({...prev, api: message}));
     } finally {
       setIsSubmitting(false);
+      setLoading(false);
     }
   };
 

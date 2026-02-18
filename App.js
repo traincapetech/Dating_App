@@ -3,6 +3,8 @@ import {StatusBar, StyleSheet, View, Text, Platform} from 'react-native';
 import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
+import {LoadingProvider} from './src/context/LoadingContext';
+
 import './global.css';
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -27,7 +29,10 @@ class ErrorBoundary extends React.Component {
       // Ignore stack access errors
     }
     if (errorInfo?.componentStack) {
-      console.error('[ERROR_BOUNDARY] Component stack:', errorInfo.componentStack);
+      console.error(
+        '[ERROR_BOUNDARY] Component stack:',
+        errorInfo.componentStack,
+      );
     }
   }
 
@@ -52,25 +57,27 @@ class ErrorBoundary extends React.Component {
 
 const App = () => {
   console.log('[APP] App component rendering');
-  
+
   React.useEffect(() => {
     console.log('[APP] App mounted successfully - useEffect fired');
   }, []);
-  
+
   console.log('[APP] About to render ErrorBoundary');
-  
+
   return (
     <ErrorBoundary>
-      <SafeAreaProvider>
-        <GestureHandlerRootView style={styles.container}>
-          <StatusBar 
-            barStyle="dark-content" 
-            backgroundColor={Platform.OS === 'android' ? '#FFF' : undefined}
-            translucent={Platform.OS === 'android'}
-          />
-          <AppNavigator />
-        </GestureHandlerRootView>
-      </SafeAreaProvider>
+      <LoadingProvider>
+        <SafeAreaProvider>
+          <GestureHandlerRootView style={styles.container}>
+            <StatusBar
+              barStyle="dark-content"
+              backgroundColor={Platform.OS === 'android' ? '#FFF' : undefined}
+              translucent={Platform.OS === 'android'}
+            />
+            <AppNavigator />
+          </GestureHandlerRootView>
+        </SafeAreaProvider>
+      </LoadingProvider>
     </ErrorBoundary>
   );
 };

@@ -278,3 +278,43 @@ export function watchLocation(onLocationChange, options = {}) {
     },
   };
 }
+// Reverse geocoding to get city name from coordinates
+export async function reverseGeocode(lat, lng) {
+  try {
+    // Using Google Geocoding API for reverse geocoding
+    const apiKey = 'AIzaSyDD9uRgqIVB8roh8-ob-AZiiXoFocAExvY';
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${apiKey}&language=en`;
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (data.status === 'OK' && data.results.length > 0) {
+      // Extract city/locality from results
+      const result = data.results[0];
+      const addressComponents = result.address_components;
+
+      // Find city/locality
+      let city = null;
+      for (const component of addressComponents) {
+        if (
+          component.types.includes('locality') ||
+          component.types.includes('administrative_area_level_1')
+        ) {
+          city = component.long_name;
+          break;
+        }
+      }
+
+      // Fallback to formatted address
+      if (!city) {
+        city = result.formatted_address.split(',')[0];
+      }
+
+      return city;
+    }
+    return null;
+  } catch (error) {
+    console.error('Reverse geocoding error:', error);
+    return null;
+  }
+}

@@ -17,9 +17,11 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
 import {signUp} from '../../../services/auth';
+import {useLoading} from '../../../context/LoadingContext';
 
 const SignUpScreen = () => {
   const navigation = useNavigation();
+  const {setLoading} = useLoading();
   const {height} = useWindowDimensions();
   const [form, setForm] = useState({
     fullName: '',
@@ -41,7 +43,9 @@ const SignUpScreen = () => {
       form.fullName && form.email && form.phone && form.password;
     const passwordMatch =
       form.password && form.password === form.confirmPassword;
-    return Boolean(requiredFilled && passwordMatch && ageVerified && termsAccepted);
+    return Boolean(
+      requiredFilled && passwordMatch && ageVerified && termsAccepted,
+    );
   }, [form, ageVerified, termsAccepted]);
 
   const handleChange = (field, value) => {
@@ -67,7 +71,8 @@ const SignUpScreen = () => {
       newErrors.age = 'You must be 18 or older to use Pryvo';
     }
     if (!termsAccepted) {
-      newErrors.terms = 'You must accept the Terms of Service and Privacy Policy';
+      newErrors.terms =
+        'You must accept the Terms of Service and Privacy Policy';
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -78,6 +83,7 @@ const SignUpScreen = () => {
       return;
     }
     setIsSubmitting(true);
+    setLoading(true);
     try {
       await signUp({
         fullName: form.fullName.trim(),
@@ -91,6 +97,7 @@ const SignUpScreen = () => {
       setErrors(prev => ({...prev, api: message}));
     } finally {
       setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
@@ -308,7 +315,8 @@ const SignUpScreen = () => {
           style={styles.secondaryCta}
           onPress={() => navigation.navigate(AppRoute.SignIn)}>
           <Text style={styles.secondaryCtaText}>
-            Already have an account? <Text className="text-primary font-bold">Sign in</Text>
+            Already have an account?{' '}
+            <Text className="text-primary font-bold">Sign in</Text>
           </Text>
         </Pressable>
       </ScrollView>
@@ -410,7 +418,7 @@ const styles = StyleSheet.create({
     marginLeft: spacing.sm,
   },
   checkboxText: {
-    fontFamily: typography.fontFamilyRegular, 
+    fontFamily: typography.fontFamilyRegular,
     fontSize: typography.body.small,
     color: colors.textPrimary,
     lineHeight: 20,
