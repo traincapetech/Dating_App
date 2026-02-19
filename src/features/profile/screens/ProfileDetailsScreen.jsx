@@ -18,8 +18,10 @@ import {
   getProfile,
   updateProfileApi,
   uploadProfileImage,
+  updateMedia,
 } from '../../../services/profile/profileService';
 import {launchImageLibrary} from 'react-native-image-picker';
+import {DraggableGrid} from 'react-native-draggable-grid';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 const PHOTO_SIZE = (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm * 2) / 3;
@@ -33,6 +35,7 @@ const ProfileDetailsScreen = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState({});
   const [isOwnProfile, setIsOwnProfile] = useState(false);
+  const [scrollEnabled, setScrollEnabled] = useState(true);
 
   const userId = route.params?.userId;
 
@@ -89,7 +92,37 @@ const ProfileDetailsScreen = () => {
           profileData?.datingPreferences?.showIntentionOnProfile ?? true,
         showRelationshipTypeOnProfile:
           profileData?.datingPreferences?.showRelationshipTypeOnProfile ?? true,
+        // Initialize photos for draggable grid
+        photos: (
+          profileData?.photos ||
+          profileData?.media?.media?.map(m => m.url).filter(Boolean) ||
+          []
+        ).map((url, index) => ({
+          key: `photo_${index}`,
+          url,
+          id: index.toString(),
+        })),
       });
+
+      // Pad photos with placeholders for the grid if needed (up to 6)
+      // Actually, DraggableGrid works best with existing items. We can handle "Add" separately or as a special item type?
+      // For simplicity, let's just initialize with existing photos.
+      // If we want empty slots to be draggable or droppable, we'd need them in the data array.
+      // But usually "Add Photo" is a static slot or a specific action.
+      // Let's populate up to 6 slots.
+      const existingPhotos =
+        profileData?.photos ||
+        profileData?.media?.media?.map(m => m.url).filter(Boolean) ||
+        [];
+      const gridPhotos = Array(6)
+        .fill(null)
+        .map((_, i) => ({
+          key: i.toString(),
+          url: existingPhotos[i] || null,
+          id: i.toString(),
+        }));
+
+      setEditedProfile(prev => ({...prev, photos: gridPhotos}));
     } catch (error) {
       console.error('Error loading profile:', error);
       Alert.alert('Error', 'Failed to load profile');
@@ -202,6 +235,23 @@ const ProfileDetailsScreen = () => {
       if (Object.keys(payload.datingPreferences).length === 0)
         delete payload.datingPreferences;
 
+      // Save photos (media)
+      const currentPhotos = editedProfile.photos || [];
+      const mediaPayload = {
+        media: currentPhotos
+          .filter(p => p.url) // Only save slots with URLs
+          .map((p, index) => ({
+            type: 'photo',
+            url: p.url,
+            order: index,
+          })),
+      };
+
+      if (mediaPayload.media.length > 0 || profile.photos?.length > 0) {
+        // Only update if we have photos or had photos (allow deleting all)
+        await updateMedia(mediaPayload);
+      }
+
       console.log(
         '[ProfileDetails] Updating profile with payload:',
         JSON.stringify(payload, null, 2),
@@ -219,6 +269,50 @@ const ProfileDetailsScreen = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleDeletePhoto = index => {
+    Alert.alert('Delete Photo', 'Are you sure you want to delete this photo?', [
+      {text: 'Cancel', style: 'cancel'},
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          setEditedProfile(prev => {
+            const newPhotos = [...prev.photos];
+            // Remove the photo url but keep the slot
+            newPhotos[index] = {
+              ...newPhotos[index],
+              url: null,
+            };
+
+            // Shift photos to fill the gap?
+            // Or just leave empty slot?
+            // "Drag and drop" suggests we want them compact.
+            // Let's shift up.
+            const validPhotos = newPhotos.filter(p => p.url);
+            const emptySlots = newPhotos.filter(p => !p.url);
+            // Reconstruct with valid photos first, then empty slots
+            const compacted = [...validPhotos, ...emptySlots].map((p, i) => ({
+              ...p, // keep existing key/id structure if possible, but actually pure index might be safer for grid
+              // Actually DraggableGrid relies on stable keys.
+              // Let's just create a new array ensuring 6 items.
+            }));
+
+            // Re-create the 6-item array with new order
+            const reordered = Array(6)
+              .fill(null)
+              .map((_, i) => ({
+                key: i.toString(),
+                id: i.toString(),
+                url: validPhotos[i]?.url || null,
+              }));
+
+            return {...prev, photos: reordered};
+          });
+        },
+      },
+    ]);
   };
 
   const handleAddPhoto = async index => {
@@ -264,10 +358,23 @@ const ProfileDetailsScreen = () => {
             '[ProfileDetails] Photo uploaded successfully:',
             uploadResult,
           );
-          Alert.alert('Success', 'Photo uploaded successfully');
 
-          // Refresh profile to show new photo
-          loadProfile();
+          if (isEditing) {
+            // In edit mode, update the local state without reloading everything
+            setEditedProfile(prev => {
+              const newPhotos = [...prev.photos];
+              newPhotos[index] = {
+                ...newPhotos[index],
+                url: uploadResult.url, // Assuming uploadResult returns { url: ... }
+              };
+              return {...prev, photos: newPhotos};
+            });
+            Alert.alert('Success', 'Photo uploaded');
+          } else {
+            Alert.alert('Success', 'Photo uploaded successfully');
+            // Refresh profile to show new photo
+            loadProfile();
+          }
         } catch (uploadError) {
           console.error('[ProfileDetails] Photo upload failed:', uploadError);
           Alert.alert('Error', uploadError.message || 'Failed to upload photo');
@@ -293,7 +400,7 @@ const ProfileDetailsScreen = () => {
     profile?.photos ||
     profile?.media?.media?.map(m => m.url).filter(Boolean) ||
     [];
-  const name = profile?.name || profile?.basicInfo?.firstName || 'Add Name';
+  const name = profile?.basicInfo?.firstName || profile?.name || 'Add Name';
   const age = profile?.age || null;
   const bio = profile?.bio || '';
   const interests = profile?.interests || [];
@@ -330,35 +437,88 @@ const ProfileDetailsScreen = () => {
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        scrollEnabled={scrollEnabled}>
         {/* Photos Grid */}
         <View style={styles.photosSection}>
-          <View style={styles.photosGrid}>
-            {[0, 1, 2, 3, 4, 5].map(index => {
-              if (!isOwnProfile && !photos[index]) return null;
-              return (
-                <Pressable
-                  key={index}
-                  style={styles.photoSlot}
-                  onPress={() => isOwnProfile && handleAddPhoto(index)}
-                  disabled={!isOwnProfile}>
-                  {photos[index] ? (
-                    <Image source={{uri: photos[index]}} style={styles.photo} />
-                  ) : (
-                    <View style={styles.emptyPhoto}>
-                      <Text style={styles.addPhotoIcon}>📷</Text>
-                      <Text style={styles.addPhotoText}>Add a photo</Text>
+          {isEditing ? (
+            <View style={{height: (PHOTO_SIZE * 1.3 + spacing.sm) * 2}}>
+              <DraggableGrid
+                numColumns={3}
+                renderItem={(item, order) => {
+                  const index = order;
+                  return (
+                    <View style={styles.photoSlot}>
+                      {item.url ? (
+                        <>
+                          <Image
+                            source={{uri: item.url}}
+                            style={styles.photo}
+                          />
+                          <Pressable
+                            style={styles.deletePhotoButton}
+                            onPress={() => handleDeletePhoto(index)}>
+                            <Text style={styles.deletePhotoText}>✕</Text>
+                          </Pressable>
+                        </>
+                      ) : (
+                        <Pressable
+                          style={styles.emptyPhoto}
+                          onPress={() => handleAddPhoto(index)}>
+                          <Text style={styles.addPhotoIcon}>📷</Text>
+                          <Text style={styles.addPhotoText}>Add a photo</Text>
+                        </Pressable>
+                      )}
+                      {index === 0 && (
+                        <View style={styles.mainPhotoBadge}>
+                          <Text style={styles.mainPhotoBadgeText}>Main</Text>
+                        </View>
+                      )}
                     </View>
-                  )}
-                  {index === 0 && isOwnProfile && (
-                    <View style={styles.mainPhotoBadge}>
-                      <Text style={styles.mainPhotoBadgeText}>Main</Text>
-                    </View>
-                  )}
-                </Pressable>
-              );
-            })}
-          </View>
+                  );
+                }}
+                data={editedProfile.photos || []}
+                onDragStart={() => setScrollEnabled(false)}
+                onDragRelease={data => {
+                  setScrollEnabled(true);
+                  setEditedProfile(prev => ({...prev, photos: data}));
+                }}
+                itemHeight={PHOTO_SIZE * 1.3}
+                style={{zIndex: 100}}
+              />
+            </View>
+          ) : (
+            <View style={styles.photosGrid}>
+              {[0, 1, 2, 3, 4, 5].map(index => {
+                if (!isOwnProfile && !photos[index]) return null;
+                return (
+                  <Pressable
+                    key={index}
+                    style={styles.photoSlot}
+                    onPress={() => isOwnProfile && handleAddPhoto(index)}
+                    disabled={!isOwnProfile}>
+                    {photos[index] ? (
+                      <Image
+                        source={{uri: photos[index]}}
+                        style={styles.photo}
+                      />
+                    ) : (
+                      <View style={styles.emptyPhoto}>
+                        <Text style={styles.addPhotoIcon}>📷</Text>
+                        <Text style={styles.addPhotoText}>Add a photo</Text>
+                      </View>
+                    )}
+                    {index === 0 && isOwnProfile && (
+                      <View style={styles.mainPhotoBadge}>
+                        <Text style={styles.mainPhotoBadgeText}>Main</Text>
+                      </View>
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
         </View>
 
         {/* Name, DOB, Age */}
@@ -802,6 +962,23 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#eee',
     borderStyle: 'dashed',
+  },
+  deletePhotoButton: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  deletePhotoText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   chipRow: {
     flexDirection: 'row',

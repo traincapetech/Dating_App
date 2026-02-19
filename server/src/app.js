@@ -27,6 +27,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+app.set('trust proxy', 1);
 app.use(cors());
 // Increase body size limit to 50MB for image uploads (base64 encoded images can be large)
 app.use(express.json({limit: '50mb'}));

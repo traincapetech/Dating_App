@@ -130,9 +130,9 @@ const ProfileScreen = () => {
     profile?.media?.media?.map(m => m.url).filter(Boolean) ||
     [];
   const firstName =
-    profile?.name ||
     profile?.basicInfo?.firstName ||
     profile?.basicInfo?.name ||
+    profile?.name ||
     '';
   const lastName = profile?.basicInfo?.lastName || '';
   const name = firstName

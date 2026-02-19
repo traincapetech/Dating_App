@@ -1,4 +1,11 @@
-import {registerUser, authenticateUser, changeEmail, changePassword, requestPasswordReset, resetPassword} from '../services/authService.js';
+import {
+  registerUser,
+  authenticateUser,
+  changeEmail,
+  changePassword,
+  requestPasswordReset,
+  resetPassword,
+} from '../services/authService.js';
 import {asyncHandler} from '../utils/asyncHandler.js';
 import {
   signUpSchema,
@@ -59,4 +66,3 @@ export const logoutFromAllDevicesController = asyncHandler(async (req, res) => {
     message: 'Logged out from all devices successfully',
   });
 });
-

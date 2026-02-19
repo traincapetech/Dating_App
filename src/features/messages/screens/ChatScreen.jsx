@@ -13,7 +13,10 @@ import {
   Alert,
   Modal,
   TouchableOpacity,
+  StatusBar,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
+import Icon from 'react-native-vector-icons/Ionicons';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {launchImageLibrary} from 'react-native-image-picker';
@@ -170,11 +173,15 @@ const ChatScreen = ({route, navigation}) => {
         });
 
         // Listen for messages seen
-        socket.on('messagesSeen', ({userId, messageIds, seenAt}) => {
+        socket.on('messagesSeen', ({userId, seenAt}) => {
+          // If the other user saw our messages
           if (userId !== user.id) {
             setMessages(prev =>
               prev.map(m =>
-                messageIds.includes(m._id) ? {...m, status: 'seen', seenAt} : m,
+                // Mark all messages sent by us (current user) as seen
+                m.senderId === user.id && m.status !== 'seen'
+                  ? {...m, status: 'seen', seenAt}
+                  : m,
               ),
             );
           }
@@ -226,7 +233,11 @@ const ChatScreen = ({route, navigation}) => {
         text,
       });
 
-      setMessages(prev => [...prev, saved]);
+      setMessages(prev => {
+        // Avoid adding if already received via socket
+        if (prev.some(m => m._id === saved._id)) return prev;
+        return [...prev, saved];
+      });
       scrollToBottom();
 
       // Stop typing indicator
@@ -435,65 +446,125 @@ const ChatScreen = ({route, navigation}) => {
     [matchId, currentUserId], // Add missing dependencies if needed, or keep generic
   );
 
-  const getStatusIcon = message => {
-    if (message.senderId !== currentUserId) return null;
-
-    switch (message.status) {
+  const getStatusIcon = status => {
+    switch (status) {
       case 'sent':
-        return '✓';
+        return (
+          <Icon name="checkmark" size={16} color="rgba(255,255,255,0.7)" />
+        );
       case 'delivered':
-        return '✓✓';
+        return (
+          <Icon name="checkmark-done" size={16} color="rgba(255,255,255,0.7)" />
+        );
       case 'seen':
-        return '✓✓';
+        return <Icon name="checkmark-done" size={16} color="#4FC3F7" />;
       default:
-        return '○';
+        return (
+          <Icon name="time-outline" size={16} color="rgba(255,255,255,0.7)" />
+        );
     }
   };
 
-  const renderItem = ({item}) => {
+  const formatMessageDate = date => {
+    const d = new Date(date);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    if (d.toDateString() === today.toDateString()) return 'Today';
+    if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    return d.toLocaleDateString([], {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  };
+
+  const renderDateSeparator = (currMessage, prevMessage) => {
+    if (!prevMessage) return true;
+    const currDate = new Date(currMessage.timestamp).toDateString();
+    const prevDate = new Date(prevMessage.timestamp).toDateString();
+    return currDate !== prevDate;
+  };
+
+  const renderItem = ({item, index}) => {
     const isMe = item.senderId === currentUserId;
     const isGif = item.mediaType === 'gif';
+    const showDateSeparator = renderDateSeparator(item, messages[index - 1]);
 
     return (
-      <View
-        style={[styles.messageRow, isMe ? styles.rowRight : styles.rowLeft]}>
-        <Pressable
-          onLongPress={() => (isMe ? handleDeleteMessage(item._id) : null)}
-          delayLongPress={500}
-          style={[styles.bubble, isMe ? styles.bubbleMe : styles.bubbleThem]}>
-          {item.mediaUrl && (
-            <Image
-              source={{uri: item.mediaUrl}}
-              style={[styles.messageImage, isGif && styles.gifImage]}
-              resizeMode={isGif ? 'contain' : 'cover'}
-            />
-          )}
-          {item.text && (
-            <Text style={[styles.messageText, !isMe && styles.messageTextThem]}>
-              {item.text}
+      <View>
+        {showDateSeparator && (
+          <View style={styles.dateSeparator}>
+            <Text style={styles.dateSeparatorText}>
+              {formatMessageDate(item.timestamp)}
             </Text>
-          )}
-          <View style={styles.messageFooter}>
-            <Text style={[styles.timeText, !isMe && styles.timeTextThem]}>
-              {new Date(item.timestamp).toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </Text>
-            {isMe && (
-              <Text
-                style={[
-                  styles.statusText,
-                  item.status === 'seen' && styles.statusSeen,
-                ]}>
-                {getStatusIcon(item)}
-              </Text>
-            )}
           </View>
-        </Pressable>
+        )}
+
+        <View
+          style={[styles.messageRow, isMe ? styles.rowRight : styles.rowLeft]}>
+          {!isMe && (
+            <View style={styles.avatarContainer}>
+              <Text style={styles.avatarText}>{theirName?.[0] || '?'}</Text>
+            </View>
+          )}
+
+          <Pressable
+            onLongPress={() => (isMe ? handleDeleteMessage(item._id) : null)}
+            delayLongPress={500}
+            style={[
+              styles.bubbleContainer,
+              isMe ? styles.bubbleRight : styles.bubbleLeft,
+            ]}>
+            {isMe ? (
+              <LinearGradient
+                colors={[colors.primary, '#FF6B6B']}
+                start={{x: 0, y: 0}}
+                end={{x: 1, y: 1}}
+                style={styles.bubbleGradient}>
+                {renderBubbleContent(item, isMe, isGif)}
+              </LinearGradient>
+            ) : (
+              <View style={styles.bubbleContentThem}>
+                {renderBubbleContent(item, isMe, isGif)}
+              </View>
+            )}
+          </Pressable>
+        </View>
       </View>
     );
   };
+
+  const renderBubbleContent = (item, isMe, isGif) => (
+    <>
+      {item.mediaUrl && (
+        <Image
+          source={{uri: item.mediaUrl}}
+          style={[styles.messageImage, isGif && styles.gifImage]}
+          resizeMode={isGif ? 'contain' : 'cover'}
+        />
+      )}
+      {item.text && (
+        <Text style={[styles.messageText, !isMe && styles.messageTextThem]}>
+          {item.text}
+        </Text>
+      )}
+      <View style={styles.messageFooter}>
+        <Text style={[styles.timeText, !isMe && styles.timeTextThem]}>
+          {new Date(item.timestamp).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          })}
+        </Text>
+        {isMe && (
+          <View style={styles.statusContainer}>
+            {getStatusIcon(item.status)}
+          </View>
+        )}
+      </View>
+    </>
+  );
 
   if (loading) {
     return (
@@ -525,24 +596,53 @@ const ChatScreen = ({route, navigation}) => {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}>
         {/* Header */}
-        <View style={styles.header}>
-          <Pressable
-            onPress={() => navigation.goBack()}
-            style={styles.headerButton}>
-            <Text style={styles.backText}>{'<'} Back</Text>
-          </Pressable>
-          <Text style={styles.headerTitle}>{theirName || 'Chat'}</Text>
-          <View style={styles.headerActions}>
+        <View style={styles.headerContainer}>
+          <LinearGradient
+            colors={['#fff', '#f8f8f8']}
+            style={styles.headerBackground}
+          />
+          <View style={styles.headerContent}>
             <Pressable
-              onPress={() => setShowUnmatchModal(true)}
+              onPress={() => navigation.goBack()}
               style={styles.headerButton}>
-              <Text style={styles.unmatchText}>Unmatch</Text>
+              <Icon name="chevron-back" size={28} color={colors.textPrimary} />
             </Pressable>
-            <Pressable
-              onPress={() => setShowReportModal(true)}
-              style={styles.headerButton}>
-              <Text style={styles.moreText}>⋯</Text>
-            </Pressable>
+
+            <View style={styles.headerTitleContainer}>
+              <View style={styles.headerAvatar}>
+                <Text style={styles.headerAvatarText}>
+                  {theirName?.[0] || '?'}
+                </Text>
+              </View>
+              <View>
+                <Text style={styles.headerTitle}>{theirName || 'Chat'}</Text>
+                <View style={styles.onlineBadgeContainer}>
+                  <View style={styles.onlineBadge} />
+                  <Text style={styles.onlineText}>Online</Text>
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.headerActions}>
+              <Pressable
+                onPress={() => setShowUnmatchModal(true)}
+                style={styles.headerActionButton}>
+                <Icon
+                  name="heart-dislike-outline"
+                  size={24}
+                  color={colors.error}
+                />
+              </Pressable>
+              <Pressable
+                onPress={() => setShowReportModal(true)}
+                style={styles.headerActionButton}>
+                <Icon
+                  name="ellipsis-vertical"
+                  size={24}
+                  color={colors.textPrimary}
+                />
+              </Pressable>
+            </View>
           </View>
         </View>
 
@@ -571,35 +671,41 @@ const ChatScreen = ({route, navigation}) => {
             {paddingBottom: (insets.bottom || 0) + spacing.sm},
           ]}>
           <Pressable
-            style={styles.mediaButton}
+            style={styles.attachButton}
             onPress={handlePickImage}
             disabled={uploadingMedia}>
             {uploadingMedia ? (
               <ActivityIndicator size="small" color={colors.primary} />
             ) : (
-              <Text style={styles.mediaButtonText}>📷</Text>
+              <Icon
+                name="image-outline"
+                size={24}
+                color={colors.textSecondary}
+              />
             )}
           </Pressable>
-          <Pressable
-            style={styles.mediaButton}
-            onPress={() => setShowGifPicker(true)}
-            disabled={sending}>
-            <Text style={styles.mediaButtonText}>GIF</Text>
-          </Pressable>
-          <Pressable
-            style={styles.mediaButton}
-            onPress={() => setShowEmojiPicker(true)}>
-            <Text style={styles.mediaButtonText}>😊</Text>
-          </Pressable>
-          <TextInput
-            style={styles.input}
-            placeholder="Type a message..."
-            placeholderTextColor={colors.textSecondary}
-            value={inputText}
-            onChangeText={onChangeText}
-            multiline
-            maxLength={1000}
-          />
+
+          <View style={styles.inputWrapper}>
+            <TextInput
+              style={styles.input}
+              placeholder="Message..."
+              placeholderTextColor={colors.textSecondary}
+              value={inputText}
+              onChangeText={onChangeText}
+              multiline
+              maxLength={1000}
+            />
+            <Pressable
+              style={styles.iconButton}
+              onPress={() => setShowEmojiPicker(true)}>
+              <Icon
+                name="happy-outline"
+                size={24}
+                color={colors.textSecondary}
+              />
+            </Pressable>
+          </View>
+
           <Pressable
             style={[
               styles.sendButton,
@@ -610,7 +716,18 @@ const ChatScreen = ({route, navigation}) => {
             {sending ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
-              <Text style={styles.sendText}>Send</Text>
+              <LinearGradient
+                colors={[colors.primary, '#FF6B6B']}
+                start={{x: 0, y: 0}}
+                end={{x: 1, y: 1}}
+                style={styles.sendButtonGradient}>
+                <Icon
+                  name="send"
+                  size={20}
+                  color="#fff"
+                  style={{marginLeft: 2}}
+                />
+              </LinearGradient>
             )}
           </Pressable>
         </View>
@@ -738,8 +855,8 @@ const ChatScreen = ({route, navigation}) => {
 };
 
 const styles = StyleSheet.create({
-  safe: {flex: 1, backgroundColor: colors.background},
-  container: {flex: 1, backgroundColor: colors.background},
+  safe: {flex: 1, backgroundColor: '#fff'},
+  container: {flex: 1, backgroundColor: '#f8f9fa'},
   center: {
     flex: 1,
     justifyContent: 'center',
@@ -747,51 +864,108 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
 
-  header: {
-    height: 56,
+  // Header
+  headerContainer: {
+    height: 70, // Increased height
+    justifyContent: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+    backgroundColor: '#fff',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    zIndex: 10,
+  },
+  headerBackground: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    backgroundColor: colors.background,
   },
-  headerButton: {
-    padding: spacing.sm,
+  headerTitleContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: spacing.sm,
   },
-  backText: {
-    fontSize: 16,
+  headerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.sm,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  headerAvatarText: {
+    fontSize: 18,
+    fontFamily: typography.fontFamilyBold,
     color: colors.primary,
   },
   headerTitle: {
-    fontSize: typography.headings?.h4 || 18,
+    fontSize: 16,
     fontFamily: typography.fontFamilyBold,
-    color: colors.textPrimary,
+    color: '#1a1a1a',
+  },
+  onlineBadgeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  onlineBadge: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#4CAF50',
+    marginRight: 4,
+  },
+  onlineText: {
+    fontSize: 12,
+    color: '#4CAF50',
+    fontFamily: typography.fontFamilyMedium,
   },
   headerActions: {
     flexDirection: 'row',
-    alignItems: 'center',
     gap: spacing.sm,
   },
-  moreText: {
-    fontSize: 24,
-    color: colors.textPrimary,
+  headerButton: {
+    padding: 8,
   },
-  unmatchText: {
-    fontSize: 14,
-    color: colors.error,
-    fontFamily: typography.fontFamilyMedium,
+  headerActionButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: '#f5f5f5',
   },
 
+  // Messages
   messagesContainer: {
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.md,
     flexGrow: 1,
+  },
+  dateSeparator: {
+    alignItems: 'center',
+    marginVertical: spacing.md,
+  },
+  dateSeparatorText: {
+    fontSize: 12,
+    color: '#999',
+    backgroundColor: '#eee',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 10,
+    overflow: 'hidden',
   },
   messageRow: {
     marginVertical: 4,
     flexDirection: 'row',
+    alignItems: 'flex-end',
   },
   rowLeft: {
     justifyContent: 'flex-start',
@@ -799,37 +973,68 @@ const styles = StyleSheet.create({
   rowRight: {
     justifyContent: 'flex-end',
   },
-  bubble: {
-    maxWidth: '75%',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 18,
+  avatarContainer: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#e0e0e0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+    marginBottom: 4,
   },
-  bubbleMe: {
-    backgroundColor: colors.primary,
+  avatarText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#666',
+  },
+  bubbleContainer: {
+    maxWidth: '75%',
+    borderRadius: 20,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  bubbleRight: {
     borderBottomRightRadius: 4,
   },
-  bubbleThem: {
-    backgroundColor: '#eee',
+  bubbleLeft: {
     borderBottomLeftRadius: 4,
+  },
+  bubbleGradient: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: 20,
+    borderBottomRightRadius: 4,
+  },
+  bubbleContentThem: {
+    backgroundColor: '#fff',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: 20,
+    borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: '#eee',
   },
   messageText: {
     color: '#fff',
     fontSize: 16,
+    lineHeight: 22,
   },
   messageTextThem: {
-    color: colors.textPrimary,
+    color: '#1a1a1a',
   },
   messageImage: {
     width: 200,
     height: 200,
     borderRadius: 12,
-    marginBottom: spacing.xs,
+    marginBottom: 4,
   },
   gifImage: {
     width: 250,
     height: 200,
-    maxWidth: '100%',
   },
   messageFooter: {
     flexDirection: 'row',
@@ -838,126 +1043,119 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   timeText: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.7)',
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.8)',
+    marginRight: 4,
   },
   timeTextThem: {
-    color: colors.textSecondary,
+    color: '#999',
   },
-  statusText: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
-    marginLeft: 4,
-  },
-  statusSeen: {
-    color: '#4FC3F7',
+  statusContainer: {
+    marginLeft: 2,
   },
 
+  // Typing
   typingContainer: {
     paddingHorizontal: spacing.md,
-    paddingBottom: 4,
+    paddingBottom: 8,
+    marginLeft: 36, // Align with bubble (avatar width + gap)
   },
   typingText: {
     fontSize: 12,
-    color: colors.textSecondary,
+    color: '#999',
     fontStyle: 'italic',
   },
 
+  // Input
   inputContainer: {
     flexDirection: 'row',
     padding: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: '#eee',
-    alignItems: 'flex-end',
-    backgroundColor: colors.background,
-  },
-  mediaButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
+    borderTopColor: '#f0f0f0',
     alignItems: 'center',
-    marginRight: spacing.xs,
+    backgroundColor: '#fff',
   },
-  mediaButtonText: {
-    fontSize: 24,
+  attachButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  inputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+    borderRadius: 24,
+    paddingHorizontal: 12,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#eee',
   },
   input: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 20,
-    paddingHorizontal: spacing.md,
     paddingVertical: Platform.OS === 'ios' ? 10 : 6,
-    marginRight: spacing.sm,
-    backgroundColor: '#fff',
-    maxHeight: 100,
     fontSize: 16,
-    color: colors.textPrimary,
+    color: '#1a1a1a',
+    maxHeight: 100,
+  },
+  iconButton: {
+    padding: 6,
   },
   sendButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: colors.primary,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 2,
+    shadowColor: colors.primary,
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+  },
+  sendButtonGradient: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
   },
   sendButtonDisabled: {
-    backgroundColor: '#ccc',
-  },
-  sendText: {
-    color: '#fff',
-    fontWeight: '600',
+    backgroundColor: '#f5f5f5',
+    elevation: 0,
   },
 
-  blockedText: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    marginBottom: spacing.lg,
-  },
-  backButton: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    backgroundColor: colors.primary,
-    borderRadius: 8,
-  },
-  backButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-
-  // Modal styles
+  // Modal styles (keeping mostly same but refining)
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     padding: spacing.lg,
     paddingBottom: spacing.xl + 20,
   },
   modalTitle: {
     fontSize: 20,
     fontFamily: typography.fontFamilyBold,
-    color: colors.textPrimary,
+    color: '#1a1a1a',
     marginBottom: spacing.xs,
   },
   modalSubtitle: {
     fontSize: 14,
-    color: colors.textSecondary,
+    color: '#666',
     marginBottom: spacing.lg,
   },
   reasonItem: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#ddd',
-    marginBottom: spacing.sm,
+    borderColor: '#eee',
+    marginBottom: 8,
+    backgroundColor: '#fafafa',
   },
   reasonItemSelected: {
     borderColor: colors.primary,
@@ -965,7 +1163,7 @@ const styles = StyleSheet.create({
   },
   reasonText: {
     fontSize: 16,
-    color: colors.textPrimary,
+    color: '#333',
   },
   reasonTextSelected: {
     color: colors.primary,
@@ -973,58 +1171,64 @@ const styles = StyleSheet.create({
   },
   descriptionInput: {
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: spacing.md,
-    marginTop: spacing.md,
-    minHeight: 80,
+    borderColor: '#eee',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 16,
+    minHeight: 100,
     textAlignVertical: 'top',
-    fontSize: 14,
-    color: colors.textPrimary,
+    fontSize: 16,
+    color: '#1a1a1a',
+    backgroundColor: '#fafafa',
   },
   modalButtons: {
     flexDirection: 'row',
-    marginTop: spacing.lg,
-    gap: spacing.md,
+    marginTop: 24,
+    gap: 12,
   },
   cancelButton: {
     flex: 1,
-    paddingVertical: spacing.md,
-    borderRadius: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#ddd',
     alignItems: 'center',
   },
   cancelButtonText: {
-    color: colors.textPrimary,
+    color: '#333',
     fontWeight: '600',
+    fontSize: 16,
   },
   reportButton: {
     flex: 1,
-    paddingVertical: spacing.md,
-    borderRadius: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
     backgroundColor: '#E53935',
     alignItems: 'center',
+    elevation: 2,
   },
   reportButtonDisabled: {
-    backgroundColor: '#ccc',
+    backgroundColor: '#ffcdd2',
+    elevation: 0,
   },
   reportButtonText: {
     color: '#fff',
     fontWeight: '600',
+    fontSize: 16,
   },
   unmatchModalContent: {
-    backgroundColor: colors.background,
-    borderRadius: 20,
-    padding: spacing.lg,
-    margin: spacing.xl,
+    backgroundColor: '#fff',
+    borderRadius: 24,
+    padding: 24,
+    margin: 20,
     maxWidth: 400,
     alignSelf: 'center',
+    elevation: 5,
   },
   unmatchButton: {
     flex: 1,
-    paddingVertical: spacing.md,
-    borderRadius: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
     backgroundColor: colors.error,
     alignItems: 'center',
   },
@@ -1034,6 +1238,24 @@ const styles = StyleSheet.create({
   unmatchButtonText: {
     color: '#fff',
     fontWeight: '600',
+    fontSize: 16,
+  },
+  blockedText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+  backButton: {
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+  },
+  backButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 16,
   },
 });
 
