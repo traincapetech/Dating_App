@@ -59,6 +59,17 @@ export const getMatchById = async (req, res) => {
       return res.status(404).json({success: false, message: 'Match not found'});
     }
 
+    // Check for expiration
+    if (
+      match.status === 'active' &&
+      match.expiresAt &&
+      new Date() > new Date(match.expiresAt)
+    ) {
+      match.status = 'expired';
+      match.chatEnabled = false; // Disable chat
+      await match.save();
+    }
+
     // Verify user is part of this match
     if (userId && !match.users.includes(userId)) {
       return res.status(403).json({success: false, message: 'Access denied'});
@@ -83,6 +94,54 @@ export const getMatchById = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({success: false, message: 'Error fetching match'});
+  }
+};
+
+export const scheduleDate = async (req, res) => {
+  try {
+    const {matchId} = req.params;
+    const {date, description, type} = req.body; // type: 'video' or 'in-person'
+    const userId = req.body.userId; // From auth middleware usually, but taking from body if not attached yet
+
+    if (!matchId || !date) {
+      return res
+        .status(400)
+        .json({success: false, message: 'Match ID and Date are required'});
+    }
+
+    const match = await Match.findById(matchId);
+    if (!match) {
+      return res.status(404).json({success: false, message: 'Match not found'});
+    }
+
+    // Verify user
+    if (!match.users.includes(userId)) {
+      return res.status(403).json({success: false, message: 'Access denied'});
+    }
+
+    if (match.status === 'expired') {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: 'Cannot schedule date for expired match',
+        });
+    }
+
+    // Update match
+    match.dateScheduled = new Date(date);
+    match.status = 'secured';
+    match.expiresAt = null; // Remove expiration
+    await match.save();
+
+    res.json({
+      success: true,
+      message: 'Date scheduled successfully! Match secured.',
+      match,
+    });
+  } catch (error) {
+    console.error('Error scheduling date:', error);
+    res.status(500).json({success: false, message: 'Error scheduling date'});
   }
 };
 

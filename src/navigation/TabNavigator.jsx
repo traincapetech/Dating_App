@@ -11,6 +11,7 @@ import SettingsScreen from '../features/settings/screens/SettingsScreen';
 import {colors, typography} from '../theme';
 import {getLikesCount} from '../services/swipeActions';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import {enableNotifications} from '../services/notifications';
 
 const Tab = createBottomTabNavigator();
 
@@ -23,6 +24,22 @@ const TabNavigator = () => {
     // Refresh count every 30 seconds
     const interval = setInterval(loadLikesCount, 30000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Register for push notifications on mount
+  useEffect(() => {
+    const registerPush = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('@pryvo_user');
+        if (userData && userData !== 'undefined') {
+          const user = JSON.parse(userData);
+          await enableNotifications(user.id);
+        }
+      } catch (error) {
+        console.log('Failed to register push notifications:', error);
+      }
+    };
+    registerPush();
   }, []);
 
   const loadLikesCount = async () => {

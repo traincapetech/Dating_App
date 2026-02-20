@@ -42,6 +42,9 @@ import {
   unmatchUser,
   deleteMessageApi,
 } from '../../../services/chatService';
+import {getMatchDetails, scheduleDate} from '../../../services/matchService';
+import DateSchedulerModal from '../components/DateSchedulerModal';
+import CountdownTimer from '../components/CountdownTimer';
 
 const REPORT_REASONS = [
   {id: 'harassment', label: 'Harassment'},
@@ -69,6 +72,11 @@ const ChatScreen = ({route, navigation}) => {
   const [unmatching, setUnmatching] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
+
+  // Date or Dissolve State
+  const [matchDetails, setMatchDetails] = useState(null);
+  const [showDateModal, setShowDateModal] = useState(false);
+  const [scheduling, setScheduling] = useState(false);
 
   const flatListRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -131,6 +139,12 @@ const ChatScreen = ({route, navigation}) => {
         if (unseenMessages.length > 0) {
           await markMessagesAsSeen(matchId, user.id);
         }
+
+        // Fetch Match Details (Status & Expiration)
+        const details = await getMatchDetails(matchId);
+        setMatchDetails(details);
+
+        // Init socket
 
         // Init socket
         const socket = initSocket(user.id);
@@ -444,7 +458,50 @@ const ChatScreen = ({route, navigation}) => {
       );
     },
     [matchId, currentUserId], // Add missing dependencies if needed, or keep generic
+    [matchId, currentUserId], // Add missing dependencies if needed, or keep generic
   );
+
+  const handleScheduleDate = async date => {
+    if (!currentUserId || !matchId) return;
+
+    setScheduling(true);
+    try {
+      const result = await scheduleDate(
+        matchId,
+        date,
+        'Date scheduled via Pryvo',
+        'in-person',
+      );
+      if (result.success) {
+        setMatchDetails(prev => ({
+          ...prev,
+          status: 'secured',
+          dateScheduled: date,
+          expiresAt: null,
+        }));
+        setShowDateModal(false);
+        Alert.alert(
+          'Date Secured! 🎉',
+          'The timer has stopped. Improve your Karma by showing up!',
+        );
+
+        // Optionally send a system message
+        await sendMessageApi({
+          matchId,
+          senderId: currentUserId,
+          receiverId: theirId,
+          text: `📅 I've promised a date on ${new Date(
+            date,
+          ).toLocaleDateString()}! Let's meet!`,
+        });
+      }
+    } catch (error) {
+      console.error('Schedule date error:', error);
+      Alert.alert('Error', 'Failed to schedule date');
+    } finally {
+      setScheduling(false);
+    }
+  };
 
   const getStatusIcon = status => {
     switch (status) {
@@ -615,15 +672,53 @@ const ChatScreen = ({route, navigation}) => {
                 </Text>
               </View>
               <View>
-                <Text style={styles.headerTitle}>{theirName || 'Chat'}</Text>
-                <View style={styles.onlineBadgeContainer}>
-                  <View style={styles.onlineBadge} />
-                  <Text style={styles.onlineText}>Online</Text>
+                <View
+                  style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+                  <Text style={styles.headerTitle}>{theirName || 'Chat'}</Text>
+                  {matchDetails && (
+                    <CountdownTimer
+                      expiresAt={matchDetails.expiresAt}
+                      status={matchDetails.status}
+                    />
+                  )}
                 </View>
+                {matchDetails?.status === 'active' ? (
+                  <View style={styles.onlineBadgeContainer}>
+                    <View style={styles.onlineBadge} />
+                    <Text style={styles.onlineText}>Online</Text>
+                  </View>
+                ) : matchDetails?.status === 'secured' ? (
+                  <Text style={[styles.onlineText, {color: '#4CAF50'}]}>
+                    Date:{' '}
+                    {new Date(matchDetails.dateScheduled).toLocaleDateString()}
+                  </Text>
+                ) : (
+                  <Text style={[styles.onlineText, {color: colors.error}]}>
+                    Timer Expired
+                  </Text>
+                )}
               </View>
             </View>
 
             <View style={styles.headerActions}>
+              {matchDetails?.status === 'active' && (
+                <Pressable
+                  onPress={() => setShowDateModal(true)}
+                  style={[
+                    styles.headerActionButton,
+                    {
+                      backgroundColor: colors.primary,
+                      borderRadius: 20,
+                      paddingHorizontal: 12,
+                      marginRight: 8,
+                    },
+                  ]}>
+                  <Text
+                    style={{color: '#fff', fontWeight: 'bold', fontSize: 12}}>
+                    Book Date
+                  </Text>
+                </Pressable>
+              )}
               <Pressable
                 onPress={() => setShowUnmatchModal(true)}
                 style={styles.headerActionButton}>
@@ -685,26 +780,38 @@ const ChatScreen = ({route, navigation}) => {
             )}
           </Pressable>
 
-          <View style={styles.inputWrapper}>
-            <TextInput
-              style={styles.input}
-              placeholder="Message..."
-              placeholderTextColor={colors.textSecondary}
-              value={inputText}
-              onChangeText={onChangeText}
-              multiline
-              maxLength={1000}
-            />
-            <Pressable
-              style={styles.iconButton}
-              onPress={() => setShowEmojiPicker(true)}>
-              <Icon
-                name="happy-outline"
-                size={24}
-                color={colors.textSecondary}
+          {matchDetails?.status === 'expired' ? (
+            <View
+              style={[
+                styles.inputWrapper,
+                {backgroundColor: '#f0f0f0', justifyContent: 'center'},
+              ]}>
+              <Text style={{color: colors.textSecondary, textAlign: 'center'}}>
+                Chat expired. You missed the date!
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.inputWrapper}>
+              <TextInput
+                style={styles.input}
+                placeholder="Message..."
+                placeholderTextColor={colors.textSecondary}
+                value={inputText}
+                onChangeText={onChangeText}
+                multiline
+                maxLength={1000}
               />
-            </Pressable>
-          </View>
+              <Pressable
+                style={styles.iconButton}
+                onPress={() => setShowEmojiPicker(true)}>
+                <Icon
+                  name="happy-outline"
+                  size={24}
+                  color={colors.textSecondary}
+                />
+              </Pressable>
+            </View>
+          )}
 
           <Pressable
             style={[
@@ -744,6 +851,14 @@ const ChatScreen = ({route, navigation}) => {
           visible={showGifPicker}
           onSelect={handleSelectGif}
           onClose={() => setShowGifPicker(false)}
+        />
+
+        {/* Date Scheduler Modal */}
+        <DateSchedulerModal
+          visible={showDateModal}
+          onClose={() => setShowDateModal(false)}
+          onSchedule={handleScheduleDate}
+          loading={scheduling}
         />
 
         {/* Unmatch Modal */}

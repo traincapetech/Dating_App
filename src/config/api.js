@@ -15,9 +15,9 @@ const PRODUCTION_SOCKET_URL = 'https://dating-app-backend-19lb.onrender.com';
 
 // For local development - replace with your computer's IP address
 // Example: 'http://192.168.1.100:3000/api'
-// Auto-detected IP: 192.168.1.210 (update if this is incorrect)
-const LOCAL_API_URL = 'http://192.168.1.210:3000/api';
-const LOCAL_SOCKET_URL = 'http://192.168.1.210:3000';
+// Auto-detected IP: 192.168.1.65 (Updated by Antigravity)
+const LOCAL_API_URL = 'http://192.168.1.65:3000/api';
+const LOCAL_SOCKET_URL = 'http://192.168.1.65:3000';
 
 // Set to true for production, false for local development
 const IS_PRODUCTION = false;
@@ -31,10 +31,11 @@ const getApiBaseUrl = () => {
     return PRODUCTION_API_URL;
   }
 
-  // For Android emulator, always use 10.0.2.2 to connect to localhost
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:3000/api';
-  }
+  // For Android physical device, use LOCAL_API_URL
+  // If using emulator, uncomment the block below:
+  // if (Platform.OS === 'android') {
+  //   return 'http://10.0.2.2:3000/api';
+  // }
 
   // For iOS simulator, use localhost
   if (Platform.OS === 'ios') {
