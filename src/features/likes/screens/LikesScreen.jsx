@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useCallback} from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,15 +10,15 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {useFocusEffect} from '@react-navigation/native';
-import {colors, typography, spacing} from '../../../theme';
-import {getLikesReceived, likeUser} from '../../../services/swipeActions';
-import {useLoading} from '../../../context/LoadingContext';
+import { useFocusEffect } from '@react-navigation/native';
+import { colors, typography, spacing } from '../../../theme';
+import { getLikesReceived, likeUser } from '../../../services/swipeActions';
+import { useLoading } from '../../../context/LoadingContext';
 
-const LikesScreen = ({navigation}) => {
-  const {setLoading: setGlobalLoading} = useLoading();
+const LikesScreen = ({ navigation }) => {
+  const { setLoading: setGlobalLoading } = useLoading();
   const [likes, setLikes] = useState([]);
   const [likesCount, setLikesCount] = useState(0);
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -35,10 +35,11 @@ const LikesScreen = ({navigation}) => {
   const loadLikes = async () => {
     try {
       setGlobalLoading(true);
+      let user;
       const userData = await AsyncStorage.getItem('@pryvo_user');
       if (userData && userData !== 'undefined') {
         try {
-          const user = JSON.parse(userData);
+          user = JSON.parse(userData);
           setCurrentUserId(user.id);
         } catch (e) {
           console.error('Failed to parse user data in LikesScreen:', e);
@@ -47,6 +48,8 @@ const LikesScreen = ({navigation}) => {
       } else {
         return;
       }
+
+      if (!user || !user.id) return;
 
       // For now, everyone is treated as premium (LIKES_VISIBLE_FREE = true on server)
       const isPremium = true; // Change this based on user subscription status
@@ -87,7 +90,7 @@ const LikesScreen = ({navigation}) => {
               });
             },
           },
-          {text: 'Continue', style: 'cancel'},
+          { text: 'Continue', style: 'cancel' },
         ]);
 
         // Remove from likes list
@@ -155,14 +158,14 @@ const LikesScreen = ({navigation}) => {
     );
   }
 
-  const renderItem = ({item}) => (
+  const renderItem = ({ item }) => (
     <View style={styles.likeCard}>
       <Image
         source={{
           uri:
             item.photo ||
             'https://ui-avatars.com/api/?background=667eea&color=fff&name=' +
-              (item.name || 'U'),
+            (item.name || 'U'),
         }}
         style={styles.avatar}
       />

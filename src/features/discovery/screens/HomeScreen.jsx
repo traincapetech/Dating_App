@@ -1,4 +1,4 @@
-import React, {useState, useRef, useEffect, useCallback} from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,12 +14,12 @@ import {
   ScrollView,
   Modal,
 } from 'react-native';
-import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
-import {useFocusEffect} from '@react-navigation/native';
-import {colors, typography, spacing} from '../../../theme';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import { colors, typography, spacing } from '../../../theme';
 import LinearGradient from 'react-native-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
-import {getDiscoverProfiles} from '../../../services/profile/profileService';
+import { getDiscoverProfiles } from '../../../services/profile/profileService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MatchPopup from '../../../components/profile/MatchPopup.js';
 import {
@@ -33,9 +33,9 @@ import {
   reverseGeocode,
 } from '../../../services/location/locationService';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import {useLoading} from '../../../context/LoadingContext';
+import { useLoading } from '../../../context/LoadingContext';
 
-const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - spacing.xl * 2;
 const CARD_HEIGHT = SCREEN_HEIGHT * 0.76;
 const SWIPE_THRESHOLD = 120;
@@ -52,9 +52,9 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(deg2rad(lat1)) *
-      Math.cos(deg2rad(lat2)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
+    Math.cos(deg2rad(lat2)) *
+    Math.sin(dLon / 2) *
+    Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const d = R * c; // Distance in km
   return Math.round(d);
@@ -64,8 +64,8 @@ const deg2rad = deg => {
   return deg * (Math.PI / 180);
 };
 
-const HomeScreen = ({navigation}) => {
-  const {setLoading: setGlobalLoading} = useLoading();
+const HomeScreen = ({ navigation }) => {
+  const { setLoading: setGlobalLoading } = useLoading();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [photoIndex, setPhotoIndex] = useState({});
   const [profiles, setProfiles] = useState([]);
@@ -81,10 +81,10 @@ const HomeScreen = ({navigation}) => {
   const [swipeCount, setSwipeCount] = useState(0);
   const [showLikePopup, setShowLikePopup] = useState(false);
   const distancePresets = [
-    {label: '1 - 10 km', value: 10},
-    {label: '1 - 25 km', value: 25},
-    {label: '1 - 50 km', value: 50},
-    {label: '1 - 100 km', value: 100},
+    { label: '1 - 10 km', value: 10 },
+    { label: '1 - 25 km', value: 25 },
+    { label: '1 - 50 km', value: 50 },
+    { label: '1 - 100 km', value: 100 },
   ];
   const [maxDistance, setMaxDistance] = useState(distancePresets[2].value); // default 50 km
   const [selectedPreset, setSelectedPreset] = useState(
@@ -327,13 +327,13 @@ const HomeScreen = ({navigation}) => {
               // Check for coordinates to recalculate
               const lat = parseFloat(
                 profile.latitude ||
-                  profile.location?.coordinates?.[1] ||
-                  profile.basicInfo?.locationDetails?.lat,
+                profile.location?.coordinates?.[1] ||
+                profile.basicInfo?.locationDetails?.lat,
               );
               const lon = parseFloat(
                 profile.longitude ||
-                  profile.location?.coordinates?.[0] ||
-                  profile.basicInfo?.locationDetails?.lng,
+                profile.location?.coordinates?.[0] ||
+                profile.basicInfo?.locationDetails?.lng,
               );
 
               if (userLoc && !isNaN(lat) && !isNaN(lon)) {
@@ -387,13 +387,13 @@ const HomeScreen = ({navigation}) => {
                   profile.datingPreferences?.relationshipType || '',
                 latitude: parseFloat(
                   profile.latitude ||
-                    profile.location?.coordinates?.[1] ||
-                    profile.basicInfo?.locationDetails?.lat,
+                  profile.location?.coordinates?.[1] ||
+                  profile.basicInfo?.locationDetails?.lat,
                 ),
                 longitude: parseFloat(
                   profile.longitude ||
-                    profile.location?.coordinates?.[0] ||
-                    profile.basicInfo?.locationDetails?.lng,
+                  profile.location?.coordinates?.[0] ||
+                  profile.basicInfo?.locationDetails?.lng,
                 ),
                 // Add profile prompts
                 prompts: [
@@ -439,7 +439,7 @@ const HomeScreen = ({navigation}) => {
           setMaxDistance(distance);
           setUseDistanceFilter(enabled);
           setSelectedPreset(presetValue);
-          return {distance, enabled};
+          return { distance, enabled };
         } catch (e) {
           console.error(
             'Failed to parse distance preferences in HomeScreen:',
@@ -532,7 +532,7 @@ const HomeScreen = ({navigation}) => {
       Alert.alert(
         'Daily Like Limit Reached',
         `You've reached your daily like limit of ${dailyLikeInfo.limit}. Come back tomorrow for more likes!`,
-        [{text: 'OK'}],
+        [{ text: 'OK' }],
       );
       return;
     }
@@ -611,8 +611,8 @@ const HomeScreen = ({navigation}) => {
             Alert.alert(
               'Daily Like Limit Reached',
               err?.message ||
-                `You've reached your daily like limit. Come back tomorrow!`,
-              [{text: 'OK'}],
+              `You've reached your daily like limit. Come back tomorrow!`,
+              [{ text: 'OK' }],
             );
             // Reload daily like info
             loadDailyLikeInfo();
@@ -638,7 +638,7 @@ const HomeScreen = ({navigation}) => {
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        const {dx, dy} = gestureState;
+        const { dx, dy } = gestureState;
         // Only respond to horizontal swipes if movement is primarily horizontal
         // and exceeds a small jitter threshold (10)
         return Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.5;
@@ -656,10 +656,10 @@ const HomeScreen = ({navigation}) => {
             dy: translateY,
           },
         ],
-        {useNativeDriver: false},
+        { useNativeDriver: false },
       ),
       onPanResponderRelease: (_, gestureState) => {
-        const {dx, vx} = gestureState;
+        const { dx, vx } = gestureState;
         // Swipe if threshold met OR velocity is high enough
         if (dx > SWIPE_THRESHOLD || vx > 0.5) {
           processSwipe('right');
@@ -704,25 +704,42 @@ const HomeScreen = ({navigation}) => {
           backgroundColor={colors.background}
         />
         <View style={styles.header}>
-          <View style={{width: 40}} />
+          <Pressable
+            onPress={() => navigation.navigate('Matches')}
+            style={styles.headerIconButton}>
+            <MaterialCommunityIcons
+              name="heart"
+              size={24}
+              color={colors.primary}
+            />
+          </Pressable>
           <Text className="text-4xl font-mona-sans-semibold tracking-[2px] text-black">
             Pryvo
           </Text>
-          <Pressable
-            onPress={() => navigation.navigate('AdvancedFilters')}
-            style={styles.filterIconButton}>
-            <Text style={styles.filterIcon}>
+          <View style={styles.headerRight}>
+            <Pressable
+              onPress={() => navigation.navigate('Chats')}
+              style={styles.headerIconButton}>
               <MaterialCommunityIcons
-                name="filter-variant"
-                size={20}
+                name="chat"
+                size={24}
                 color={colors.textPrimary}
               />
-            </Text>
-          </Pressable>
+            </Pressable>
+            <Pressable
+              onPress={() => navigation.navigate('AdvancedFilters')}
+              style={styles.headerIconButton}>
+              <MaterialCommunityIcons
+                name="filter-variant"
+                size={24}
+                color={colors.textPrimary}
+              />
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.emptyContainer}>
-          <View style={{marginBottom: 20}}>
+          <View style={{ marginBottom: 20 }}>
             <MaterialCommunityIcons
               name="account-search"
               size={80}
@@ -774,22 +791,38 @@ const HomeScreen = ({navigation}) => {
 
       {/* Header with Filter Icon */}
       <View className="" style={styles.header}>
-        <View style={{width: 40}} />
+        <Pressable
+          onPress={() => navigation.navigate('Matches')}
+          style={styles.headerIconButton}>
+          <MaterialCommunityIcons
+            name="heart"
+            size={24}
+            color={colors.primary}
+          />
+        </Pressable>
         <Text className="text-4xl font-mona-sans-semibold tracking-[2px] text-black">
           Pryvo
         </Text>
-        <Pressable
-          onPress={() => navigation.navigate('AdvancedFilters')}
-          style={styles.filterIconButton}>
-          <Text style={styles.filterIcon}>
+        <View style={styles.headerRight}>
+          <Pressable
+            onPress={() => navigation.navigate('Chats')}
+            style={styles.headerIconButton}>
+            <MaterialCommunityIcons
+              name="chat"
+              size={24}
+              color={colors.textPrimary}
+            />
+          </Pressable>
+          <Pressable
+            onPress={() => navigation.navigate('AdvancedFilters')}
+            style={styles.headerIconButton}>
             <MaterialCommunityIcons
               name="filter-variant"
-              size={20}
+              size={24}
               color={colors.textPrimary}
-              style={styles.inputIcon}
             />
-          </Text>
-        </Pressable>
+          </Pressable>
+        </View>
       </View>
 
       {/* Card Stack */}
@@ -798,7 +831,7 @@ const HomeScreen = ({navigation}) => {
         {currentIndex < profiles.length - 1 && (
           <View style={styles.nextCardPlaceholder}>
             <Image
-              source={{uri: profiles[currentIndex + 1].photos[0]}}
+              source={{ uri: profiles[currentIndex + 1].photos[0] }}
               style={styles.mainPhoto}
               resizeMode="cover"
             />
@@ -813,9 +846,9 @@ const HomeScreen = ({navigation}) => {
             styles.card,
             {
               transform: [
-                {translateX},
-                {translateY},
-                {rotate: rotateInterpolate},
+                { translateX },
+                { translateY },
+                { rotate: rotateInterpolate },
               ],
               opacity,
             },
@@ -828,7 +861,7 @@ const HomeScreen = ({navigation}) => {
             <View style={styles.mainPhotoContainer}>
               {currentProfile.photos && currentProfile.photos.length > 0 && (
                 <Image
-                  source={{uri: currentProfile.photos[0]}}
+                  source={{ uri: currentProfile.photos[0] }}
                   style={styles.mainPhoto}
                   resizeMode="cover"
                 />
@@ -912,8 +945,7 @@ const HomeScreen = ({navigation}) => {
                 <Text style={styles.sectionHeader}>My bio</Text>
                 <Text style={styles.bioText}>
                   {currentProfile.bio ||
-                    `Looking for ${
-                      currentProfile.datingIntention || 'something special'
+                    `Looking for ${currentProfile.datingIntention || 'something special'
                     }!`}
                 </Text>
               </View>
@@ -966,7 +998,7 @@ const HomeScreen = ({navigation}) => {
             {currentProfile.photos.length > 1 && (
               <View style={styles.secondaryPhotoContainer}>
                 <Image
-                  source={{uri: currentProfile.photos[1]}}
+                  source={{ uri: currentProfile.photos[1] }}
                   style={styles.secondaryPhoto}
                   resizeMode="cover"
                 />
@@ -988,17 +1020,17 @@ const HomeScreen = ({navigation}) => {
             {/* 6. I'm looking for */}
             {(currentProfile.datingIntention ||
               currentProfile.relationshipType) && (
-              <View style={styles.detailsSection}>
-                <Text style={styles.sectionHeader}>I'm looking for</Text>
-                <View style={[styles.badge, styles.intentionBadge]}>
-                  <Text style={styles.intentionText}>
-                    🔍{' '}
-                    {currentProfile.datingIntention ||
-                      currentProfile.relationshipType}
-                  </Text>
+                <View style={styles.detailsSection}>
+                  <Text style={styles.sectionHeader}>I'm looking for</Text>
+                  <View style={[styles.badge, styles.intentionBadge]}>
+                    <Text style={styles.intentionText}>
+                      🔍{' '}
+                      {currentProfile.datingIntention ||
+                        currentProfile.relationshipType}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            )}
+              )}
 
             {/* 7. My interests */}
             {currentProfile.interests &&
@@ -1051,7 +1083,7 @@ const HomeScreen = ({navigation}) => {
             {currentProfile.photos.length > 2 && (
               <View style={styles.secondaryPhotoContainer}>
                 <Image
-                  source={{uri: currentProfile.photos[2]}}
+                  source={{ uri: currentProfile.photos[2] }}
                   style={styles.secondaryPhoto}
                   resizeMode="cover"
                 />
@@ -1063,7 +1095,7 @@ const HomeScreen = ({navigation}) => {
               currentProfile.photos.slice(3).map((photo, idx) => (
                 <View key={idx} style={styles.secondaryPhotoContainer}>
                   <Image
-                    source={{uri: photo}}
+                    source={{ uri: photo }}
                     style={styles.secondaryPhoto}
                     resizeMode="cover"
                   />
@@ -1071,7 +1103,7 @@ const HomeScreen = ({navigation}) => {
               ))}
 
             {/* Bottom Spacing */}
-            <View style={{height: 100}} />
+            <View style={{ height: 100 }} />
           </ScrollView>
         </Animated.View>
       </View>
@@ -1098,7 +1130,7 @@ const HomeScreen = ({navigation}) => {
             name="close"
             size={32}
             color="red"
-            style={{opacity: !currentProfile ? 0.5 : 1}}
+            style={{ opacity: !currentProfile ? 0.5 : 1 }}
           />
         </Pressable>
 
@@ -1115,7 +1147,7 @@ const HomeScreen = ({navigation}) => {
             name="heart"
             size={48}
             color="#9411fa"
-            style={{opacity: dailyLikeInfo.remaining <= 0 ? 0.5 : 1}}
+            style={{ opacity: dailyLikeInfo.remaining <= 0 ? 0.5 : 1 }}
           />
         </Pressable>
 
@@ -1128,7 +1160,7 @@ const HomeScreen = ({navigation}) => {
             name="undo"
             size={28}
             color="#F5B900"
-            style={{opacity: currentIndex === 0 ? 0.5 : 1}}
+            style={{ opacity: currentIndex === 0 ? 0.5 : 1 }}
           />
         </Pressable>
       </View>
@@ -1152,7 +1184,7 @@ const HomeScreen = ({navigation}) => {
             visible: false,
           }));
           if (matchId && theirId) {
-            navigation.navigate('ChatScreen', {matchId, theirId});
+            navigation.navigate('ChatScreen', { matchId, theirId });
           }
         }}
       />
@@ -1207,7 +1239,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     color: '#000',
   },
-  filterIconButton: {
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerIconButton: {
     width: 40,
     height: 40,
     alignItems: 'center',
@@ -1270,7 +1306,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     backgroundColor: colors.surface,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 10},
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.1,
     shadowRadius: 20,
     elevation: 10,
@@ -1375,7 +1411,7 @@ const styles = StyleSheet.create({
     height: CARD_HEIGHT,
     borderRadius: 24,
     overflow: 'hidden',
-    transform: [{scale: 0.92}, {translateY: 0}],
+    transform: [{ scale: 0.92 }, { translateY: 0 }],
     opacity: 0.6,
   },
   nextCardOverlay: {
@@ -1456,7 +1492,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 6},
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 10,
     elevation: 12,

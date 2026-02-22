@@ -1,15 +1,15 @@
-import React, {useState, useEffect} from 'react';
-import {Text, View, StyleSheet} from 'react-native';
-import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import React, { useState, useEffect } from 'react';
+import { Text, View, StyleSheet } from 'react-native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import HomeScreen from '../features/discovery/screens/HomeScreen';
 import LikesScreen from '../features/likes/screens/LikesScreen';
 import ChatsScreen from '../features/messages/screens/ChatsScreen';
 import ProfileScreen from '../features/profile/screens/ProfileScreen';
 import SettingsScreen from '../features/settings/screens/SettingsScreen';
-import {colors, typography} from '../theme';
-import {getLikesCount} from '../services/swipeActions';
+import { colors, typography } from '../theme';
+import { getLikesCount } from '../services/swipeActions';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const Tab = createBottomTabNavigator();
@@ -68,34 +68,31 @@ const TabNavigator = () => {
         name="Home"
         component={HomeScreen}
         options={{
-          tabBarIcon: ({color, size}) => (
-            <Text style={{fontSize: size, color}}>
-              <MaterialCommunityIcons
-                name="home"
-                size={25}
-                style={styles.inputIcon}
-              />
-            </Text>
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons
+              name="home"
+              size={size}
+              color={color}
+              style={styles.inputIcon}
+            />
           ),
         }}
       />
       <Tab.Screen
-        name="Maches"
+        name="Matches"
         component={LikesScreen}
         listeners={{
           tabPress: () => loadLikesCount(),
         }}
         options={{
-          tabBarIcon: ({color, size}) => (
+          tabBarIcon: ({ color, size }) => (
             <View>
-              <Text style={{fontSize: size, color}}>
-                {' '}
-                <MaterialCommunityIcons
-                  name="heart"
-                  size={25}
-                  style={styles.inputIcon}
-                />
-              </Text>
+              <MaterialCommunityIcons
+                name="heart"
+                size={size}
+                color={color}
+                style={styles.inputIcon}
+              />
               {likesCount > 0 && (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>
@@ -111,15 +108,13 @@ const TabNavigator = () => {
         name="Chats"
         component={ChatsScreen}
         options={{
-          tabBarIcon: ({color, size}) => (
-            <Text style={{fontSize: size, color}}>
-              {' '}
-              <MaterialCommunityIcons
-                name="chat"
-                size={25}
-                style={styles.inputIcon}
-              />
-            </Text>
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons
+              name="chat"
+              size={size}
+              color={color}
+              style={styles.inputIcon}
+            />
           ),
         }}
       />
@@ -127,14 +122,13 @@ const TabNavigator = () => {
         name="User"
         component={ProfileScreen}
         options={{
-          tabBarIcon: ({color, size}) => (
-            <Text style={{fontSize: size, color}}>
-              <MaterialCommunityIcons
-                name="account-circle"
-                size={25}
-                style={styles.inputIcon}
-              />
-            </Text>
+          tabBarIcon: ({ color, size }) => (
+            <MaterialCommunityIcons
+              name="account-circle"
+              size={size}
+              color={color}
+              style={styles.inputIcon}
+            />
           ),
         }}
       />
