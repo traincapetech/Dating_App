@@ -618,7 +618,7 @@ const HomeScreen = ({navigation}) => {
             Alert.alert(
               'Daily Like Limit Reached',
               err?.message ||
-                'You\'ve reached your daily like limit. Come back tomorrow!',
+                `You've reached your daily like limit. Come back tomorrow!`,
               [{text: 'OK'}],
             );
             // Reload daily like info
