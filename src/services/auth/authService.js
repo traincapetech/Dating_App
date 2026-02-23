@@ -32,6 +32,41 @@ export async function signIn(payload) {
   return data;
 }
 
+export async function googleSignIn() {
+  const {GoogleSignin} = await import(
+    '@react-native-google-signin/google-signin'
+  );
+
+  GoogleSignin.configure({
+    webClientId:
+      '327819775040-7u678ovm7tucvrkjp167slqgqbr6829o.apps.googleusercontent.com',
+    offlineAccess: false,
+  });
+
+  // Check if play services are available
+  await GoogleSignin.hasPlayServices({showPlayServicesUpdateDialog: true});
+
+  // Trigger Google Sign-In
+  const response = await GoogleSignin.signIn();
+  const idToken = response?.data?.idToken;
+
+  if (!idToken) {
+    throw new Error('Failed to get Google ID token');
+  }
+
+  // Send token to our backend
+  const data = await apiClient.post('/auth/google', {idToken});
+
+  if (data?.tokens) {
+    await storeTokens(data.tokens);
+  }
+  if (data?.user) {
+    await AsyncStorage.setItem('@pryvo_user', JSON.stringify(data.user));
+  }
+
+  return data;
+}
+
 export async function signOut() {
   await clearTokens();
   await AsyncStorage.removeItem('@pryvo_user');
@@ -87,10 +122,10 @@ export async function logoutFromAllDevices() {
     // Even if API call fails, clear local tokens
     console.error('Error calling logout API:', error);
   }
-  
+
   // Always clear local tokens
   await clearTokens();
   await AsyncStorage.removeItem('@pryvo_user');
-  
+
   return {success: true, message: 'Logged out from all devices'};
 }

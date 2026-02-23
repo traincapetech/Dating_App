@@ -12,7 +12,20 @@
           "package_name": "com.pryvo"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "327819775040-5usvj3os14gg6geclit7ejqq2ikp99fc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.pryvo",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "327819775040-7u678ovm7tucvrkjp167slqgqbr6829o.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAlDOYRy5_OkqVjqmf8cPt49Zvvb8S50kg"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "327819775040-7u678ovm7tucvrkjp167slqgqbr6829o.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "327819775040-8trvem0db1f1d5rmldqaisucaa5p9m4q.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.pryvo"
+              }
+            }
+          ]
         }
       }
     }

@@ -1,7 +1,7 @@
 import Message from '../models/Message.js';
 import Match from '../models/Match.js';
 import Block from '../models/Block.js';
-import {getIO, isUserOnline} from '../services/socketService.js';
+import {getIO, isUserOnline, emitToUser} from '../services/socketService.js';
 import {sendPushNotification} from '../services/pushService.js';
 
 // Helper to validate MongoDB ObjectId format
@@ -196,8 +196,15 @@ export const sendMessage = async (req, res) => {
       // 2. Emit to receiver via their specific room or match room
       io.to(matchId).emit('receiveMessage', message);
 
-      // 3. Check if receiver is online to update status to 'delivered'
+      // 3. Also emit directly to receiver's user sockets (for when they're
+      //    on the chat list screen and haven't joined this specific room)
+      emitToUser(receiverId, 'receiveMessage', message);
+
+      // 4. Check if receiver is online to update status to 'delivered'
       const receiverOnline = isUserOnline(receiverId);
+      console.log(
+        `[Push Debug] Receiver ${receiverId} online: ${receiverOnline}`,
+      );
 
       if (receiverOnline) {
         // Mark as delivered immediately
@@ -212,6 +219,9 @@ export const sendMessage = async (req, res) => {
         });
       } else {
         // Receiver is offline - send push notification
+        console.log(
+          `[Push Debug] Attempting push notification to ${receiverId}`,
+        );
         try {
           const pushTitle = 'New Message'; // You might want to fetch sender name here
           const pushBody = text
@@ -220,7 +230,7 @@ export const sendMessage = async (req, res) => {
               : text
             : 'Sent you a photo';
 
-          await sendPushNotification(receiverId, {
+          const pushResult = await sendPushNotification(receiverId, {
             title: pushTitle,
             body: pushBody,
             data: {
@@ -229,6 +239,7 @@ export const sendMessage = async (req, res) => {
               senderId,
             },
           });
+          console.log(`[Push Debug] Push result:`, JSON.stringify(pushResult));
         } catch (pushError) {
           console.error('[Push Notification] Failed:', pushError.message);
         }

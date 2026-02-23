@@ -1,4 +1,4 @@
-﻿import React, {useEffect} from 'react';
+﻿import React, {useEffect, useState} from 'react';
 import {
   View,
   Text,
@@ -8,10 +8,13 @@ import {
   ScrollView,
   useWindowDimensions,
   SafeAreaView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import {colors, typography} from '../../../theme';
 import {AppRoute} from '../../../constants/routes';
 import {getAccessToken} from '../../../services/storage/tokenStorage';
+import {googleSignIn} from '../../../services/auth/authService';
 import google from '../../../assets/images/google.png';
 
 const SplashScreen = ({navigation}) => {
@@ -21,6 +24,7 @@ const SplashScreen = ({navigation}) => {
   const bodyFontSize = Math.min(15, Math.max(14, width * 0.045));
   const heroSpacingTop = width < 360 ? 20 : 40;
   const actionCardWidth = Math.min(420, width - 32);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   useEffect(() => {
     const checkSession = async () => {
@@ -48,6 +52,43 @@ const SplashScreen = ({navigation}) => {
     navigation?.navigate(AppRoute.SignUp);
   };
 
+  const handleGoogleSignIn = async () => {
+    if (googleLoading) return;
+    setGoogleLoading(true);
+    try {
+      const result = await googleSignIn();
+      if (result?.tokens) {
+        if (result.isNewUser) {
+          // New user — go to onboarding
+          navigation?.reset({
+            index: 0,
+            routes: [{name: AppRoute.BasicInfo}],
+          });
+        } else {
+          // Existing user — go to home
+          navigation?.reset({
+            index: 0,
+            routes: [{name: AppRoute.HomeTabs}],
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Google Sign-In error:', error);
+      // Don't show alert if user cancelled
+      const isCancelled =
+        error?.code === 'SIGN_IN_CANCELLED' ||
+        error?.message?.includes('cancel');
+      if (!isCancelled) {
+        Alert.alert(
+          'Sign-In Failed',
+          error?.message || 'Something went wrong. Please try again.',
+        );
+      }
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-white mono-sans">
       <ScrollView
@@ -56,7 +97,6 @@ const SplashScreen = ({navigation}) => {
           flexGrow: 1,
           justifyContent: 'space-between',
           alignItems: 'center',
-         
         }}>
         <View className="items-center" style={{marginTop: heroSpacingTop}}>
           <Image
@@ -91,11 +131,19 @@ const SplashScreen = ({navigation}) => {
             width: actionCardWidth,
             alignItems: 'center',
           }}>
-          <Pressable onPress={handleCreateAccount} className="w-full">
+          <Pressable
+            onPress={handleGoogleSignIn}
+            disabled={googleLoading}
+            className="w-full"
+            style={{opacity: googleLoading ? 0.6 : 1}}>
             <View className="flex-row items-center justify-center border border-primary rounded-full bg-white px-6 py-3 mb-8">
-              <Image source={google} className="w-6 h-6" />
+              {googleLoading ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Image source={google} className="w-6 h-6" />
+              )}
               <Text className="text-black font-semibold text-lg ml-4">
-                Continue with Google
+                {googleLoading ? 'Signing in...' : 'Continue with Google'}
               </Text>
             </View>
           </Pressable>
