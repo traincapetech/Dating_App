@@ -22,8 +22,7 @@ const LOCAL_SOCKET_URL = 'http://192.168.1.65:3000';
 // Set to true for production, false for local development
 const IS_PRODUCTION = false;
 
-console.log(`[Config] API_BASE_URL: ${API_BASE_URL}`);
-console.log(`[Config] SOCKET_URL: ${SOCKET_URL}`);
+// Logging moved below after variables are defined
 
 // Auto-detect for Android emulator
 const getApiBaseUrl = () => {
@@ -51,10 +50,8 @@ const getSocketUrl = () => {
     return PRODUCTION_SOCKET_URL;
   }
 
-  // For Android emulator, always use 10.0.2.2 to connect to localhost
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:3000';
-  }
+  // NOTE: If using an Android Emulator, uncomment the line below:
+   if (Platform.OS === 'android') return 'http://10.0.2.2:3000';
 
   // For iOS simulator, use localhost
   if (Platform.OS === 'ios') {
@@ -67,6 +64,9 @@ const getSocketUrl = () => {
 
 export const API_BASE_URL = getApiBaseUrl();
 export const SOCKET_URL = getSocketUrl();
+
+console.log(`[Config] API_BASE_URL: ${API_BASE_URL}`);
+console.log(`[Config] SOCKET_URL: ${SOCKET_URL}`);
 
 export default {
   API_BASE_URL,

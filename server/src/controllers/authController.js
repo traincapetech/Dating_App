@@ -1,6 +1,7 @@
 import {
   registerUser,
   authenticateUser,
+  authenticateWithGoogle,
   changeEmail,
   changePassword,
   requestPasswordReset,
@@ -37,6 +38,17 @@ export const updateEmail = asyncHandler(async (req, res) => {
 export const updatePassword = asyncHandler(async (req, res) => {
   const parsed = changePasswordSchema.parse(req.body);
   const result = await changePassword(parsed);
+  res.status(200).json(result);
+});
+
+export const googleSignIn = asyncHandler(async (req, res) => {
+  const {idToken} = req.body;
+  if (!idToken) {
+    return res
+      .status(400)
+      .json({success: false, message: 'ID token is required'});
+  }
+  const result = await authenticateWithGoogle({idToken});
   res.status(200).json(result);
 });
 

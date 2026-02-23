@@ -33,6 +33,11 @@ export async function deleteUser(userId) {
   return !!result;
 }
 
+export async function findUserByGoogleId(googleId) {
+  const user = await User.findOne({googleId});
+  return user ? user.toObject() : undefined;
+}
+
 export async function updateUser(userId, updates) {
   const safeUpdates = {...updates};
   delete safeUpdates.id;
