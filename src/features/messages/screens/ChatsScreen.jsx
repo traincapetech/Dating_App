@@ -75,7 +75,19 @@ const ChatsScreen = ({navigation}) => {
         const response = await fetchMatches(user.id);
         const list = response?.matches || [];
 
-        setMatches(list);
+        // Deduplicate by theirId to ensure one chat per person
+        const uniqueMatches = [];
+        const seenIds = new Set();
+
+        list.forEach(match => {
+          const theirId = match.users.find(u => u !== user.id);
+          if (!seenIds.has(theirId)) {
+            seenIds.add(theirId);
+            uniqueMatches.push(match);
+          }
+        });
+
+        setMatches(uniqueMatches);
 
         // Load last messages for all matches
         if (list.length > 0) {

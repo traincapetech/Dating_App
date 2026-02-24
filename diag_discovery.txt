@@ -1,0 +1,23 @@
+Connected to MongoDB
+
+--- USER STATS (ca0a4734-5ea0-4e50-9882-9108a5a34d15) ---
+Likes sent: 7
+Passes sent: 340
+Total unique profiles swiped: 13
+
+--- GLOBAL STATS ---
+Total Profiles in DB: 15
+
+--- FILTERING SIMULATION for User ca0a4734-5ea0-4e50-9882-9108a5a34d15 ---
+Viewer Gender: Man
+Viewer Interests: 
+Viewer WhoToDate: Everyone
+Excluding Self: 1
+Excluding Already Swiped: 13
+Excluding Paused/Hidden: 0
+Excluding No Photos: 1
+
+RESULTING AVAILABLE PROFILES: 0
+
+--- MATCHES ---
+Active matches for user: 2

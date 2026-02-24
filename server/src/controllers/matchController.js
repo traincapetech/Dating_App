@@ -11,9 +11,18 @@ export const getUserMatches = async (req, res) => {
         .json({success: false, message: 'userId is required'});
     }
 
-    const matches = await Match.find({
+    const allMatches = await Match.find({
       users: userId,
-      chatEnabled: true, // Only return matches where chat is enabled (not blocked)
+      chatEnabled: true,
+    }).sort({createdAt: -1});
+
+    // Deduplicate by user pair
+    const seenPairs = new Set();
+    const matches = allMatches.filter(match => {
+      const pairKey = [...match.users].sort().join(':');
+      if (seenPairs.has(pairKey)) return false;
+      seenPairs.add(pairKey);
+      return true;
     });
 
     // Enrich matches with profile info of the other user
@@ -120,12 +129,10 @@ export const scheduleDate = async (req, res) => {
     }
 
     if (match.status === 'expired') {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: 'Cannot schedule date for expired match',
-        });
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot schedule date for expired match',
+      });
     }
 
     // Update match

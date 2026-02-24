@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, {useEffect, useState, useCallback} from 'react';
 import {
   View,
   Text,
@@ -10,16 +10,18 @@ import {
   RefreshControl,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useFocusEffect } from '@react-navigation/native';
-import { colors, typography, spacing } from '../../../theme';
-import { getLikesReceived, likeUser } from '../../../services/swipeActions';
-import { useLoading } from '../../../context/LoadingContext';
+import {useFocusEffect} from '@react-navigation/native';
+import {colors, typography, spacing} from '../../../theme';
+import {getLikesReceived, likeUser} from '../../../services/swipeActions';
+import {fetchMatches} from '../../../services/chatService';
+import {useLoading} from '../../../context/LoadingContext';
 
-const LikesScreen = ({ navigation }) => {
-  const { setLoading: setGlobalLoading } = useLoading();
+const LikesScreen = ({navigation}) => {
+  const {setLoading: setGlobalLoading} = useLoading();
   const [likes, setLikes] = useState([]);
+  const [matches, setMatches] = useState([]);
   const [likesCount, setLikesCount] = useState(0);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -54,12 +56,20 @@ const LikesScreen = ({ navigation }) => {
       // For now, everyone is treated as premium (LIKES_VISIBLE_FREE = true on server)
       const isPremium = true;
 
-      const response = await getLikesReceived(userId, isPremium);
+      // Fetch both likes received and mutual matches
+      const [likesResponse, matchesResponse] = await Promise.all([
+        getLikesReceived(user.id, isPremium),
+        fetchMatches(user.id),
+      ]);
 
-      if (response.success) {
-        setLikes(response.likes || []);
-        setLikesCount(response.count || 0);
-        setIsPremiumRequired(response.isPremiumRequired || false);
+      if (likesResponse.success) {
+        setLikes(likesResponse.likes || []);
+        setLikesCount(likesResponse.count || 0);
+        setIsPremiumRequired(likesResponse.isPremiumRequired || false);
+      }
+
+      if (matchesResponse.success) {
+        setMatches(matchesResponse.matches || []);
       }
     } catch (error) {
       console.log('Error fetching likes:', error);
@@ -92,7 +102,7 @@ const LikesScreen = ({ navigation }) => {
               });
             },
           },
-          { text: 'Continue', style: 'cancel' },
+          {text: 'Continue', style: 'cancel'},
         ]);
 
         // Remove from likes list
@@ -145,31 +155,31 @@ const LikesScreen = ({ navigation }) => {
     );
   }
 
-  if (likes.length === 0) {
+  if (likes.length === 0 && matches.length === 0) {
     return (
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Likes</Text>
+          <Text style={styles.headerTitle}>Matches</Text>
         </View>
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyEmoji}>💕</Text>
-          <Text style={styles.emptyTitle}>No likes yet</Text>
+          <Text style={styles.emptyTitle}>No matches yet</Text>
           <Text style={styles.emptySubtitle}>
-            Keep swiping! When someone likes you, they'll appear here.
+            Keep swiping! When you match with someone, they'll appear here.
           </Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  const renderItem = ({ item }) => (
+  const renderItem = ({item}) => (
     <View style={styles.likeCard}>
       <Image
         source={{
           uri:
             item.photo ||
             'https://ui-avatars.com/api/?background=667eea&color=fff&name=' +
-            (item.name || 'U'),
+              (item.name || 'U'),
         }}
         style={styles.avatar}
       />
@@ -188,20 +198,70 @@ const LikesScreen = ({ navigation }) => {
     </View>
   );
 
+  const renderMatchItem = ({item}) => (
+    <Pressable
+      style={styles.matchItem}
+      onPress={() =>
+        navigation.navigate('ChatScreen', {
+          matchId: item._id,
+          theirId: item.theirId,
+          theirName: item.theirName,
+        })
+      }>
+      <Image
+        source={{
+          uri:
+            item.theirPhoto ||
+            'https://ui-avatars.com/api/?background=667eea&color=fff&name=' +
+              (item.theirName || 'U'),
+        }}
+        style={styles.matchAvatar}
+      />
+      <Text style={styles.matchName} numberOfLines={1}>
+        {item.theirName?.split(' ')[0]}
+      </Text>
+    </Pressable>
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Likes</Text>
-        <View style={styles.countBadge}>
-          <Text style={styles.countText}>{likesCount}</Text>
-        </View>
+        <Text style={styles.headerTitle}>Matches</Text>
+        {likesCount > 0 && (
+          <View style={styles.countBadge}>
+            <Text style={styles.countText}>{likesCount}</Text>
+          </View>
+        )}
       </View>
 
       <FlatList
         data={likes}
-        keyExtractor={(item, index) => item.senderId || index.toString()}
+        keyExtractor={(item, index) =>
+          item.senderId || item._id || index.toString()
+        }
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          matches.length > 0 ? (
+            <View style={styles.matchesSection}>
+              <Text style={styles.sectionTitle}>New Matches</Text>
+              <FlatList
+                horizontal
+                data={matches}
+                keyExtractor={item => item._id}
+                renderItem={renderMatchItem}
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.matchesList}
+              />
+              <View style={styles.divider} />
+              <Text style={styles.sectionTitle}>Likes</Text>
+            </View>
+          ) : likes.length > 0 ? (
+            <View style={styles.likesSectionHeader}>
+              <Text style={styles.sectionTitle}>Likes</Text>
+            </View>
+          ) : null
+        }
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -345,6 +405,48 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  matchesSection: {
+    paddingVertical: spacing.md,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontFamily: typography.fontFamilyBold,
+    color: colors.textPrimary,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  matchesList: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
+  },
+  matchItem: {
+    alignItems: 'center',
+    marginRight: spacing.lg,
+    width: 70,
+  },
+  matchAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    marginBottom: 4,
+    borderWidth: 2,
+    borderColor: colors.primary,
+  },
+  matchName: {
+    fontSize: 12,
+    fontFamily: typography.fontFamilyMedium,
+    color: colors.textPrimary,
+    textAlign: 'center',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginHorizontal: spacing.lg,
+    marginVertical: spacing.md,
+  },
+  likesSectionHeader: {
+    marginTop: spacing.sm,
   },
 });
 

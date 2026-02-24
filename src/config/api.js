@@ -32,9 +32,9 @@ const getApiBaseUrl = () => {
 
   // For Android physical device, use LOCAL_API_URL
   // If using emulator, uncomment the block below:
-  // if (Platform.OS === 'android') {
-  //   return 'http://10.0.2.2:3000/api';
-  // }
+  if (Platform.OS === 'android') {
+    return 'http://10.0.2.2:3000/api';
+  }
 
   // For iOS simulator, use localhost
   if (Platform.OS === 'ios') {
@@ -51,7 +51,7 @@ const getSocketUrl = () => {
   }
 
   // NOTE: If using an Android Emulator, uncomment the line below:
-   if (Platform.OS === 'android') return 'http://10.0.2.2:3000';
+  if (Platform.OS === 'android') return 'http://10.0.2.2:3000';
 
   // For iOS simulator, use localhost
   if (Platform.OS === 'ios') {
