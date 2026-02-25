@@ -36,7 +36,10 @@ const LikesScreen = ({navigation}) => {
 
   const loadLikes = async () => {
     try {
-      setGlobalLoading(true);
+      const isInitial = !likes.length && !matches.length;
+      if (isInitial && !refreshing) {
+        setLoading(true);
+      }
       let user;
       const userData = await AsyncStorage.getItem('@pryvo_user');
       if (userData && userData !== 'undefined') {
@@ -75,7 +78,6 @@ const LikesScreen = ({navigation}) => {
       console.log('Error fetching likes:', error);
     } finally {
       setLoading(false);
-      setGlobalLoading(false);
       setRefreshing(false);
     }
   };
@@ -117,14 +119,7 @@ const LikesScreen = ({navigation}) => {
     }
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.center} edges={['top', 'left', 'right']}>
-        <View />
-      </SafeAreaView>
-    );
-  }
-
+  // Removed blank loading screen
   if (isPremiumRequired) {
     return (
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>

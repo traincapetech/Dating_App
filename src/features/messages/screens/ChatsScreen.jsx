@@ -66,7 +66,9 @@ const ChatsScreen = ({navigation}) => {
 
   const loadMatches = async () => {
     try {
-      setGlobalLoading(true);
+      if (!matches.length && !refreshing) {
+        setLoading(true);
+      }
       const userData = await AsyncStorage.getItem('@pryvo_user');
       if (userData && userData !== 'undefined') {
         const user = JSON.parse(userData);
@@ -108,7 +110,6 @@ const ChatsScreen = ({navigation}) => {
       console.log('Error fetching matches', error);
     } finally {
       setLoading(false);
-      setGlobalLoading(false);
       setRefreshing(false);
     }
   };
@@ -142,14 +143,7 @@ const ChatsScreen = ({navigation}) => {
     return message.text || 'Tap to start chatting';
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.center} edges={['top', 'left', 'right']}>
-        <View />
-      </SafeAreaView>
-    );
-  }
-
+  // Removed blank loading screen
   if (!matches.length) {
     return (
       <SafeAreaView style={styles.center} edges={['top', 'left', 'right']}>

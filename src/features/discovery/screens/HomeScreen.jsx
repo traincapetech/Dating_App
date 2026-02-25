@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, {useState, useRef, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -14,12 +14,12 @@ import {
   ScrollView,
   Modal,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
-import { colors, typography, spacing } from '../../../theme';
+import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useFocusEffect} from '@react-navigation/native';
+import {colors, typography, spacing} from '../../../theme';
 import LinearGradient from 'react-native-linear-gradient';
 import MaskedView from '@react-native-masked-view/masked-view';
-import { getDiscoverProfiles } from '../../../services/profile/profileService';
+import {getDiscoverProfiles} from '../../../services/profile/profileService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MatchPopup from '../../../components/profile/MatchPopup.js';
 import {
@@ -33,9 +33,9 @@ import {
   reverseGeocode,
 } from '../../../services/location/locationService';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { useLoading } from '../../../context/LoadingContext';
+import {useLoading} from '../../../context/LoadingContext';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - spacing.xl * 2;
 const CARD_HEIGHT = SCREEN_HEIGHT * 0.76;
 const SWIPE_THRESHOLD = 120;
@@ -52,9 +52,9 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
   const a =
     Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(deg2rad(lat1)) *
-    Math.cos(deg2rad(lat2)) *
-    Math.sin(dLon / 2) *
-    Math.sin(dLon / 2);
+      Math.cos(deg2rad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   const d = R * c; // Distance in km
   return Math.round(d);
@@ -64,8 +64,8 @@ const deg2rad = deg => {
   return deg * (Math.PI / 180);
 };
 
-const HomeScreen = ({ navigation }) => {
-  const { setLoading: setGlobalLoading } = useLoading();
+const HomeScreen = ({navigation}) => {
+  const {setLoading: setGlobalLoading} = useLoading();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [photoIndex, setPhotoIndex] = useState({});
   const [profiles, setProfiles] = useState([]);
@@ -81,10 +81,10 @@ const HomeScreen = ({ navigation }) => {
   const [swipeCount, setSwipeCount] = useState(0);
   const [showLikePopup, setShowLikePopup] = useState(false);
   const distancePresets = [
-    { label: '1 - 10 km', value: 10 },
-    { label: '1 - 25 km', value: 25 },
-    { label: '1 - 50 km', value: 50 },
-    { label: '1 - 100 km', value: 100 },
+    {label: '1 - 10 km', value: 10},
+    {label: '1 - 25 km', value: 25},
+    {label: '1 - 50 km', value: 50},
+    {label: '1 - 100 km', value: 100},
   ];
   const [maxDistance, setMaxDistance] = useState(distancePresets[2].value); // default 50 km
   const [selectedPreset, setSelectedPreset] = useState(
@@ -140,6 +140,7 @@ const HomeScreen = ({ navigation }) => {
           prefs?.distance,
           prefs?.enabled ?? useDistanceFilter,
           location,
+          true, // silent update for location changes
         );
       },
       {
@@ -246,10 +247,10 @@ const HomeScreen = ({ navigation }) => {
       distanceOverride = null,
       distanceEnabled = useDistanceFilter,
       userLocationOverride = null,
+      silent = false,
     ) => {
       try {
-        setLoadingLocal(true);
-        setGlobalLoading(true);
+        setLoadingLocal(silent ? false : true);
 
         // Get current user ID
         const userData = await AsyncStorage.getItem('@pryvo_user');
@@ -327,13 +328,13 @@ const HomeScreen = ({ navigation }) => {
               // Check for coordinates to recalculate
               const lat = parseFloat(
                 profile.latitude ||
-                profile.location?.coordinates?.[1] ||
-                profile.basicInfo?.locationDetails?.lat,
+                  profile.location?.coordinates?.[1] ||
+                  profile.basicInfo?.locationDetails?.lat,
               );
               const lon = parseFloat(
                 profile.longitude ||
-                profile.location?.coordinates?.[0] ||
-                profile.basicInfo?.locationDetails?.lng,
+                  profile.location?.coordinates?.[0] ||
+                  profile.basicInfo?.locationDetails?.lng,
               );
 
               if (userLoc && !isNaN(lat) && !isNaN(lon)) {
@@ -387,13 +388,13 @@ const HomeScreen = ({ navigation }) => {
                   profile.datingPreferences?.relationshipType || '',
                 latitude: parseFloat(
                   profile.latitude ||
-                  profile.location?.coordinates?.[1] ||
-                  profile.basicInfo?.locationDetails?.lat,
+                    profile.location?.coordinates?.[1] ||
+                    profile.basicInfo?.locationDetails?.lat,
                 ),
                 longitude: parseFloat(
                   profile.longitude ||
-                  profile.location?.coordinates?.[0] ||
-                  profile.basicInfo?.locationDetails?.lng,
+                    profile.location?.coordinates?.[0] ||
+                    profile.basicInfo?.locationDetails?.lng,
                 ),
                 // Add profile prompts
                 prompts: [
@@ -405,20 +406,20 @@ const HomeScreen = ({ navigation }) => {
             })
             .filter(profile => profile.photos && profile.photos.length > 0);
 
-          console.log(
-            `[HomeScreen] Loaded ${transformedProfiles.length} profiles`,
-          );
+          console.log('RAW API COUNT:', response?.profiles?.length);
+          console.log('AFTER TRANSFORM COUNT:', transformedProfiles.length);
           setProfiles(transformedProfiles);
+          setCurrentIndex(0);
         } else {
           console.warn('[HomeScreen] No profiles in response:', response);
           setProfiles([]);
+          setCurrentIndex(0);
         }
       } catch (error) {
         console.error('Error loading profiles:', error);
         Alert.alert('Error', 'Failed to load profiles. Please try again.');
       } finally {
         setLoadingLocal(false);
-        setGlobalLoading(false);
       }
     },
     [maxDistance, useDistanceFilter, currentLocation],
@@ -439,7 +440,7 @@ const HomeScreen = ({ navigation }) => {
           setMaxDistance(distance);
           setUseDistanceFilter(enabled);
           setSelectedPreset(presetValue);
-          return { distance, enabled };
+          return {distance, enabled};
         } catch (e) {
           console.error(
             'Failed to parse distance preferences in HomeScreen:',
@@ -476,7 +477,7 @@ const HomeScreen = ({ navigation }) => {
       const next = clampDistance(prev + delta);
       setSelectedPreset(null);
       saveDistancePrefs(next, useDistanceFilter, null);
-      loadProfiles(next, useDistanceFilter);
+      loadProfiles(next, useDistanceFilter, null, false);
       return next;
     });
   };
@@ -485,19 +486,20 @@ const HomeScreen = ({ navigation }) => {
     setSelectedPreset(value);
     setMaxDistance(value);
     saveDistancePrefs(value, useDistanceFilter, value);
-    loadProfiles(value, useDistanceFilter);
+    loadProfiles(value, useDistanceFilter, null, false);
   };
 
   const handleToggleDistance = () => {
     setUseDistanceFilter(prev => {
       const next = !prev;
       saveDistancePrefs(maxDistance, next, selectedPreset);
-      loadProfiles(undefined, next);
+      loadProfiles(undefined, next, null, false);
       return next;
     });
   };
 
-  const currentProfile = profiles[currentIndex];
+  const currentProfile =
+    currentIndex < profiles.length ? profiles[currentIndex] : null;
 
   const resetCardPosition = () => {
     Animated.parallel([
@@ -518,7 +520,7 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const goToNextProfile = () => {
-    setCurrentIndex(prev => prev + 1);
+    setCurrentIndex(prev => (prev + 1 >= profiles.length ? prev : prev + 1));
     translateX.setValue(0);
     translateY.setValue(0);
     opacity.setValue(1);
@@ -532,7 +534,7 @@ const HomeScreen = ({ navigation }) => {
       Alert.alert(
         'Daily Like Limit Reached',
         `You've reached your daily like limit of ${dailyLikeInfo.limit}. Come back tomorrow for more likes!`,
-        [{ text: 'OK' }],
+        [{text: 'OK'}],
       );
       return;
     }
@@ -611,8 +613,8 @@ const HomeScreen = ({ navigation }) => {
             Alert.alert(
               'Daily Like Limit Reached',
               err?.message ||
-              `You've reached your daily like limit. Come back tomorrow!`,
-              [{ text: 'OK' }],
+                `You've reached your daily like limit. Come back tomorrow!`,
+              [{text: 'OK'}],
             );
             // Reload daily like info
             loadDailyLikeInfo();
@@ -626,19 +628,17 @@ const HomeScreen = ({ navigation }) => {
   };
 
   const handleRewind = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(prev => prev - 1);
-      translateX.setValue(0);
-      translateY.setValue(0);
-      opacity.setValue(1);
-    }
+    setCurrentIndex(prev => (prev > 0 ? prev - 1 : 0));
+    translateX.setValue(0);
+    translateY.setValue(0);
+    opacity.setValue(1);
   };
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        const { dx, dy } = gestureState;
+        const {dx, dy} = gestureState;
         // Only respond to horizontal swipes if movement is primarily horizontal
         // and exceeds a small jitter threshold (10)
         return Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.5;
@@ -656,10 +656,10 @@ const HomeScreen = ({ navigation }) => {
             dy: translateY,
           },
         ],
-        { useNativeDriver: false },
+        {useNativeDriver: false},
       ),
       onPanResponderRelease: (_, gestureState) => {
-        const { dx, vx } = gestureState;
+        const {dx, vx} = gestureState;
         // Swipe if threshold met OR velocity is high enough
         if (dx > SWIPE_THRESHOLD || vx > 0.5) {
           processSwipe('right');
@@ -679,23 +679,14 @@ const HomeScreen = ({ navigation }) => {
 
   useFocusEffect(
     useCallback(() => {
-      loadProfiles();
+      // Use silent loading if we already have profiles
+      const isSilent = profiles.length > 0;
+      loadProfiles(null, useDistanceFilter, null, isSilent);
       loadDailyLikeInfo();
-    }, [loadProfiles, loadDailyLikeInfo]),
+    }, [loadProfiles, loadDailyLikeInfo, profiles.length, useDistanceFilter]),
   );
 
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-        <StatusBar
-          barStyle="dark-content"
-          backgroundColor={colors.background}
-        />
-        <View style={styles.container} />
-      </SafeAreaView>
-    );
-  }
-
+  // Removed the blocking loading screen so the main UI shell shows immediately while loading in background
   if (!currentProfile) {
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
@@ -739,7 +730,7 @@ const HomeScreen = ({ navigation }) => {
         </View>
 
         <View style={styles.emptyContainer}>
-          <View style={{ marginBottom: 20 }}>
+          <View style={{marginBottom: 20}}>
             <MaterialCommunityIcons
               name="account-search"
               size={80}
@@ -749,7 +740,7 @@ const HomeScreen = ({ navigation }) => {
           <Text style={styles.emptyTitle}>No more profiles</Text>
           <Text style={styles.emptySubtitle}>
             We've run out of people nearby. Try adjusting your distance or age
-            filters to see more people.
+            fil ageters to see more people.
           </Text>
           <Pressable
             style={{
@@ -759,14 +750,13 @@ const HomeScreen = ({ navigation }) => {
               paddingVertical: 12,
               borderRadius: 24,
             }}
-            onPress={() => {
-              // Reset state for new profiles
+            onPress={async () => {
+              setProfiles([]);
               setCurrentIndex(0);
               translateX.setValue(0);
               translateY.setValue(0);
               opacity.setValue(1);
-              // Reload profiles
-              loadProfiles();
+              await loadProfiles();
             }}>
             <Text
               style={{
@@ -831,7 +821,7 @@ const HomeScreen = ({ navigation }) => {
         {currentIndex < profiles.length - 1 && (
           <View style={styles.nextCardPlaceholder}>
             <Image
-              source={{ uri: profiles[currentIndex + 1].photos[0] }}
+              source={{uri: profiles[currentIndex + 1].photos[0]}}
               style={styles.mainPhoto}
               resizeMode="cover"
             />
@@ -846,9 +836,9 @@ const HomeScreen = ({ navigation }) => {
             styles.card,
             {
               transform: [
-                { translateX },
-                { translateY },
-                { rotate: rotateInterpolate },
+                {translateX},
+                {translateY},
+                {rotate: rotateInterpolate},
               ],
               opacity,
             },
@@ -860,7 +850,7 @@ const HomeScreen = ({ navigation }) => {
             <View style={styles.mainPhotoContainer}>
               {currentProfile.photos && currentProfile.photos.length > 0 && (
                 <Image
-                  source={{ uri: currentProfile.photos[0] }}
+                  source={{uri: currentProfile.photos[0]}}
                   style={styles.mainPhoto}
                   resizeMode="cover"
                 />
@@ -944,7 +934,8 @@ const HomeScreen = ({ navigation }) => {
                 <Text style={styles.sectionHeader}>My bio</Text>
                 <Text style={styles.bioText}>
                   {currentProfile.bio ||
-                    `Looking for ${currentProfile.datingIntention || 'something special'
+                    `Looking for ${
+                      currentProfile.datingIntention || 'something special'
                     }!`}
                 </Text>
               </View>
@@ -997,7 +988,7 @@ const HomeScreen = ({ navigation }) => {
             {currentProfile.photos.length > 1 && (
               <View style={styles.secondaryPhotoContainer}>
                 <Image
-                  source={{ uri: currentProfile.photos[1] }}
+                  source={{uri: currentProfile.photos[1]}}
                   style={styles.secondaryPhoto}
                   resizeMode="cover"
                 />
@@ -1019,17 +1010,17 @@ const HomeScreen = ({ navigation }) => {
             {/* 6. I'm looking for */}
             {(currentProfile.datingIntention ||
               currentProfile.relationshipType) && (
-                <View style={styles.detailsSection}>
-                  <Text style={styles.sectionHeader}>I'm looking for</Text>
-                  <View style={[styles.badge, styles.intentionBadge]}>
-                    <Text style={styles.intentionText}>
-                      🔍{' '}
-                      {currentProfile.datingIntention ||
-                        currentProfile.relationshipType}
-                    </Text>
-                  </View>
+              <View style={styles.detailsSection}>
+                <Text style={styles.sectionHeader}>I'm looking for</Text>
+                <View style={[styles.badge, styles.intentionBadge]}>
+                  <Text style={styles.intentionText}>
+                    🔍{' '}
+                    {currentProfile.datingIntention ||
+                      currentProfile.relationshipType}
+                  </Text>
                 </View>
-              )}
+              </View>
+            )}
 
             {/* 7. My interests */}
             {currentProfile.interests &&
@@ -1082,7 +1073,7 @@ const HomeScreen = ({ navigation }) => {
             {currentProfile.photos.length > 2 && (
               <View style={styles.secondaryPhotoContainer}>
                 <Image
-                  source={{ uri: currentProfile.photos[2] }}
+                  source={{uri: currentProfile.photos[2]}}
                   style={styles.secondaryPhoto}
                   resizeMode="cover"
                 />
@@ -1094,7 +1085,7 @@ const HomeScreen = ({ navigation }) => {
               currentProfile.photos.slice(3).map((photo, idx) => (
                 <View key={idx} style={styles.secondaryPhotoContainer}>
                   <Image
-                    source={{ uri: photo }}
+                    source={{uri: photo}}
                     style={styles.secondaryPhoto}
                     resizeMode="cover"
                   />
@@ -1102,7 +1093,7 @@ const HomeScreen = ({ navigation }) => {
               ))}
 
             {/* Bottom Spacing */}
-            <View style={{ height: 100 }} />
+            <View style={{height: 100}} />
           </ScrollView>
         </Animated.View>
       </View>
@@ -1129,7 +1120,7 @@ const HomeScreen = ({ navigation }) => {
             name="close"
             size={32}
             color="red"
-            style={{ opacity: !currentProfile ? 0.5 : 1 }}
+            style={{opacity: !currentProfile ? 0.5 : 1}}
           />
         </Pressable>
 
@@ -1146,7 +1137,7 @@ const HomeScreen = ({ navigation }) => {
             name="heart"
             size={48}
             color="#9411fa"
-            style={{ opacity: dailyLikeInfo.remaining <= 0 ? 0.5 : 1 }}
+            style={{opacity: dailyLikeInfo.remaining <= 0 ? 0.5 : 1}}
           />
         </Pressable>
 
@@ -1159,7 +1150,7 @@ const HomeScreen = ({ navigation }) => {
             name="undo"
             size={28}
             color="#F5B900"
-            style={{ opacity: currentIndex === 0 ? 0.5 : 1 }}
+            style={{opacity: currentIndex === 0 ? 0.5 : 1}}
           />
         </Pressable>
       </View>
@@ -1183,7 +1174,7 @@ const HomeScreen = ({ navigation }) => {
             visible: false,
           }));
           if (matchId && theirId) {
-            navigation.navigate('ChatScreen', { matchId, theirId });
+            navigation.navigate('ChatScreen', {matchId, theirId});
           }
         }}
       />
@@ -1305,7 +1296,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     backgroundColor: colors.surface,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
+    shadowOffset: {width: 0, height: 10},
     shadowOpacity: 0.1,
     shadowRadius: 20,
     elevation: 10,
@@ -1410,7 +1401,7 @@ const styles = StyleSheet.create({
     height: CARD_HEIGHT,
     borderRadius: 24,
     overflow: 'hidden',
-    transform: [{ scale: 0.92 }, { translateY: 0 }],
+    transform: [{scale: 0.92}, {translateY: 0}],
     opacity: 0.6,
   },
   nextCardOverlay: {
@@ -1491,7 +1482,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: {width: 0, height: 6},
     shadowOpacity: 0.25,
     shadowRadius: 10,
     elevation: 12,

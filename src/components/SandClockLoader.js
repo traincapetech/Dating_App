@@ -1,19 +1,13 @@
 import React from 'react';
-import {View, Text, StyleSheet, Modal} from 'react-native';
-import LottieView from 'lottie-react-native';
+import {View, Text, StyleSheet, Modal, ActivityIndicator} from 'react-native';
 
 const SandClockLoader = ({visible}) => {
   return (
     <Modal visible={visible} transparent animationType="fade">
       <View style={styles.container}>
         <View style={styles.loaderBox}>
-          <LottieView
-            source={require('../assets/animations/hourglass.json')}
-            autoPlay
-            loop
-            style={styles.animation}
-          />
-          <Text style={styles.text}>Perfect Match Loading...</Text>
+          <ActivityIndicator size="large" color="#FF4D67" />
+          <Text style={styles.text}>perfect match is loading</Text>
         </View>
       </View>
     </Modal>
@@ -40,10 +34,6 @@ const styles = StyleSheet.create({
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.3,
     shadowRadius: 5,
-  },
-  animation: {
-    width: 150,
-    height: 150,
   },
   text: {
     marginTop: 16,
