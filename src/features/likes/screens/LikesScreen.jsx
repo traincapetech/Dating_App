@@ -61,8 +61,8 @@ const LikesScreen = ({navigation}) => {
 
       // Fetch both likes received and mutual matches
       const [likesResponse, matchesResponse] = await Promise.all([
-        getLikesReceived(user.id, isPremium),
-        fetchMatches(user.id),
+        getLikesReceived(userId, isPremium),
+        fetchMatches(userId),
       ]);
 
       if (likesResponse.success) {
