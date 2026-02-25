@@ -7,16 +7,14 @@ import {
   sendMatchEmail,
   sendLikeEmail,
 } from '../services/emailNotificationService.js';
-import {storage} from '../storage/index.js';
 import {isUserPremium} from '../models/Subscription.js';
-import {getProfile} from '../services/profileService.js';
-
-const PROFILES_PATH = 'data/profiles.json';
+import Profile from '../models/Profile.js';
+import User from '../models/User.js';
 
 // Helper to get profile name
 async function getProfileName(userId) {
   try {
-    const profile = await getProfile(userId);
+    const profile = await Profile.findOne({userId});
     return profile?.basicInfo?.firstName || profile?.name || 'Someone';
   } catch (error) {
     return 'Someone';
@@ -26,7 +24,8 @@ async function getProfileName(userId) {
 // Helper to get profile info for notifications
 async function getProfileInfo(userId) {
   try {
-    const profile = await getProfile(userId);
+    const profile = await Profile.findOne({userId});
+    const user = await User.findOne({_id: userId});
 
     return {
       name: profile?.basicInfo?.firstName || profile?.name || 'Someone',
@@ -356,20 +355,21 @@ export const getLikesReceived = async (req, res) => {
     }
 
     // Get profile info for each liker
-    const likesWithProfiles = await Promise.all(
-      pendingLikes.map(async like => {
-        const profile = await getProfile(like.senderId);
-        return {
-          senderId: like.senderId,
-          likedAt: like.createdAt,
-          userId: like.senderId,
-          name: profile?.basicInfo?.firstName || profile?.name || 'Unknown',
-          age: profile?.age || null,
-          photo: profile?.photos?.[0] || null,
-          comment: like.likedContent?.comment,
-        };
-      }),
-    );
+    const likerIds = pendingLikes.map(l => l.senderId);
+    const profiles = await Profile.find({userId: {$in: likerIds}});
+
+    const likesWithProfiles = pendingLikes.map(like => {
+      const profile = profiles.find(p => p.userId === like.senderId);
+      return {
+        senderId: like.senderId,
+        likedAt: like.createdAt,
+        userId: like.senderId,
+        name: profile?.basicInfo?.firstName || profile?.name || 'Unknown',
+        age: profile?.personalDetails?.age || profile?.basicInfo?.age || null,
+        photo: profile?.media?.media?.[0]?.url || profile?.photos?.[0] || null,
+        comment: like.likedContent?.comment,
+      };
+    });
 
     res.json({
       success: true,
