@@ -56,7 +56,7 @@ const REPORT_REASONS = [
 ];
 
 const ChatScreen = ({route, navigation}) => {
-  const {matchId, theirId, theirName} = route.params || {};
+  const {matchId, theirId, theirName, theirPhoto} = route.params || {};
   const [currentUserId, setCurrentUserId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
@@ -563,7 +563,14 @@ const ChatScreen = ({route, navigation}) => {
           style={[styles.messageRow, isMe ? styles.rowRight : styles.rowLeft]}>
           {!isMe && (
             <View style={styles.avatarContainer}>
-              <Text style={styles.avatarText}>{theirName?.[0] || '?'}</Text>
+              {theirPhoto ? (
+                <Image
+                  source={{uri: theirPhoto}}
+                  style={{width: 32, height: 32, borderRadius: 16}}
+                />
+              ) : (
+                <Text style={styles.avatarText}>{theirName?.[0] || '?'}</Text>
+              )}
             </View>
           )}
 
@@ -667,9 +674,21 @@ const ChatScreen = ({route, navigation}) => {
 
             <View style={styles.headerTitleContainer}>
               <View style={styles.headerAvatar}>
-                <Text style={styles.headerAvatarText}>
-                  {theirName?.[0] || '?'}
-                </Text>
+                {theirPhoto ? (
+                  <Image
+                    source={{uri: theirPhoto}}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      borderRadius: 24,
+                      overflow: 'hidden',
+                    }}
+                  />
+                ) : (
+                  <Text style={styles.headerAvatarText}>
+                    {theirName?.[0] || '?'}
+                  </Text>
+                )}
               </View>
               <View>
                 <View

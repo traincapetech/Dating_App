@@ -5,7 +5,7 @@ import {
   TextInput,
   Pressable,
   Image,
-  Alert
+  Alert,
 } from 'react-native';
 import { launchImageLibrary } from 'react-native-image-picker';
 
@@ -40,7 +40,7 @@ const GetHelpScreen = () => {
       formData.append('screenshot', {
         uri: screenshot.uri,
         name: screenshot.fileName || 'screenshot.jpg',
-        type: screenshot.type
+        type: screenshot.type,
       });
     }
 
@@ -50,7 +50,7 @@ const GetHelpScreen = () => {
         {
           method: 'POST',
           headers: { 'Content-Type': 'multipart/form-data' },
-          body: formData
+          body: formData,
         }
       );
 
@@ -85,7 +85,7 @@ const GetHelpScreen = () => {
           borderRadius: 8,
           padding: 12,
           height: 120,
-          marginTop: 16
+          marginTop: 16,
         }}
       />
 
@@ -96,7 +96,7 @@ const GetHelpScreen = () => {
           padding: 12,
           borderWidth: 1,
           borderStyle: 'dashed',
-          borderRadius: 8
+          borderRadius: 8,
         }}
       >
         <Text>📎 Upload Screenshot (Optional)</Text>
@@ -115,7 +115,7 @@ const GetHelpScreen = () => {
           marginTop: 20,
           backgroundColor: '#2563eb',
           padding: 14,
-          borderRadius: 8
+          borderRadius: 8,
         }}
       >
         <Text style={{ color: '#fff', textAlign: 'center' }}>

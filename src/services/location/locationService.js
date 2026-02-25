@@ -118,7 +118,7 @@ export async function updateUserLocation(latitude, longitude) {
     const userId = user.id;
 
     // Update location in profile
-    const response = await apiClient.put(`/profile/update`, {
+    const response = await apiClient.put('/profile/update', {
       userId,
       basicInfo: {
         locationDetails: {

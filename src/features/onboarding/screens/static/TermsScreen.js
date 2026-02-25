@@ -127,7 +127,7 @@ const TermsScreen = () => {
 
         <Text style={styles.subtitle}>6.3 Reporting</Text>
         <Text style={styles.text}>
-          If you encounter content or behavior that violates these Terms, please report it immediately through the in-app reporting feature or by contacting pryvo@traincapetech.in.  
+          If you encounter content or behavior that violates these Terms, please report it immediately through the in-app reporting feature or by contacting pryvo@traincapetech.in.
         </Text>
 
         <Text style={styles.title}>7. Privacy and Data Protection</Text>

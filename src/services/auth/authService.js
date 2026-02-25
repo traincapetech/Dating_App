@@ -2,6 +2,7 @@ import {apiClient} from '../api/client';
 import {getAccessToken} from '../storage/tokenStorage';
 import {storeTokens, clearTokens} from '../storage/tokenStorage';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {disableNotifications} from '../notifications/notificationService';
 
 async function getAuthHeaders() {
   const token = await getAccessToken();
@@ -71,6 +72,11 @@ export async function googleSignIn() {
 }
 
 export async function signOut() {
+  try {
+    await disableNotifications();
+  } catch (err) {
+    console.warn('Failed to disable notifications on sign out', err);
+  }
   await clearTokens();
   await AsyncStorage.removeItem('@pryvo_user');
   await AsyncStorage.removeItem('@pryvo_needs_profile_reset');
@@ -125,6 +131,12 @@ export async function logoutFromAllDevices() {
   } catch (error) {
     // Even if API call fails, clear local tokens
     console.error('Error calling logout API:', error);
+  }
+
+  try {
+    await disableNotifications();
+  } catch (err) {
+    console.warn('Failed to disable notifications on explicit logout', err);
   }
 
   // Always clear local tokens

@@ -170,6 +170,7 @@ const ChatsScreen = ({navigation}) => {
             matchId: item._id,
             theirId,
             theirName: item.theirName || `User ${theirId?.slice(0, 6) || ''}`,
+            theirPhoto: item.theirPhoto,
           })
         }>
         <View style={styles.avatarContainer}>

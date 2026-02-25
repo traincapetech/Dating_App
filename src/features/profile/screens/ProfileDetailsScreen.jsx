@@ -272,6 +272,19 @@ const ProfileDetailsScreen = () => {
   };
 
   const handleDeletePhoto = index => {
+    // Check if deleting this photo would drop them below 5 photos total
+    const currentValidPhotosCount = editedProfile.photos.filter(
+      p => p.url,
+    ).length;
+    if (currentValidPhotosCount <= 5) {
+      Alert.alert(
+        'Cannot Delete',
+        'You must have at least 5 photos on your profile.',
+        [{text: 'OK'}],
+      );
+      return;
+    }
+
     Alert.alert('Delete Photo', 'Are you sure you want to delete this photo?', [
       {text: 'Cancel', style: 'cancel'},
       {

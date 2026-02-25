@@ -48,7 +48,7 @@ const PhoneInputScreen = () => {
 
     // Use fallback validation if library validation didn't work
     const phoneValid = isValid || validatePhoneNumber(phoneNumber);
-    
+
     if (!phoneValid) {
       Alert.alert('Invalid', 'Please enter a valid phone number (at least 10 digits)');
       return;

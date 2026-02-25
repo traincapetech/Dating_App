@@ -581,10 +581,10 @@ const MediaUploadScreen = () => {
       // Filter out null media items
       const mediaToUpload = media.filter(item => item !== null);
 
-      if (mediaToUpload.length === 0) {
+      if (mediaToUpload.length < 5) {
         Alert.alert(
-          'No Media',
-          'Please add at least one photo before continuing.',
+          'Missing Photos',
+          'Please add at least 5 photos before continuing.',
         );
         return;
       }
@@ -739,8 +739,8 @@ const MediaUploadScreen = () => {
       <View style={styles.header}>
         <Text style={styles.title}>Pick your photos and videos</Text>
         <Text style={styles.subtitle}>
-          There are 6 photos/videos we upload like headshots, full body,
-          smiling, just you, nature, candid.
+          In order to verify the real you, you must add at least 5 photos/videos
+          to your profile.
         </Text>
       </View>
 
@@ -810,7 +810,8 @@ const MediaUploadScreen = () => {
           Show off the person behind the profile
         </Text>
         <Text style={styles.infoText}>
-          One gif or some image should be there.
+          Profiles with 5+ photos receive 60% more matches and look more
+          authentic.
         </Text>
       </View>
 
