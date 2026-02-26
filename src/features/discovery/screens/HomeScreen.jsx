@@ -640,6 +640,7 @@ const HomeScreen = ({navigation}) => {
   };
 
   const gesture = Gesture.Pan()
+    .activeOffsetX([-10, 10])
     .onUpdate(event => {
       translateX.value = event.translationX;
       translateY.value = event.translationY;
@@ -838,6 +839,8 @@ const HomeScreen = ({navigation}) => {
         <GestureDetector gesture={gesture}>
           <Animated.View style={[styles.card, animatedStyle]}>
             <ScrollView
+              style={{flex: 1}}
+              contentContainerStyle={styles.scrollContent}
               showsVerticalScrollIndicator={false}
               scrollEventThrottle={16}>
               {/* 1. Main Photo with Name Overlay */}
@@ -1085,9 +1088,6 @@ const HomeScreen = ({navigation}) => {
                     />
                   </View>
                 ))}
-
-              {/* Bottom Spacing */}
-              <View style={{height: 100}} />
             </ScrollView>
           </Animated.View>
         </GestureDetector>
@@ -1300,6 +1300,9 @@ const styles = StyleSheet.create({
   mainPhotoContainer: {
     width: '100%',
     height: CARD_HEIGHT,
+  },
+  scrollContent: {
+    paddingBottom: 110,
   },
   mainPhoto: {
     width: '100%',
