@@ -20,7 +20,7 @@ const LOCAL_API_URL = 'http://192.168.1.65:3000/api';
 const LOCAL_SOCKET_URL = 'http://192.168.1.65:3000';
 
 // Set to true for production, false for local development
-const IS_PRODUCTION = false;
+const IS_PRODUCTION = true;
 
 // Logging moved below after variables are defined
 
@@ -32,14 +32,14 @@ const getApiBaseUrl = () => {
 
   // For Android physical device, use LOCAL_API_URL
   // If using emulator, uncomment the block below:
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:3000/api';
-  }
+  // if (Platform.OS === 'android') {
+  //   return 'http://10.0.2.2:3000/api';
+  // }
 
   // For iOS simulator, use localhost
-  if (Platform.OS === 'ios') {
-    return 'http://localhost:3000/api';
-  }
+  // if (Platform.OS === 'ios') {
+  //   return 'http://localhost:3000/api';
+  // }
 
   // For physical device, use the configured IP
   return LOCAL_API_URL;
@@ -51,12 +51,12 @@ const getSocketUrl = () => {
   }
 
   // NOTE: If using an Android Emulator, uncomment the line below:
-   if (Platform.OS === 'android') return 'http://10.0.2.2:3000';
+  // if (Platform.OS === 'android') return 'http://10.0.2.2:3000';
 
   // For iOS simulator, use localhost
-  if (Platform.OS === 'ios') {
-    return 'http://localhost:3000';
-  }
+  // if (Platform.OS === 'ios') {
+  //   return 'http://localhost:3000';
+  // }
 
   // For physical device, use the configured IP
   return LOCAL_SOCKET_URL;
