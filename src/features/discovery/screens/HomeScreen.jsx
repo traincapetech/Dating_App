@@ -7,13 +7,20 @@ import {
   Image,
   Pressable,
   StatusBar,
-  Animated,
   ActivityIndicator,
   Alert,
-  PanResponder,
   ScrollView,
   Modal,
 } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+  withTiming,
+  runOnJS,
+  interpolate,
+} from 'react-native-reanimated';
+import {Gesture, GestureDetector} from 'react-native-gesture-handler';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
 import {colors, typography, spacing} from '../../../theme';
@@ -94,9 +101,9 @@ const HomeScreen = ({navigation}) => {
   const [useDistanceFilter, setUseDistanceFilter] = useState(true);
   const DISTANCE_PREF_KEY = '@pryvo_distance_preferences';
 
-  const translateX = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(0)).current;
-  const opacity = useRef(new Animated.Value(1)).current;
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const opacity = useSharedValue(1);
 
   const [matchPopup, setMatchPopup] = useState({
     visible: false,
@@ -519,28 +526,16 @@ const HomeScreen = ({navigation}) => {
     currentIndex < profiles.length ? profiles[currentIndex] : null;
 
   const resetCardPosition = () => {
-    Animated.parallel([
-      Animated.spring(translateX, {
-        toValue: 0,
-        useNativeDriver: true,
-      }),
-      Animated.spring(translateY, {
-        toValue: 0,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    translateX.value = withSpring(0);
+    translateY.value = withSpring(0);
+    opacity.value = withTiming(1, {duration: 150});
   };
 
   const goToNextProfile = () => {
     setCurrentIndex(prev => prev + 1);
-    translateX.setValue(0);
-    translateY.setValue(0);
-    opacity.setValue(1);
+    translateX.value = 0;
+    translateY.value = 0;
+    opacity.value = 1;
   };
 
   const processSwipe = direction => {
@@ -576,19 +571,12 @@ const HomeScreen = ({navigation}) => {
     }
 
     // Animate card off screen IMMEDIATELY (don't wait for API)
-    Animated.parallel([
-      Animated.timing(translateX, {
-        toValue: direction === 'right' ? SCREEN_WIDTH : -SCREEN_WIDTH,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      goToNextProfile();
+    translateX.value = withTiming(
+      direction === 'right' ? SCREEN_WIDTH * 1.5 : -SCREEN_WIDTH * 1.5,
+      {duration: 250},
+    );
+    opacity.value = withTiming(0, {duration: 250}, () => {
+      runOnJS(goToNextProfile)();
     });
 
     // Fire API call in background (don't block animation)
@@ -646,61 +634,54 @@ const HomeScreen = ({navigation}) => {
 
   const handleRewind = () => {
     setCurrentIndex(prev => (prev > 0 ? prev - 1 : 0));
-    translateX.setValue(0);
-    translateY.setValue(0);
-    opacity.setValue(1);
+    translateX.value = 0;
+    translateY.value = 0;
+    opacity.value = 1;
   };
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        const {dx, dy} = gestureState;
-        // Only respond to horizontal swipes if movement is primarily horizontal
-        // and exceeds a small jitter threshold (10)
-        return Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.5;
-      },
-      onPanResponderGrant: () => {
-        // Stop any ongoing animations when touch starts
-        translateX.stopAnimation();
-        translateY.stopAnimation();
-      },
-      onPanResponderMove: Animated.event(
-        [
-          null,
-          {
-            dx: translateX,
-            dy: translateY,
-          },
-        ],
-        {useNativeDriver: false},
-      ),
-      onPanResponderRelease: (_, gestureState) => {
-        const {dx, vx} = gestureState;
-        // Swipe if threshold met OR velocity is high enough
-        if (dx > SWIPE_THRESHOLD || vx > 0.5) {
-          processSwipe('right');
-        } else if (dx < -SWIPE_THRESHOLD || vx < -0.5) {
-          processSwipe('left');
-        } else {
-          resetCardPosition();
-        }
-      },
-    }),
-  ).current;
+  const gesture = Gesture.Pan()
+    .onUpdate(event => {
+      translateX.value = event.translationX;
+      translateY.value = event.translationY;
+    })
+    .onEnd(event => {
+      if (event.translationX > SWIPE_THRESHOLD || event.velocityX > 500) {
+        runOnJS(processSwipe)('right');
+      } else if (
+        event.translationX < -SWIPE_THRESHOLD ||
+        event.velocityX < -500
+      ) {
+        runOnJS(processSwipe)('left');
+      } else {
+        translateX.value = withSpring(0);
+        translateY.value = withSpring(0);
+      }
+    });
 
-  const rotateInterpolate = translateX.interpolate({
-    inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
-    outputRange: ['-15deg', '0deg', '15deg'],
+  const animatedStyle = useAnimatedStyle(() => {
+    const rotate =
+      interpolate(
+        translateX.value,
+        [-SCREEN_WIDTH, 0, SCREEN_WIDTH],
+        [-15, 0, 15],
+      ) + 'deg';
+
+    return {
+      transform: [
+        {translateX: translateX.value},
+        {translateY: translateY.value},
+        {rotate: rotate},
+      ],
+      opacity: opacity.value,
+    };
   });
 
   useFocusEffect(
     useCallback(() => {
-      // Use silent loading if we already have profiles
-      const isSilent = profiles.length > 0;
-      loadProfiles(null, useDistanceFilter, null, isSilent);
+      // Just update daily like info on focus, don't reload profiles
+      // to avoid resetting currentIndex (fixes Rewind button disable issue)
       loadDailyLikeInfo();
-    }, [loadProfiles, loadDailyLikeInfo, profiles.length, useDistanceFilter]),
+    }, [loadDailyLikeInfo]),
   );
 
   // Removed the blocking loading screen so the main UI shell shows immediately while loading in background
@@ -770,9 +751,9 @@ const HomeScreen = ({navigation}) => {
             onPress={async () => {
               setProfiles([]);
               setCurrentIndex(0);
-              translateX.setValue(0);
-              translateY.setValue(0);
-              opacity.setValue(1);
+              translateX.value = 0;
+              translateY.value = 0;
+              opacity.value = 1;
               if (currentUserId) {
                 try {
                   await resetPasses(currentUserId);
@@ -854,272 +835,262 @@ const HomeScreen = ({navigation}) => {
         )}
 
         {/* Current card (swipeable) */}
-        <Animated.View
-          {...panResponder.panHandlers}
-          style={[
-            styles.card,
-            {
-              transform: [
-                {translateX},
-                {translateY},
-                {rotate: rotateInterpolate},
-              ],
-              opacity,
-            },
-          ]}>
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            scrollEventThrottle={16}>
-            {/* 1. Main Photo with Name Overlay */}
-            <View style={styles.mainPhotoContainer}>
-              {currentProfile.photos && currentProfile.photos.length > 0 && (
-                <Image
-                  source={{uri: currentProfile.photos[0]}}
-                  style={styles.mainPhoto}
-                  resizeMode="cover"
-                />
-              )}
+        <GestureDetector gesture={gesture}>
+          <Animated.View style={[styles.card, animatedStyle]}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              scrollEventThrottle={16}>
+              {/* 1. Main Photo with Name Overlay */}
+              <View style={styles.mainPhotoContainer}>
+                {currentProfile.photos && currentProfile.photos.length > 0 && (
+                  <Image
+                    source={{uri: currentProfile.photos[0]}}
+                    style={styles.mainPhoto}
+                    resizeMode="cover"
+                  />
+                )}
 
-              <LinearGradient
-                colors={[
-                  'transparent',
-                  'rgba(0,0,0,0.4)',
-                  'rgba(0,0,0,0.8)',
-                  '#000000',
-                ]}
-                locations={[0, 0.5, 0.8, 1]}
-                style={styles.mainPhotoGradient}>
-                <View style={styles.mainPhotoInfo}>
-                  <Text className="text-3xl font-mona-sans-regular  text-white">
-                    {currentProfile.name}
-                    {currentProfile.age ? `, (${currentProfile.age})` : ''}
-                  </Text>
-                  {(() => {
-                    let dist = currentProfile.distance
-                      ? parseFloat(currentProfile.distance)
-                      : null;
-
-                    // Recalculate distance if missing but we have coordinates
-                    if (
-                      dist === null &&
-                      currentLocation &&
-                      !isNaN(currentProfile.latitude) &&
-                      !isNaN(currentProfile.longitude)
-                    ) {
-                      dist = calculateDistance(
-                        currentLocation.latitude,
-                        currentLocation.longitude,
-                        currentProfile.latitude,
-                        currentProfile.longitude,
-                      );
-                    }
-
-                    const locationStr =
-                      currentProfile.city || currentProfile.location || '';
-
-                    // Improved coordinate detection: check for numeric format like "28.6074, 77.0819"
-                    const isCoordinates =
-                      /^\s*[-+]?\d+(\.\d+)?\s*,\s*[-+]?\d+(\.\d+)?\s*$/.test(
-                        locationStr,
-                      );
-
-                    const displayLocation = isCoordinates
-                      ? currentProfile.city || ''
-                      : locationStr;
-
-                    if (!displayLocation && (dist === null || dist < 0))
-                      return null;
-
-                    // For dating apps, huge distances (e.g. 12000km) look like a bug.
-                    // We show "Far away" for anything over 1000km.
-                    const distanceLabel =
-                      dist !== null && dist > 0
-                        ? dist > 1000
-                          ? 'Far away'
-                          : `${dist} km away`
+                <LinearGradient
+                  colors={[
+                    'transparent',
+                    'rgba(0,0,0,0.4)',
+                    'rgba(0,0,0,0.8)',
+                    '#000000',
+                  ]}
+                  locations={[0, 0.5, 0.8, 1]}
+                  style={styles.mainPhotoGradient}>
+                  <View style={styles.mainPhotoInfo}>
+                    <Text className="text-3xl font-mona-sans-regular  text-white">
+                      {currentProfile.name}
+                      {currentProfile.age ? `, (${currentProfile.age})` : ''}
+                    </Text>
+                    {(() => {
+                      let dist = currentProfile.distance
+                        ? parseFloat(currentProfile.distance)
                         : null;
 
-                    const finalLocation = displayLocation || 'Nearby';
+                      // Recalculate distance if missing but we have coordinates
+                      if (
+                        dist === null &&
+                        currentLocation &&
+                        !isNaN(currentProfile.latitude) &&
+                        !isNaN(currentProfile.longitude)
+                      ) {
+                        dist = calculateDistance(
+                          currentLocation.latitude,
+                          currentLocation.longitude,
+                          currentProfile.latitude,
+                          currentProfile.longitude,
+                        );
+                      }
 
-                    return (
-                      <Text className="text-sm font-mona-sans-regular text-white">
-                        📍 {finalLocation}
-                        {distanceLabel ? ` • ${distanceLabel}` : ''}
-                      </Text>
-                    );
-                  })()}
-                </View>
-              </LinearGradient>
-            </View>
+                      const locationStr =
+                        currentProfile.city || currentProfile.location || '';
 
-            {/* 2. My Bio Card */}
-            {(currentProfile.bio || currentProfile.datingIntention) && (
-              <View style={styles.detailsSection}>
-                <Text style={styles.sectionHeader}>My bio</Text>
-                <Text style={styles.bioText}>
-                  {currentProfile.bio ||
-                    `Looking for ${
-                      currentProfile.datingIntention || 'something special'
-                    }!`}
-                </Text>
-              </View>
-            )}
+                      // Improved coordinate detection: check for numeric format like "28.6074, 77.0819"
+                      const isCoordinates =
+                        /^\s*[-+]?\d+(\.\d+)?\s*,\s*[-+]?\d+(\.\d+)?\s*$/.test(
+                          locationStr,
+                        );
 
-            {/* 3. About Me Badges */}
-            <View style={styles.detailsSection}>
-              <Text style={styles.sectionHeader}>About me</Text>
-              <View style={styles.badgeGrid}>
-                {currentProfile.height && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>
-                      📏 {currentProfile.height}
-                      {currentProfile.height.includes('cm') ? '' : ' cm'}
-                    </Text>
+                      const displayLocation = isCoordinates
+                        ? currentProfile.city || ''
+                        : locationStr;
+
+                      if (!displayLocation && (dist === null || dist < 0))
+                        return null;
+
+                      // For dating apps, huge distances (e.g. 12000km) look like a bug.
+                      // We show "Far away" for anything over 1000km.
+                      const distanceLabel =
+                        dist !== null && dist > 0
+                          ? dist > 1000
+                            ? 'Far away'
+                            : `${dist} km away`
+                          : null;
+
+                      const finalLocation = displayLocation || 'Nearby';
+
+                      return (
+                        <Text className="text-sm font-mona-sans-regular text-white">
+                          📍 {finalLocation}
+                          {distanceLabel ? ` • ${distanceLabel}` : ''}
+                        </Text>
+                      );
+                    })()}
                   </View>
-                )}
-                {currentProfile.gender && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>
-                      👤 {currentProfile.gender}
-                    </Text>
-                  </View>
-                )}
-                {currentProfile.drink && currentProfile.drink !== 'No' && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>
-                      🍷 {currentProfile.drink}
-                    </Text>
-                  </View>
-                )}
-                {currentProfile.religion && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>
-                      ⛪ {currentProfile.religion}
-                    </Text>
-                  </View>
-                )}
-                {currentProfile.politics && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>
-                      ⚖️ {currentProfile.politics}
-                    </Text>
-                  </View>
-                )}
+                </LinearGradient>
               </View>
-            </View>
 
-            {/* 4. Second Photo (if available) */}
-            {currentProfile.photos.length > 1 && (
-              <View style={styles.secondaryPhotoContainer}>
-                <Image
-                  source={{uri: currentProfile.photos[1]}}
-                  style={styles.secondaryPhoto}
-                  resizeMode="cover"
-                />
-              </View>
-            )}
-
-            {/* 5. Prompt 1 (if available) */}
-            {currentProfile.prompts && currentProfile.prompts[0] && (
-              <View style={styles.promptSection}>
-                <Text style={styles.promptQuestion}>
-                  {currentProfile.prompts[0].prompt || 'My bio'}
-                </Text>
-                <Text style={styles.promptAnswer}>
-                  {currentProfile.prompts[0].answer}
-                </Text>
-              </View>
-            )}
-
-            {/* 6. I'm looking for */}
-            {(currentProfile.datingIntention ||
-              currentProfile.relationshipType) && (
-              <View style={styles.detailsSection}>
-                <Text style={styles.sectionHeader}>I'm looking for</Text>
-                <View style={[styles.badge, styles.intentionBadge]}>
-                  <Text style={styles.intentionText}>
-                    🔍{' '}
-                    {currentProfile.datingIntention ||
-                      currentProfile.relationshipType}
-                  </Text>
-                </View>
-              </View>
-            )}
-
-            {/* 7. My interests */}
-            {currentProfile.interests &&
-              currentProfile.interests.length > 0 && (
+              {/* 2. My Bio Card */}
+              {(currentProfile.bio || currentProfile.datingIntention) && (
                 <View style={styles.detailsSection}>
-                  <Text style={styles.sectionHeader}>My interests</Text>
-                  <View style={styles.interestsContainer}>
-                    {currentProfile.interests.map((interest, index) => (
-                      <View key={index} style={styles.interestTag}>
-                        <Text style={styles.interestText}>{interest}</Text>
-                      </View>
-                    ))}
-                  </View>
+                  <Text style={styles.sectionHeader}>My bio</Text>
+                  <Text style={styles.bioText}>
+                    {currentProfile.bio ||
+                      `Looking for ${
+                        currentProfile.datingIntention || 'something special'
+                      }!`}
+                  </Text>
                 </View>
               )}
 
-            {/* 8. Prompt 2 (if available) */}
-            {currentProfile.prompts && currentProfile.prompts[1] && (
-              <View style={styles.promptSection}>
-                <Text style={styles.promptQuestion}>
-                  {currentProfile.prompts[1].prompt ||
-                    'Things we can talk about'}
-                </Text>
-                <Text style={styles.promptAnswer}>
-                  {currentProfile.prompts[1].answer}
-                </Text>
-              </View>
-            )}
-
-            {/* 9. Work & Education */}
-            {(currentProfile.jobTitle || currentProfile.school) && (
+              {/* 3. About Me Badges */}
               <View style={styles.detailsSection}>
-                <Text style={styles.sectionHeader}>Work & Education</Text>
-                <View style={styles.workRow}>
-                  {currentProfile.jobTitle && (
-                    <Text style={styles.workText}>
-                      💼 {currentProfile.jobTitle}
-                    </Text>
+                <Text style={styles.sectionHeader}>About me</Text>
+                <View style={styles.badgeGrid}>
+                  {currentProfile.height && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>
+                        📏 {currentProfile.height}
+                        {currentProfile.height.includes('cm') ? '' : ' cm'}
+                      </Text>
+                    </View>
                   )}
-                  {currentProfile.school && (
-                    <Text style={styles.workText}>
-                      🎓 {currentProfile.school}
-                    </Text>
+                  {currentProfile.gender && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>
+                        👤 {currentProfile.gender}
+                      </Text>
+                    </View>
+                  )}
+                  {currentProfile.drink && currentProfile.drink !== 'No' && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>
+                        🍷 {currentProfile.drink}
+                      </Text>
+                    </View>
+                  )}
+                  {currentProfile.religion && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>
+                        ⛪ {currentProfile.religion}
+                      </Text>
+                    </View>
+                  )}
+                  {currentProfile.politics && (
+                    <View style={styles.badge}>
+                      <Text style={styles.badgeText}>
+                        ⚖️ {currentProfile.politics}
+                      </Text>
+                    </View>
                   )}
                 </View>
               </View>
-            )}
 
-            {/* 10. Third Photo (if available) */}
-            {currentProfile.photos.length > 2 && (
-              <View style={styles.secondaryPhotoContainer}>
-                <Image
-                  source={{uri: currentProfile.photos[2]}}
-                  style={styles.secondaryPhoto}
-                  resizeMode="cover"
-                />
-              </View>
-            )}
-
-            {/* 11. Remaining Photos (if available) */}
-            {currentProfile.photos.length > 3 &&
-              currentProfile.photos.slice(3).map((photo, idx) => (
-                <View key={idx} style={styles.secondaryPhotoContainer}>
+              {/* 4. Second Photo (if available) */}
+              {currentProfile.photos.length > 1 && (
+                <View style={styles.secondaryPhotoContainer}>
                   <Image
-                    source={{uri: photo}}
+                    source={{uri: currentProfile.photos[1]}}
                     style={styles.secondaryPhoto}
                     resizeMode="cover"
                   />
                 </View>
-              ))}
+              )}
 
-            {/* Bottom Spacing */}
-            <View style={{height: 100}} />
-          </ScrollView>
-        </Animated.View>
+              {/* 5. Prompt 1 (if available) */}
+              {currentProfile.prompts && currentProfile.prompts[0] && (
+                <View style={styles.promptSection}>
+                  <Text style={styles.promptQuestion}>
+                    {currentProfile.prompts[0].prompt || 'My bio'}
+                  </Text>
+                  <Text style={styles.promptAnswer}>
+                    {currentProfile.prompts[0].answer}
+                  </Text>
+                </View>
+              )}
+
+              {/* 6. I'm looking for */}
+              {(currentProfile.datingIntention ||
+                currentProfile.relationshipType) && (
+                <View style={styles.detailsSection}>
+                  <Text style={styles.sectionHeader}>I'm looking for</Text>
+                  <View style={[styles.badge, styles.intentionBadge]}>
+                    <Text style={styles.intentionText}>
+                      🔍{' '}
+                      {currentProfile.datingIntention ||
+                        currentProfile.relationshipType}
+                    </Text>
+                  </View>
+                </View>
+              )}
+
+              {/* 7. My interests */}
+              {currentProfile.interests &&
+                currentProfile.interests.length > 0 && (
+                  <View style={styles.detailsSection}>
+                    <Text style={styles.sectionHeader}>My interests</Text>
+                    <View style={styles.interestsContainer}>
+                      {currentProfile.interests.map((interest, index) => (
+                        <View key={index} style={styles.interestTag}>
+                          <Text style={styles.interestText}>{interest}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+              {/* 8. Prompt 2 (if available) */}
+              {currentProfile.prompts && currentProfile.prompts[1] && (
+                <View style={styles.promptSection}>
+                  <Text style={styles.promptQuestion}>
+                    {currentProfile.prompts[1].prompt ||
+                      'Things we can talk about'}
+                  </Text>
+                  <Text style={styles.promptAnswer}>
+                    {currentProfile.prompts[1].answer}
+                  </Text>
+                </View>
+              )}
+
+              {/* 9. Work & Education */}
+              {(currentProfile.jobTitle || currentProfile.school) && (
+                <View style={styles.detailsSection}>
+                  <Text style={styles.sectionHeader}>Work & Education</Text>
+                  <View style={styles.workRow}>
+                    {currentProfile.jobTitle && (
+                      <Text style={styles.workText}>
+                        💼 {currentProfile.jobTitle}
+                      </Text>
+                    )}
+                    {currentProfile.school && (
+                      <Text style={styles.workText}>
+                        🎓 {currentProfile.school}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+              )}
+
+              {/* 10. Third Photo (if available) */}
+              {currentProfile.photos.length > 2 && (
+                <View style={styles.secondaryPhotoContainer}>
+                  <Image
+                    source={{uri: currentProfile.photos[2]}}
+                    style={styles.secondaryPhoto}
+                    resizeMode="cover"
+                  />
+                </View>
+              )}
+
+              {/* 11. Remaining Photos (if available) */}
+              {currentProfile.photos.length > 3 &&
+                currentProfile.photos.slice(3).map((photo, idx) => (
+                  <View key={idx} style={styles.secondaryPhotoContainer}>
+                    <Image
+                      source={{uri: photo}}
+                      style={styles.secondaryPhoto}
+                      resizeMode="cover"
+                    />
+                  </View>
+                ))}
+
+              {/* Bottom Spacing */}
+              <View style={{height: 100}} />
+            </ScrollView>
+          </Animated.View>
+        </GestureDetector>
       </View>
 
       {/* Like Remaining Popup */}
