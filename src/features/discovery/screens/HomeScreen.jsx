@@ -119,6 +119,22 @@ const HomeScreen = ({navigation}) => {
         console.log('Error getting initial location:', e);
       }
 
+      const needsReset = await AsyncStorage.getItem(
+        '@pryvo_needs_profile_reset',
+      );
+      if (needsReset === 'true') {
+        const userData = await AsyncStorage.getItem('@pryvo_user');
+        if (userData && userData !== 'undefined') {
+          try {
+            const user = JSON.parse(userData);
+            await resetPasses(user.id);
+          } catch (e) {
+            console.error('Error resetting passes on login:', e);
+          }
+        }
+        await AsyncStorage.removeItem('@pryvo_needs_profile_reset');
+      }
+
       const prefs = await loadDistancePrefs();
       await loadProfiles(
         prefs?.distance,

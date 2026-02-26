@@ -16,6 +16,7 @@ export async function signUp(payload) {
   // Store user data for easy access
   if (data?.user) {
     await AsyncStorage.setItem('@pryvo_user', JSON.stringify(data.user));
+    await AsyncStorage.setItem('@pryvo_needs_profile_reset', 'true');
   }
   return data;
 }
@@ -28,6 +29,7 @@ export async function signIn(payload) {
   // Store user data for easy access
   if (data?.user) {
     await AsyncStorage.setItem('@pryvo_user', JSON.stringify(data.user));
+    await AsyncStorage.setItem('@pryvo_needs_profile_reset', 'true');
   }
   return data;
 }
@@ -62,6 +64,7 @@ export async function googleSignIn() {
   }
   if (data?.user) {
     await AsyncStorage.setItem('@pryvo_user', JSON.stringify(data.user));
+    await AsyncStorage.setItem('@pryvo_needs_profile_reset', 'true');
   }
 
   return data;
@@ -70,6 +73,7 @@ export async function googleSignIn() {
 export async function signOut() {
   await clearTokens();
   await AsyncStorage.removeItem('@pryvo_user');
+  await AsyncStorage.removeItem('@pryvo_needs_profile_reset');
 }
 
 export async function changeEmail(userId, newEmail, password) {
