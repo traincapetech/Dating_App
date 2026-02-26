@@ -20,7 +20,7 @@ const LOCAL_API_URL = 'http://192.168.1.65:3000/api';
 const LOCAL_SOCKET_URL = 'http://192.168.1.65:3000';
 
 // Set to true for production, false for local development
-const IS_PRODUCTION = true;
+const IS_PRODUCTION = false;
 
 // Logging moved below after variables are defined
 
@@ -51,7 +51,7 @@ const getSocketUrl = () => {
   }
 
   // NOTE: If using an Android Emulator, uncomment the line below:
-  if (Platform.OS === 'android') return 'http://10.0.2.2:3000';
+   if (Platform.OS === 'android') return 'http://10.0.2.2:3000';
 
   // For iOS simulator, use localhost
   if (Platform.OS === 'ios') {

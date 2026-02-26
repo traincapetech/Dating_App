@@ -56,7 +56,8 @@ const REPORT_REASONS = [
 ];
 
 const ChatScreen = ({route, navigation}) => {
-  const {matchId, theirId, theirName, theirPhoto} = route.params || {};
+  const {matchId, theirId, theirName, theirPhoto, theirAge} =
+    route.params || {};
   const [currentUserId, setCurrentUserId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
@@ -693,7 +694,10 @@ const ChatScreen = ({route, navigation}) => {
               <View>
                 <View
                   style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
-                  <Text style={styles.headerTitle}>{theirName || 'Chat'}</Text>
+                  <Text style={styles.headerTitle}>
+                    {theirName || 'Chat'}
+                    {theirAge ? `, ${theirAge}` : ''}
+                  </Text>
                   {matchDetails && (
                     <CountdownTimer
                       expiresAt={matchDetails.expiresAt}

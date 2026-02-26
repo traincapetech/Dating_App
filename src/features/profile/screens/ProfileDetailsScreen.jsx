@@ -414,7 +414,11 @@ const ProfileDetailsScreen = () => {
     profile?.media?.media?.map(m => m.url).filter(Boolean) ||
     [];
   const name = profile?.basicInfo?.firstName || profile?.name || 'Add Name';
-  const age = profile?.age || null;
+  const age =
+    profile?.basicInfo?.age ||
+    profile?.personalDetails?.age ||
+    profile?.age ||
+    null;
   const bio = profile?.bio || '';
   const interests = profile?.interests || [];
   const location = profile?.basicInfo?.location || '';

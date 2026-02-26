@@ -171,6 +171,7 @@ const ChatsScreen = ({navigation}) => {
             theirId,
             theirName: item.theirName || `User ${theirId?.slice(0, 6) || ''}`,
             theirPhoto: item.theirPhoto,
+            theirAge: item.theirAge,
           })
         }>
         <View style={styles.avatarContainer}>
@@ -197,6 +198,7 @@ const ChatsScreen = ({navigation}) => {
               style={[styles.name, unreadCount > 0 && styles.nameBold]}
               numberOfLines={1}>
               {item.theirName || `User ${theirId?.slice(0, 6) || ''}`}
+              {item.theirAge ? `, ${item.theirAge}` : ''}
             </Text>
             {lastMessage && (
               <Text style={styles.timeText}>

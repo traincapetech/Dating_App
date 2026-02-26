@@ -201,6 +201,8 @@ const LikesScreen = ({navigation}) => {
           matchId: item._id,
           theirId: item.theirId,
           theirName: item.theirName,
+          theirPhoto: item.theirPhoto,
+          theirAge: item.theirAge,
         })
       }>
       <Image
@@ -214,6 +216,7 @@ const LikesScreen = ({navigation}) => {
       />
       <Text style={styles.matchName} numberOfLines={1}>
         {item.theirName?.split(' ')[0]}
+        {item.theirAge ? `, ${item.theirAge}` : ''}
       </Text>
     </Pressable>
   );

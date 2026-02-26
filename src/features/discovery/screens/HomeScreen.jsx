@@ -384,8 +384,12 @@ const HomeScreen = ({navigation}) => {
               return {
                 id: profile.userId || profile.id,
                 userId: profile.userId,
-                name: profile.name || 'Unknown',
-                age: profile.age || null,
+                name: profile.name || profile.basicInfo?.firstName || 'Unknown',
+                age:
+                  profile.basicInfo?.age ||
+                  profile.personalDetails?.age ||
+                  profile.age ||
+                  null,
                 distance: distance !== null ? `${distance}` : null,
                 bio: profile.bio || '',
                 interests: profile.interests || [],
@@ -618,7 +622,7 @@ const HomeScreen = ({navigation}) => {
             Alert.alert(
               'Daily Like Limit Reached',
               err?.message ||
-                'You\'ve reached your daily like limit. Come back tomorrow!',
+                "You've reached your daily like limit. Come back tomorrow!",
               [{text: 'OK'}],
             );
             // Reload daily like info
