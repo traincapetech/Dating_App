@@ -6,11 +6,21 @@ function computeAge(dob) {
   if (!dob) return null;
   let birthDate = new Date(dob);
 
-  // Handle DD-MM-YYYY or DD/MM/YYYY formats
-  if (Number.isNaN(birthDate.getTime())) {
-    const parts = dob.split(/[-/]/);
-    if (parts.length === 3 && parts[2].length === 4) {
-      birthDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+  if (Number.isNaN(birthDate.getTime()) && typeof dob === 'string') {
+    // try YYYYMMDD
+    if (dob.length === 8 && /^\d+$/.test(dob)) {
+      birthDate = new Date(
+        `${dob.substring(0, 4)}-${dob.substring(4, 6)}-${dob.substring(6, 8)}`,
+      );
+    } else {
+      const parts = dob.split(/[-/]/);
+      if (parts.length === 3) {
+        if (parts[2].length === 4) {
+          birthDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+        } else if (parts[0].length === 4 && parseInt(parts[1]) > 12) {
+          birthDate = new Date(`${parts[0]}-${parts[2]}-${parts[1]}`);
+        }
+      }
     }
   }
 
@@ -22,6 +32,9 @@ function computeAge(dob) {
   if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
     age--;
   }
+
+  if (age < 0 || age > 120) return null;
+
   return age;
 }
 
