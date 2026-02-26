@@ -26,6 +26,7 @@ import {
   likeUser,
   passUser,
   getDailyLikeInfo,
+  resetPasses,
 } from '../../../services/swipeActions';
 import {
   watchLocation,
@@ -520,7 +521,7 @@ const HomeScreen = ({navigation}) => {
   };
 
   const goToNextProfile = () => {
-    setCurrentIndex(prev => (prev + 1 >= profiles.length ? prev : prev + 1));
+    setCurrentIndex(prev => prev + 1);
     translateX.setValue(0);
     translateY.setValue(0);
     opacity.setValue(1);
@@ -756,6 +757,13 @@ const HomeScreen = ({navigation}) => {
               translateX.setValue(0);
               translateY.setValue(0);
               opacity.setValue(1);
+              if (currentUserId) {
+                try {
+                  await resetPasses(currentUserId);
+                } catch (e) {
+                  console.error('Failed to reset passes:', e);
+                }
+              }
               await loadProfiles();
             }}>
             <Text

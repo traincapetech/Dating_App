@@ -44,6 +44,16 @@ export const passUser = async (userId, passedUserId) => {
   }
 };
 
+export const resetPasses = async userId => {
+  try {
+    const res = await apiClient.post('/swipe/reset-passes', {userId});
+    return res;
+  } catch (err) {
+    console.error('Reset Passes Error:', err?.message || err);
+    throw err;
+  }
+};
+
 export const getLikesReceived = async (userId, isPremium = false) => {
   try {
     const res = await apiClient.get(
