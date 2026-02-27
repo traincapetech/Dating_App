@@ -7,7 +7,7 @@ export const typography = {
   fontFamilyMedium: 'System',
   fontFamilyBold: 'System',
   fontFamilySemiBold: 'System',
-  
+
   // Heading sizes - larger, bolder for dating app feel
   headings: {
     h1: 34, // Large hero text
@@ -15,26 +15,26 @@ export const typography = {
     h3: 24, // Card titles
     h4: 20, // Subsection titles
   },
-  
+
   // Body text sizes - optimized for readability
   body: {
     large: 17, // Primary body text
     medium: 15, // Secondary body text
     small: 13, // Tertiary text
   },
-  
+
   // Specialized text sizes
   caption: 11, // Small labels, timestamps
   button: 16, // Button text
   label: 13, // Form labels
-  
+
   // Line heights for better readability
   lineHeight: {
     tight: 1.2,
     normal: 1.5,
     relaxed: 1.75,
   },
-  
+
   // Letter spacing
   letterSpacing: {
     tight: -0.5,

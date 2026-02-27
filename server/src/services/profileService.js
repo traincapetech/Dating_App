@@ -11,14 +11,37 @@ import Match from '../models/Match.js';
 
 function computeAge(dob) {
   if (!dob) return null;
-  const birthDate = new Date(dob);
+  let birthDate = new Date(dob);
+
+  if (Number.isNaN(birthDate.getTime()) && typeof dob === 'string') {
+    // try YYYYMMDD
+    if (dob.length === 8 && /^\d+$/.test(dob)) {
+      birthDate = new Date(
+        `${dob.substring(0, 4)}-${dob.substring(4, 6)}-${dob.substring(6, 8)}`,
+      );
+    } else {
+      const parts = dob.split(/[-/]/);
+      if (parts.length === 3) {
+        if (parts[2].length === 4) {
+          birthDate = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+        } else if (parts[0].length === 4 && parseInt(parts[1]) > 12) {
+          birthDate = new Date(`${parts[0]}-${parts[2]}-${parts[1]}`);
+        }
+      }
+    }
+  }
+
   if (Number.isNaN(birthDate.getTime())) return null;
+
   const today = new Date();
   let age = today.getFullYear() - birthDate.getFullYear();
   const m = today.getMonth() - birthDate.getMonth();
   if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
     age--;
   }
+
+  if (age < 0 || age > 120) return null;
+
   return age;
 }
 
@@ -115,10 +138,18 @@ export async function getProfile(userId) {
 
   const ageFromDob = computeAge(profile.basicInfo?.dob);
 
+  // Determine active today status
+  const isActiveToday =
+    user?.showOnlineStatus &&
+    user?.lastActive &&
+    Date.now() - new Date(user.lastActive).getTime() < 24 * 60 * 60 * 1000;
+
   return {
     ...profile,
     name: fullName,
     email: user?.email || '',
+    showOnlineStatus: user?.showOnlineStatus !== false, // Defaults to true
+    isActiveToday: !!isActiveToday,
     // Extract age from profile if available
     age:
       ageFromDob ??
@@ -288,8 +319,8 @@ export async function getAllProfiles(excludeUserId = null, options = {}) {
     .filter(profile => {
       // Exclude current user
       if (excludeUserId && profile.userId === excludeUserId) return false;
-      // Exclude already swiped users
-      if (swipedUserIds.includes(profile.userId)) return false;
+      // Exclude already swiped users (TEMPORARILY DISABLED FOR TESTING)
+      // if (swipedUserIds.includes(profile.userId)) return false;
       // Exclude paused/hidden profiles
       if (profile.isPaused || profile.isHidden) return false;
       return true;
@@ -307,10 +338,17 @@ export async function getAllProfiles(excludeUserId = null, options = {}) {
 
       const ageFromDob = computeAge(profile.basicInfo?.dob);
 
+      // Determine active today status
+      const isActiveToday =
+        user?.showOnlineStatus &&
+        user?.lastActive &&
+        Date.now() - new Date(user.lastActive).getTime() < 24 * 60 * 60 * 1000;
+
       return {
         ...profile,
         name: fullName,
         email: user?.email || '',
+        isActiveToday: !!isActiveToday,
         // Extract age from profile if available
         age:
           ageFromDob ??

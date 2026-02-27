@@ -19,7 +19,7 @@ const ResetPasswordScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const email = route.params?.email || '';
-  
+
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -28,25 +28,25 @@ const ResetPasswordScreen = () => {
 
   const validate = () => {
     const newErrors = {};
-    
+
     if (!code.trim()) {
       newErrors.code = 'Reset code is required';
     } else if (code.trim().length !== 6) {
       newErrors.code = 'Reset code must be 6 digits';
     }
-    
+
     if (!newPassword) {
       newErrors.newPassword = 'New password is required';
     } else if (newPassword.length < 6) {
       newErrors.newPassword = 'Password must be at least 6 characters';
     }
-    
+
     if (!confirmPassword) {
       newErrors.confirmPassword = 'Please confirm your password';
     } else if (newPassword !== confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -64,7 +64,7 @@ const ResetPasswordScreen = () => {
     setIsSubmitting(true);
     try {
       await resetPassword(email, code.trim(), newPassword);
-      
+
       Alert.alert(
         'Success',
         'Your password has been reset successfully. Please sign in with your new password.',

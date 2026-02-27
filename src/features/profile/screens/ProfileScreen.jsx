@@ -6,9 +6,9 @@ import {
   ScrollView,
   Image,
   Pressable,
-  ActivityIndicator,
   RefreshControl,
   Dimensions,
+  Platform,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation, useFocusEffect} from '@react-navigation/native';
@@ -18,6 +18,7 @@ import {getProfile} from '../../../services/profile/profileService';
 import {useLoading} from '../../../context/LoadingContext';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
@@ -37,7 +38,6 @@ const ProfileScreen = () => {
 
   const loadProfile = async () => {
     try {
-      // Only show local loading if data is not already present and it's not a refresh
       if (!profile && !refreshing) {
         setLoading(true);
       }
@@ -86,7 +86,6 @@ const ProfileScreen = () => {
     loadProfile();
   };
 
-  // Calculate profile completion percentage
   const calculateCompletion = () => {
     if (!profile) return 0;
     let score = 0;
@@ -112,7 +111,6 @@ const ProfileScreen = () => {
 
   const completionPercentage = calculateCompletion();
 
-  // Extract profile data
   const photos =
     profile?.photos ||
     profile?.media?.media?.map(m => m.url).filter(Boolean) ||
@@ -127,21 +125,37 @@ const ProfileScreen = () => {
     ? lastName
       ? `${firstName} ${lastName}`
       : firstName
-    : 'Add Name';
+    : 'New User';
   const age =
     profile?.age ||
     profile?.personalDetails?.age ||
     profile?.basicInfo?.age ||
     null;
-  const bio = profile?.bio || profile?.profilePrompts?.bio || '';
-  const location = profile?.basicInfo?.location || '';
-  const interests = profile?.interests || profile?.lifestyle?.interests || [];
+  const location = profile?.basicInfo?.location || 'Add your location';
 
-  // Removed the local ActivityIndicator block so the UI structure is visible instantly
+  const renderMenuItem = (
+    icon,
+    title,
+    subtitle,
+    onPress,
+    iconColor = colors.primary,
+    bgColor = colors.primary + '15',
+  ) => (
+    <Pressable style={styles.menuItem} onPress={onPress}>
+      <View style={[styles.menuIconContainer, {backgroundColor: bgColor}]}>
+        <Icon name={icon} size={24} color={iconColor} />
+      </View>
+      <View style={styles.menuTextContainer}>
+        <Text style={styles.menuTitle}>{title}</Text>
+        {subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}
+      </View>
+      <Icon name="chevron-right" size={24} color={colors.textTertiary} />
+    </Pressable>
+  );
+
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <ScrollView
-        style={styles.flex}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
         refreshControl={
@@ -151,228 +165,169 @@ const ProfileScreen = () => {
             colors={[colors.primary]}
           />
         }>
-        {/* Header */}
+        {/* Top Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Profile</Text>
+          <Text style={styles.headerTitle}>Account</Text>
           <Pressable
-            style={styles.settingsButton}
+            style={styles.settingsBtn}
             onPress={() => navigation.navigate('Settings')}>
-            <Icon name="cog-outline" size={26} color={colors.textPrimary} />
+            <Icon name="cog-outline" size={24} color={colors.textPrimary} />
           </Pressable>
         </View>
 
-        {/* Profile Card - Main */}
-        <View style={styles.cardContainer}>
-          <Pressable
-            style={styles.profileCard}
-            onPress={() => navigation.navigate('ProfileDetails', {userId})}>
-            <View style={styles.profileHeader}>
-              {/* Photo Section */}
-              <View style={styles.photoContainer}>
-                <View style={styles.photoInner}>
-                  {photos.length > 0 ? (
-                    <Image
-                      source={{uri: photos[0]}}
-                      style={styles.profilePhoto}
-                    />
-                  ) : (
-                    <View style={styles.photoPlaceholder}>
-                      <Icon
-                        name="account"
-                        size={40}
-                        color={colors.textTertiary}
-                      />
-                    </View>
-                  )}
-                  {completionPercentage < 100 && (
-                    <LinearGradient
-                      colors={[colors.primary, '#8E2DE2']}
-                      style={styles.completionBadge}>
-                      <Text style={styles.completionText}>
-                        {completionPercentage}%
-                      </Text>
-                    </LinearGradient>
-                  )}
-                </View>
-              </View>
-
-              {/* Info Section */}
-              <View style={styles.profileInfo}>
-                <View style={styles.nameRow}>
-                  <Text style={styles.profileName} numberOfLines={1}>
-                    {name}
-                    {age ? `, ${age}` : ''}
-                  </Text>
-                  {completionPercentage === 100 && (
-                    <Icon
-                      name="check-decagram"
-                      size={20}
-                      color={colors.primary}
-                    />
-                  )}
-                </View>
-
-                {location ? (
-                  <View style={styles.locationRow}>
-                    <Icon
-                      name="map-marker-outline"
-                      size={14}
-                      color={colors.textSecondary}
-                    />
-                    <Text style={styles.locationText}>{location}</Text>
-                  </View>
-                ) : null}
-
-                <Text style={styles.bioPreview} numberOfLines={2}>
-                  {bio || 'Tell the world who you are...'}
-                </Text>
-              </View>
-
-              <Icon
-                name="chevron-right"
-                size={24}
-                color={colors.textTertiary}
-              />
-            </View>
-
-            {/* Profile Completion Bar */}
-            {completionPercentage < 100 && (
-              <View style={styles.progressSection}>
-                <View style={styles.progressHeader}>
-                  <Text style={styles.progressLabel}>Profile Strength</Text>
-                  <Text style={styles.progressValue}>
-                    {completionPercentage}%
-                  </Text>
-                </View>
-                <View style={styles.progressBarBg}>
-                  <LinearGradient
-                    colors={[colors.primary, '#8E2DE2']}
-                    start={{x: 0, y: 0}}
-                    end={{x: 1, y: 0}}
-                    style={[
-                      styles.progressBarFill,
-                      {width: `${completionPercentage}%`},
-                    ]}
-                  />
-                </View>
-                <Pressable
-                  style={styles.completeBtn}
-                  onPress={() =>
-                    navigation.navigate('ProfileDetails', {userId})
-                  }>
-                  <LinearGradient
-                    colors={[colors.primary, '#8E2DE2']}
-                    style={styles.completeBtnGradient}>
-                    <Text style={styles.completeBtnText}>Complete Profile</Text>
-                  </LinearGradient>
-                </Pressable>
+        {/* Centered Identity Section */}
+        <View style={styles.identitySection}>
+          <View style={styles.avatarWrapper}>
+            {photos.length > 0 ? (
+              <Image source={{uri: photos[0]}} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                <Icon name="account" size={50} color={colors.textTertiary} />
               </View>
             )}
-          </Pressable>
-        </View>
 
-        {/* Action Grid */}
-        <View style={styles.actionGrid}>
-          <Pressable
-            style={styles.gridItem}
-            onPress={() => navigation.navigate('ProfileDetails', {userId})}>
-            <View style={[styles.gridIconBox, {backgroundColor: '#F3E8FF'}]}>
-              <Icon name="pencil-outline" size={24} color={colors.primary} />
-            </View>
-            <Text style={styles.gridText}>Edit Profile</Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.gridItem}
-            onPress={() => navigation.navigate('Settings')}>
-            <View style={[styles.gridIconBox, {backgroundColor: '#E0F2FE'}]}>
-              <Icon name="shield-check-outline" size={24} color="#0284C7" />
-            </View>
-            <Text style={styles.gridText}>Safety</Text>
-          </Pressable>
-
-          <Pressable
-            style={styles.gridItem}
-            onPress={() => navigation.navigate('HelpCentre')}>
-            <View style={[styles.gridIconBox, {backgroundColor: '#FEF3C7'}]}>
-              <Icon name="help-circle-outline" size={24} color="#D97706" />
-            </View>
-            <Text style={styles.gridText}>Help</Text>
-          </Pressable>
-        </View>
-
-        {/* Content Sections */}
-        <View style={styles.contentSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Profile Preview</Text>
-            <Pressable
-              onPress={() => navigation.navigate('ProfileDetails', {userId})}>
-              <Text style={styles.seeAllText}>Manage</Text>
-            </Pressable>
-          </View>
-
-          {photos.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.photoScroll}>
-              {photos.map((url, idx) => (
-                <Image
-                  key={idx}
-                  source={{uri: url}}
-                  style={styles.scrollPhoto}
-                />
-              ))}
-              <Pressable
-                style={styles.addPhotoCard}
-                onPress={() => navigation.navigate('ProfileDetails', {userId})}>
-                <Icon name="plus" size={30} color={colors.textTertiary} />
-                <Text style={styles.addPhotoText}>Add</Text>
-              </Pressable>
-            </ScrollView>
-          ) : (
-            <View style={styles.emptyPhotos}>
-              <Icon
-                name="camera-outline"
-                size={32}
-                color={colors.textTertiary}
-              />
-              <Text style={styles.emptyText}>
-                Add photos to get more likes!
-              </Text>
-            </View>
-          )}
-
-          {interests.length > 0 && (
-            <View style={styles.interestSection}>
-              <Text style={styles.subTitle}>Interests</Text>
-              <View style={styles.tagContainer}>
-                {interests.slice(0, 8).map((tag, idx) => (
-                  <View key={idx} style={styles.tag}>
-                    <Text style={styles.tagText}>{tag}</Text>
-                  </View>
-                ))}
+            {/* Completion or Verfied Badge */}
+            {completionPercentage === 100 ? (
+              <View style={[styles.badge, {backgroundColor: '#10B981'}]}>
+                <Icon name="check-decagram" size={16} color="#FFF" />
               </View>
-            </View>
-          )}
+            ) : (
+              <LinearGradient
+                colors={[colors.primary, '#8E2DE2']}
+                style={styles.badge}>
+                <Text style={styles.badgeText}>{completionPercentage}%</Text>
+              </LinearGradient>
+            )}
+          </View>
+
+          <Text style={styles.profileName}>
+            {name}
+            {age ? `, ${age}` : ''}
+          </Text>
+          <View style={styles.locationRow}>
+            <Icon
+              name="map-marker-outline"
+              size={16}
+              color={colors.textSecondary}
+            />
+            <Text style={styles.locationText}>{location}</Text>
+          </View>
         </View>
 
-        {/* Bottom Banner */}
-        <LinearGradient
-          colors={['#1e1e2e', '#111119']}
-          style={styles.premiumBanner}>
-          <View style={styles.premiumContent}>
-            <View>
-              <Text style={styles.premiumTitle}>Pryvo Gold</Text>
-              <Text style={styles.premiumDesc}>Get unlimited likes & more</Text>
-            </View>
-            <Pressable style={styles.upgradeBtn}>
-              <Text style={styles.upgradeText}>Upgrade</Text>
-            </Pressable>
+        {/* Quick Stats Grid */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statCard}>
+            <Icon
+              name="heart-multiple"
+              size={28}
+              color="#EF4444"
+              style={styles.statIcon}
+            />
+            <Text style={styles.statValue}>12</Text>
+            <Text style={styles.statLabel}>Likes</Text>
           </View>
-        </LinearGradient>
+          <View style={styles.statCard}>
+            <Icon
+              name="account-heart"
+              size={28}
+              color="#8B5CF6"
+              style={styles.statIcon}
+            />
+            <Text style={styles.statValue}>5</Text>
+            <Text style={styles.statLabel}>Matches</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Icon
+              name="lightning-bolt"
+              size={28}
+              color="#F59E0B"
+              style={styles.statIcon}
+            />
+            <Text style={styles.statValue}>0</Text>
+            <Text style={styles.statLabel}>Boosts</Text>
+          </View>
+        </View>
 
-        <View style={{height: 100}} />
+        {/* Subscription Hub */}
+        <Pressable style={styles.premiumCard}>
+          <LinearGradient
+            colors={['#1F2937', '#111827']}
+            start={{x: 0, y: 0}}
+            end={{x: 1, y: 1}}
+            style={styles.premiumGradient}>
+            <View style={styles.premiumHeader}>
+              <Icon name="crown" size={24} color="#FBBF24" />
+              <Text style={styles.premiumTitle}>Pryvo Gold</Text>
+            </View>
+            <Text style={styles.premiumDesc}>
+              Unlock who liked you, advanced filters, and unlimited swipes to
+              find your perfect match faster.
+            </Text>
+            <View style={styles.premiumBtn}>
+              <Text style={styles.premiumBtnText}>Upgrade Now</Text>
+            </View>
+          </LinearGradient>
+        </Pressable>
+
+        {/* Structured Menu */}
+        <View style={styles.menuSection}>
+          <Text style={styles.sectionTitle}>Profile & Preferences</Text>
+          <View style={styles.menuCard}>
+            {renderMenuItem(
+              'account-edit',
+              'Edit Profile',
+              'Photos, bio, and interests',
+              () => navigation.navigate('ProfileDetails', {userId}),
+              colors.primary,
+              colors.primary + '15',
+            )}
+            <View style={styles.menuDivider} />
+            {renderMenuItem(
+              'tune-variant',
+              'Match Preferences',
+              'Age, distance, and more',
+              () => navigation.navigate('Settings'),
+              '#8B5CF6',
+              '#8B5CF615',
+            )}
+          </View>
+        </View>
+
+        <View style={styles.menuSection}>
+          <Text style={styles.sectionTitle}>Safety & Support</Text>
+          <View style={styles.menuCard}>
+            {renderMenuItem(
+              'shield-check',
+              'Safety Centre',
+              'Guidelines and resources',
+              () => navigation.navigate('ReportProblem'),
+              '#10B981',
+              '#10B98115',
+            )}
+            <View style={styles.menuDivider} />
+            {renderMenuItem(
+              'help-circle',
+              'Help & Centre',
+              'FAQs and contact support',
+              () => navigation.navigate('HelpCentre'),
+              '#F59E0B',
+              '#F59E0B15',
+            )}
+            <View style={styles.menuDivider} />
+            {renderMenuItem(
+              'cog',
+              'App Settings',
+              'Notifications, emails, account',
+              () => navigation.navigate('Settings'),
+              '#6B7280',
+              '#F3F4F6',
+            )}
+          </View>
+        </View>
+
+        <View style={styles.footerInfo}>
+          <Text style={styles.versionText}>Pryvo Version 1.0.0</Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -381,314 +336,239 @@ const ProfileScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFD',
-  },
-  centerContent: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  flex: {
-    flex: 1,
+    backgroundColor: '#FAFAFB',
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 60,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 15,
+    paddingTop: 16,
+    paddingBottom: 10,
   },
   headerTitle: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: colors.textPrimary,
-    letterSpacing: -0.5,
+    fontSize: 28,
+    fontFamily: typography.fontFamilyBold,
+    color: '#111827',
   },
-  settingsButton: {
-    padding: 8,
-  },
-  cardContainer: {
-    paddingHorizontal: 20,
-    marginBottom: 25,
-  },
-  profileCard: {
+  settingsBtn: {
+    padding: 10,
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 20,
-    elevation: 4,
+    borderRadius: 50,
+    elevation: 2,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 10},
-    shadowOpacity: 0.05,
-    shadowRadius: 15,
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
-  profileHeader: {
-    flexDirection: 'row',
+  identitySection: {
     alignItems: 'center',
+    paddingVertical: 20,
+    paddingHorizontal: 20,
   },
-  photoContainer: {
-    marginRight: 15,
-  },
-  photoInner: {
+  avatarWrapper: {
     position: 'relative',
-    padding: 3,
-    borderRadius: 45,
-    backgroundColor: '#F3E8FF',
+    marginBottom: 16,
   },
-  profilePhoto: {
-    width: 75,
-    height: 75,
-    borderRadius: 38,
+  avatar: {
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    borderWidth: 4,
+    borderColor: '#FFFFFF',
   },
-  photoPlaceholder: {
-    width: 75,
-    height: 75,
-    borderRadius: 38,
+  avatarPlaceholder: {
     backgroundColor: '#F3F4F6',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  completionBadge: {
+  badge: {
     position: 'absolute',
-    bottom: -2,
-    right: -2,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 2,
+    bottom: 4,
+    right: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 3,
     borderColor: '#FFFFFF',
-  },
-  completionText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  profileInfo: {
-    flex: 1,
-  },
-  nameRow: {
-    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 2,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: typography.fontFamilyBold,
   },
   profileName: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontSize: 26,
+    fontFamily: typography.fontFamilyBold,
+    color: '#111827',
+    marginBottom: 6,
   },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginBottom: 6,
+    gap: 6,
   },
   locationText: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    fontWeight: '500',
-  },
-  bioPreview: {
-    fontSize: 14,
+    fontSize: 15,
+    fontFamily: typography.fontFamilyMedium,
     color: '#6B7280',
-    lineHeight: 18,
   },
-  progressSection: {
-    marginTop: 20,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  progressLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#4B5563',
-  },
-  progressValue: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.primary,
-  },
-  progressBarBg: {
-    height: 8,
-    backgroundColor: '#F3F4F6',
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 15,
-  },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 4,
-  },
-  completeBtn: {
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  completeBtnGradient: {
-    paddingVertical: 12,
-    alignItems: 'center',
-  },
-  completeBtnText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  actionGrid: {
+  statsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 20,
+    justifyContent: 'space-between',
     gap: 12,
     marginBottom: 30,
   },
-  gridItem: {
+  statCard: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 15,
+    borderRadius: 24,
+    paddingVertical: 20,
     alignItems: 'center',
-    elevation: 2,
+    elevation: 4,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.02)',
   },
-  gridIconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
+  statIcon: {
     marginBottom: 8,
   },
-  gridText: {
+  statValue: {
+    fontSize: 22,
+    fontFamily: typography.fontFamilyBold,
+    color: '#111827',
+    marginBottom: 2,
+  },
+  statLabel: {
     fontSize: 13,
-    fontWeight: '600',
-    color: '#374151',
+    fontFamily: typography.fontFamilyMedium,
+    color: '#6B7280',
   },
-  contentSection: {
-    paddingHorizontal: 20,
-    marginBottom: 30,
+  premiumCard: {
+    marginHorizontal: 20,
+    marginBottom: 32,
+    borderRadius: 24,
+    overflow: 'hidden',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 8},
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
   },
-  sectionHeader: {
+  premiumGradient: {
+    padding: 24,
+  },
+  premiumHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
+    gap: 10,
+    marginBottom: 12,
+  },
+  premiumTitle: {
+    fontSize: 22,
+    fontFamily: typography.fontFamilyBold,
+    color: '#FFFFFF',
+  },
+  premiumDesc: {
+    fontSize: 14,
+    fontFamily: typography.fontFamilyRegular,
+    color: 'rgba(255,255,255,0.8)',
+    lineHeight: 22,
+    marginBottom: 20,
+  },
+  premiumBtn: {
+    backgroundColor: '#FBBF24',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 100,
+  },
+  premiumBtnText: {
+    fontSize: 15,
+    fontFamily: typography.fontFamilyBold,
+    color: '#78350F',
+  },
+  menuSection: {
+    paddingHorizontal: 20,
+    marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1F2937',
+    fontSize: 16,
+    fontFamily: typography.fontFamilyBold,
+    color: '#4B5563',
+    marginBottom: 12,
+    marginLeft: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  seeAllText: {
-    fontSize: 14,
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  photoScroll: {
-    flexDirection: 'row',
-  },
-  scrollPhoto: {
-    width: 100,
-    height: 125,
-    borderRadius: 16,
-    marginRight: 12,
-    backgroundColor: '#F3F4F6',
-  },
-  addPhotoCard: {
-    width: 100,
-    height: 125,
-    borderRadius: 16,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    borderStyle: 'dashed',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-  },
-  addPhotoText: {
-    marginTop: 4,
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.textTertiary,
-  },
-  emptyPhotos: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 20,
-    padding: 30,
-    alignItems: 'center',
+  menuCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    paddingVertical: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
     borderWidth: 1,
     borderColor: '#F3F4F6',
   },
-  emptyText: {
-    marginTop: 10,
-    fontSize: 14,
-    color: '#9CA3AF',
-    textAlign: 'center',
-  },
-  interestSection: {
-    marginTop: 25,
-  },
-  subTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#4B5563',
-    marginBottom: 12,
-  },
-  tagContainer: {
+  menuItem: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  tag: {
-    backgroundColor: '#F3E8FF',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
-  },
-  tagText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.primary,
-  },
-  premiumBanner: {
-    marginHorizontal: 20,
-    borderRadius: 24,
-    padding: 24,
-    marginTop: 10,
-  },
-  premiumContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-  },
-  premiumTitle: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '800',
-  },
-  premiumDesc: {
-    color: '#A1A1AA',
-    fontSize: 13,
-    marginTop: 2,
-  },
-  upgradeBtn: {
-    backgroundColor: colors.primary,
     paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 14,
+    paddingVertical: 16,
   },
-  upgradeText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: '700',
+  menuIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  menuTextContainer: {
+    flex: 1,
+  },
+  menuTitle: {
+    fontSize: 16,
+    fontFamily: typography.fontFamilyBold,
+    color: '#1F2937',
+    marginBottom: 2,
+  },
+  menuSubtitle: {
+    fontSize: 13,
+    fontFamily: typography.fontFamilyRegular,
+    color: '#6B7280',
+  },
+  menuDivider: {
+    height: 1,
+    backgroundColor: '#F3F4F6',
+    marginLeft: 84, // Align with text
+  },
+  footerInfo: {
+    alignItems: 'center',
+    marginTop: 20,
+    marginBottom: 40,
+  },
+  versionText: {
+    fontSize: 13,
+    fontFamily: typography.fontFamilyMedium,
+    color: '#9CA3AF',
   },
 });
 

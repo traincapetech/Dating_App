@@ -17,6 +17,7 @@ const Tab = createBottomTabNavigator();
 
 const TabNavigator = () => {
   const [likesCount, setLikesCount] = useState(0);
+  const [userName, setUserName] = useState('User');
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
@@ -26,20 +27,43 @@ const TabNavigator = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Register for push notifications on mount
+  // Register for push notifications on mount and extract name
   useEffect(() => {
-    const registerPush = async () => {
+    const initializeUser = async () => {
       try {
         const userData = await AsyncStorage.getItem('@pryvo_user');
         if (userData && userData !== 'undefined') {
           const user = JSON.parse(userData);
+
+          // Fallback to local storage name first
+          let nameToDisplay = user.firstName || user.name || 'Profile';
+          setUserName(nameToDisplay);
+
+          // Fetch the full profile to get the most accurate name
+          try {
+            const {getProfile} = require('../services/profile/profileService');
+            const response = await getProfile(user.id);
+            const profileData = response?.profile || response;
+            if (profileData) {
+              const firstName =
+                profileData?.basicInfo?.firstName ||
+                profileData?.basicInfo?.name ||
+                profileData?.name;
+              if (firstName) {
+                setUserName(firstName);
+              }
+            }
+          } catch (e) {
+            console.log('Failed to fetch profile name for tab:', e);
+          }
+
           await enableNotifications(user.id);
         }
       } catch (error) {
-        console.log('Failed to register push notifications:', error);
+        console.log('Failed to initialize user on TabNavigator:', error);
       }
     };
-    registerPush();
+    initializeUser();
   }, []);
 
   const loadLikesCount = async () => {
@@ -88,7 +112,7 @@ const TabNavigator = () => {
           tabBarIcon: ({color, size}) => (
             <MaterialCommunityIcons
               name="home"
-              size={size}
+              size={25}
               color={color}
               style={styles.inputIcon}
             />
@@ -106,7 +130,7 @@ const TabNavigator = () => {
             <View>
               <MaterialCommunityIcons
                 name="heart"
-                size={size}
+                size={25}
                 color={color}
                 style={styles.inputIcon}
               />
@@ -128,7 +152,7 @@ const TabNavigator = () => {
           tabBarIcon: ({color, size}) => (
             <MaterialCommunityIcons
               name="chat"
-              size={size}
+              size={25}
               color={color}
               style={styles.inputIcon}
             />
@@ -139,10 +163,11 @@ const TabNavigator = () => {
         name="User"
         component={ProfileScreen}
         options={{
+          tabBarLabel: userName,
           tabBarIcon: ({color, size}) => (
             <MaterialCommunityIcons
               name="account-circle"
-              size={size}
+              size={25}
               color={color}
               style={styles.inputIcon}
             />

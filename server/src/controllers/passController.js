@@ -181,12 +181,10 @@ export const resetPasses = async (req, res) => {
     res.json({success: true, message: 'Passes reset successfully'});
   } catch (error) {
     console.error('Error resetting passes:', error);
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: 'Error resetting passes',
-        error: error.message,
-      });
+    res.status(500).json({
+      success: false,
+      message: 'Error resetting passes',
+      error: error.message,
+    });
   }
 };

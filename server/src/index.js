@@ -23,7 +23,7 @@ const startServer = async () => {
       console.log(`🚀 API & Socket Server running on port ${config.port}`);
 
       // Log storage configuration
-      console.log(`\n[Storage Configuration]`);
+      console.log('\n[Storage Configuration]');
       console.log(`Storage driver: ${config.storageDriver}`);
       if (config.storageDriver === 'r2') {
         console.log(
@@ -60,7 +60,7 @@ const startServer = async () => {
       }
 
       // Email Configuration
-      console.log(`\n[Email Configuration]`);
+      console.log('\n[Email Configuration]');
       console.log(`Email provider: ${config.email.provider}`);
       console.log(`SMTP Host: ${config.email.host}`);
       console.log(`SMTP Port: ${config.email.port}`);

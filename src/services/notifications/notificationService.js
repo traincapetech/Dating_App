@@ -5,20 +5,7 @@ import apiClient from '../api/client.js';
 const NOTIFICATION_TOKEN_KEY = '@pryvo_notification_token';
 const NOTIFICATION_PERMISSION_KEY = '@pryvo_notification_permission';
 
-// Helper to check if Firebase native module is available
-const isFirebaseAvailable = () => {
-  try {
-    if (Platform.OS === 'web') return false;
-    // Check if the native module is actually linked and has expected properties
-    const module = NativeModules.RNFBAppModule;
-    return !!(
-      module &&
-      (module.registerContext || module.initializeFirebaseApp)
-    );
-  } catch (error) {
-    return false;
-  }
-};
+import messaging from '@react-native-firebase/messaging';
 
 // Hardcoded AuthorizationStatus to avoid accessing messaging.AuthorizationStatus when missing
 const AuthorizationStatus = {
@@ -28,26 +15,9 @@ const AuthorizationStatus = {
   PROVISIONAL: 2,
 };
 
-// Safe wrapper for messaging()
+// Use messaging directly
 const getMessaging = () => {
-  if (!isFirebaseAvailable()) {
-    // Return a mock object to prevent crashes
-    return {
-      isMock: true,
-      requestPermission: async () => AuthorizationStatus.NOT_DETERMINED,
-      hasPermission: async () => AuthorizationStatus.NOT_DETERMINED,
-      getToken: async () => null,
-      deleteToken: async () => {},
-      onMessage: () => () => {},
-      onNotificationOpenedApp: () => {},
-      getInitialNotification: async () => null,
-      subscribeToTopic: async () => {},
-      unsubscribeFromTopic: async () => {},
-      AuthorizationStatus, // Include status enum in mock
-    };
-  }
-  // Lazy require to prevent fatal error upon top-level import
-  return require('@react-native-firebase/messaging').default();
+  return messaging();
 };
 
 // Request notification permissions
@@ -72,12 +42,10 @@ export async function requestNotificationPermission() {
       return true;
     }
 
-    if (!isFirebaseAvailable()) return false;
-
     const authStatus = await getMessaging().requestPermission();
     const enabled =
-      authStatus === AuthorizationStatus.AUTHORIZED ||
-      authStatus === AuthorizationStatus.PROVISIONAL;
+      authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+      authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
     await AsyncStorage.setItem(
       NOTIFICATION_PERMISSION_KEY,
@@ -104,12 +72,10 @@ export async function checkNotificationPermission() {
       return true; // Android < 13 implies granted
     }
 
-    if (!isFirebaseAvailable()) return false;
-
     const authStatus = await getMessaging().hasPermission();
     return (
-      authStatus === AuthorizationStatus.AUTHORIZED ||
-      authStatus === AuthorizationStatus.PROVISIONAL
+      authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+      authStatus === messaging.AuthorizationStatus.PROVISIONAL
     );
   } catch (error) {
     console.error('Error checking notification permission:', error);

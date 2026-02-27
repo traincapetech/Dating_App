@@ -42,7 +42,7 @@ const ForgotPasswordScreen = () => {
     setIsSubmitting(true);
     try {
       const result = await forgotPassword(email.trim().toLowerCase());
-      
+
       Alert.alert(
         'Reset Code Sent',
         result.message || 'If an account exists with this email, a password reset code has been sent.',

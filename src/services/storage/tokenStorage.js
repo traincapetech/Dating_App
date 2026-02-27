@@ -12,7 +12,7 @@ export async function storeTokens({accessToken, refreshToken}) {
     ops.push(AsyncStorage.setItem(REFRESH_KEY, refreshToken));
   }
   await Promise.all(ops);
-} 
+}
 
 export function getAccessToken() {
   return AsyncStorage.getItem(TOKEN_KEY);

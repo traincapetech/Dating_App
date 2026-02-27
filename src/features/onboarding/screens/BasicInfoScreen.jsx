@@ -26,6 +26,7 @@ import {
 } from '../../../services/notifications';
 import {saveBasicInfo} from '../../../services/profile/profileService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const BasicInfoScreen = () => {
   const navigation = useNavigation();
@@ -43,6 +44,7 @@ const BasicInfoScreen = () => {
     showGenderOnProfile: true,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const [emailOTP, setEmailOTP] = useState(['', '', '', '', '', '']);
   const [isSendingOTP, setIsSendingOTP] = useState(false);
   const [isVerifyingOTP, setIsVerifyingOTP] = useState(false);
@@ -452,25 +454,51 @@ const BasicInfoScreen = () => {
             <Text style={styles.hintText}>
               You must be at least 18 years old to use Pryvo
             </Text>
-            <TextInput
-              value={form.dob}
-              onChangeText={value => {
-                handleChange('dob', value);
-                // Validate age when DOB is entered
-                if (value.length >= 10) {
-                  const ageCheck = verifyAge(value);
-                  if (!ageCheck.valid) {
-                    Alert.alert('Age Verification Required', ageCheck.message, [
-                      {text: 'OK'},
-                    ]);
-                  }
-                }
-              }}
-              placeholder="1998-05-12"
-              keyboardType="numbers-and-punctuation"
+            <Pressable
               style={styles.input}
-              placeholderTextColor={colors.textSecondary}
-            />
+              onPress={() => setShowDatePicker(true)}>
+              <Text
+                style={{
+                  color: form.dob ? colors.textPrimary : colors.textSecondary,
+                  fontSize: typography.body.medium,
+                }}>
+                {form.dob || 'YYYY-MM-DD'}
+              </Text>
+            </Pressable>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={
+                  form.dob
+                    ? new Date(`${form.dob}T12:00:00`)
+                    : (() => {
+                        const d = new Date();
+                        d.setFullYear(d.getFullYear() - 18);
+                        return d;
+                      })()
+                }
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                maximumDate={(() => {
+                  const d = new Date();
+                  d.setFullYear(d.getFullYear() - 18);
+                  return d;
+                })()}
+                onChange={(event, selectedDate) => {
+                  if (Platform.OS === 'android') setShowDatePicker(false);
+                  if (selectedDate && event.type !== 'dismissed') {
+                    const year = selectedDate.getFullYear();
+                    const month = String(selectedDate.getMonth() + 1).padStart(
+                      2,
+                      '0',
+                    );
+                    const day = String(selectedDate.getDate()).padStart(2, '0');
+                    const formattedDate = `${year}-${month}-${day}`;
+                    handleChange('dob', formattedDate);
+                  }
+                }}
+              />
+            )}
             {form.dob.length >= 10 &&
               (() => {
                 const ageCheck = verifyAge(form.dob);
