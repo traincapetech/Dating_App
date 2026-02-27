@@ -1,15 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Text, View, StyleSheet } from 'react-native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, {useState, useEffect} from 'react';
+import {Text, View, StyleSheet} from 'react-native';
+import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import HomeScreen from '../features/discovery/screens/HomeScreen';
 import LikesScreen from '../features/likes/screens/LikesScreen';
 import ChatsScreen from '../features/messages/screens/ChatsScreen';
 import ProfileScreen from '../features/profile/screens/ProfileScreen';
 import SettingsScreen from '../features/settings/screens/SettingsScreen';
-import { colors, typography } from '../theme';
-import { getLikesCount } from '../services/swipeActions';
+import {colors, typography} from '../theme';
+import {getLikesCount} from '../services/swipeActions';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {enableNotifications} from '../services/notifications';
 
@@ -85,7 +85,7 @@ const TabNavigator = () => {
         name="Home"
         component={HomeScreen}
         options={{
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({color, size}) => (
             <MaterialCommunityIcons
               name="home"
               size={size}
@@ -102,7 +102,7 @@ const TabNavigator = () => {
           tabPress: () => loadLikesCount(),
         }}
         options={{
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({color, size}) => (
             <View>
               <MaterialCommunityIcons
                 name="heart"
@@ -125,7 +125,7 @@ const TabNavigator = () => {
         name="Chats"
         component={ChatsScreen}
         options={{
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({color, size}) => (
             <MaterialCommunityIcons
               name="chat"
               size={size}
@@ -139,7 +139,7 @@ const TabNavigator = () => {
         name="User"
         component={ProfileScreen}
         options={{
-          tabBarIcon: ({ color, size }) => (
+          tabBarIcon: ({color, size}) => (
             <MaterialCommunityIcons
               name="account-circle"
               size={size}

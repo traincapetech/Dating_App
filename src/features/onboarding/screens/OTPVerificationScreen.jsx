@@ -89,55 +89,55 @@ const OTPVerificationScreen = () => {
         <ScrollView
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <Text style={styles.title}>OTP Verification</Text>
-          <Text style={styles.subtitle}>
-            We've sent a verification code to {phone}
-          </Text>
-        </View>
+          <View style={styles.header}>
+            <Text style={styles.title}>OTP Verification</Text>
+            <Text style={styles.subtitle}>
+              We've sent a verification code to {phone}
+            </Text>
+          </View>
 
-        <View style={styles.otpContainer}>
-          {otp.map((digit, index) => (
-            <TextInput
-              key={index}
-              ref={ref => (inputRefs.current[index] = ref)}
-              value={digit}
-              onChangeText={value => handleOtpChange(value, index)}
-              onKeyPress={e => handleKeyPress(e, index)}
-              keyboardType="number-pad"
-              maxLength={1}
-              style={styles.otpInput}
-              textAlign="center"
-              returnKeyType={index === 5 ? 'done' : 'next'}
-              onSubmitEditing={index === 5 ? handleVerify : undefined}
-            />
-          ))}
-        </View>
+          <View style={styles.otpContainer}>
+            {otp.map((digit, index) => (
+              <TextInput
+                key={index}
+                ref={ref => (inputRefs.current[index] = ref)}
+                value={digit}
+                onChangeText={value => handleOtpChange(value, index)}
+                onKeyPress={e => handleKeyPress(e, index)}
+                keyboardType="number-pad"
+                maxLength={1}
+                style={styles.otpInput}
+                textAlign="center"
+                returnKeyType={index === 5 ? 'done' : 'next'}
+                onSubmitEditing={index === 5 ? handleVerify : undefined}
+              />
+            ))}
+          </View>
 
-        <Pressable
-          style={[
-            styles.primaryButton,
-            (!isOtpComplete || isSubmitting) && styles.primaryButtonDisabled,
-          ]}
-          onPress={handleVerify}
-          disabled={!isOtpComplete || isSubmitting}>
-          {isSubmitting ? (
-            <ActivityIndicator color={colors.surface} />
-          ) : (
-            <Text style={styles.primaryButtonText}>Verify</Text>
+          <Pressable
+            style={[
+              styles.primaryButton,
+              (!isOtpComplete || isSubmitting) && styles.primaryButtonDisabled,
+            ]}
+            onPress={handleVerify}
+            disabled={!isOtpComplete || isSubmitting}>
+            {isSubmitting ? (
+              <ActivityIndicator color={colors.surface} />
+            ) : (
+              <Text style={styles.primaryButtonText}>Verify</Text>
+            )}
+          </Pressable>
+
+          {phone && (
+            <Pressable style={styles.resendButton} onPress={handleSkip}>
+              <Text style={styles.resendText}>Skip verification</Text>
+            </Pressable>
           )}
-        </Pressable>
-
-        {phone && (
-          <Pressable style={styles.resendButton} onPress={handleSkip}>
-            <Text style={styles.resendText}>Skip verification</Text>
-          </Pressable>
-        )}
-        {!phone && (
-          <Pressable style={styles.resendButton}>
-            <Text style={styles.resendText}>Resend code</Text>
-          </Pressable>
-        )}
+          {!phone && (
+            <Pressable style={styles.resendButton}>
+              <Text style={styles.resendText}>Resend code</Text>
+            </Pressable>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -213,4 +213,3 @@ const styles = StyleSheet.create({
 });
 
 export default OTPVerificationScreen;
-

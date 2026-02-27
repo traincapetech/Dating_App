@@ -12,11 +12,11 @@ export const AppColors = {
   reject: '#FF3B30',
   match: '#FF2D55',
   background: {
-    light: '#FFFFFF',
+    light: '#FFFFFA',
     dark: '#0A0A0F',
   },
   surface: {
-    light: '#F8F9FA',
+    light: '#FFFFFA',
     dark: '#101014',
   },
   text: {

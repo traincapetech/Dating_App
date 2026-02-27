@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  ScrollView,
-} from 'react-native';
+import {View, Text, StyleSheet, Pressable, ScrollView} from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
@@ -77,4 +71,3 @@ const styles = StyleSheet.create({
 });
 
 export default WelcomeScreen;
-
