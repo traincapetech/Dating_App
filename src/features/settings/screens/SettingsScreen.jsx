@@ -10,16 +10,19 @@ import {
   ActivityIndicator,
   Dimensions,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useNavigation} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import { colors, typography, spacing } from '../../../theme';
-import { pauseProfile } from '../../../services/profile/profileService';
-import { logoutFromAllDevices } from '../../../services/auth/authService';
+import {colors, typography, spacing} from '../../../theme';
+import {
+  pauseProfile,
+  updateOnlineStatus,
+} from '../../../services/profile/profileService';
+import {logoutFromAllDevices} from '../../../services/auth/authService';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
 const SettingsScreen = () => {
   const navigation = useNavigation();
@@ -37,7 +40,7 @@ const SettingsScreen = () => {
 
   const checkPremiumStatus = async () => {
     try {
-      const { isUserPremium } = await import('../../../utils/premiumUtils');
+      const {isUserPremium} = await import('../../../utils/premiumUtils');
       const premium = await isUserPremium();
       setIsPremium(premium);
     } catch (error) {
@@ -51,12 +54,14 @@ const SettingsScreen = () => {
       if (userData && userData !== 'undefined') {
         try {
           const user = JSON.parse(userData);
-          const { getProfile } = await import(
+          const {getProfile} = await import(
             '../../../services/profile/profileService'
           );
           const response = await getProfile(user.id);
           if (response?.profile) {
             setIsPaused(response.profile.isPaused || false);
+            // Default showOnlineStatus to true if it undefined
+            setShowOnline(response.profile.showOnlineStatus !== false);
           }
         } catch (e) {
           console.error('Failed to parse user data in SettingsScreen:', e);
@@ -83,7 +88,7 @@ const SettingsScreen = () => {
               paused
                 ? 'Your profile is now hidden from discovery. You can still message your matches.'
                 : 'Your profile is now visible in discovery again.',
-              [{ text: 'OK' }],
+              [{text: 'OK'}],
             );
           } else {
             throw new Error(
@@ -113,7 +118,7 @@ const SettingsScreen = () => {
       'Logout from All Devices',
       "This will log you out from all devices where you're signed in. You'll need to sign in again on this device.",
       [
-        { text: 'Cancel', style: 'cancel' },
+        {text: 'Cancel', style: 'cancel'},
         {
           text: 'Logout All',
           style: 'destructive',
@@ -130,7 +135,7 @@ const SettingsScreen = () => {
                     onPress: () => {
                       navigation.reset({
                         index: 0,
-                        routes: [{ name: 'OnboardingIntro' }],
+                        routes: [{name: 'OnboardingIntro'}],
                       });
                     },
                   },
@@ -153,7 +158,7 @@ const SettingsScreen = () => {
 
   const handleLogout = () => {
     Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
+      {text: 'Cancel', style: 'cancel'},
       {
         text: 'Logout',
         style: 'destructive',
@@ -165,32 +170,48 @@ const SettingsScreen = () => {
           ]);
           navigation.reset({
             index: 0,
-            routes: [{ name: 'OnboardingIntro' }],
+            routes: [{name: 'OnboardingIntro'}],
           });
         },
       },
     ]);
   };
 
-  const SettingItem = ({ icon, iconColor, title, subtitle, onPress, isLast, rightElement }) => (
+  const SettingItem = ({
+    icon,
+    iconColor,
+    title,
+    subtitle,
+    onPress,
+    isLast,
+    rightElement,
+  }) => (
     <Pressable
       style={[styles.settingItem, isLast && styles.lastItem]}
-      onPress={onPress}
-    >
-      <View style={[styles.iconContainer, { backgroundColor: iconColor + '15' }]}>
+      onPress={onPress}>
+      <View style={[styles.iconContainer, {backgroundColor: iconColor + '15'}]}>
         <MaterialCommunityIcons name={icon} size={22} color={iconColor} />
       </View>
       <View style={styles.settingContent}>
         <Text style={styles.settingTitle}>{title}</Text>
         {subtitle && <Text style={styles.settingSubtitle}>{subtitle}</Text>}
       </View>
-      {rightElement || <MaterialCommunityIcons name="chevron-right" size={24} color="#CCC" />}
+      {rightElement || (
+        <MaterialCommunityIcons name="chevron-right" size={24} color="#CCC" />
+      )}
     </Pressable>
   );
 
-  const SettingToggle = ({ icon, iconColor, title, value, onValueChange, isLast }) => (
+  const SettingToggle = ({
+    icon,
+    iconColor,
+    title,
+    value,
+    onValueChange,
+    isLast,
+  }) => (
     <View style={[styles.settingItem, isLast && styles.lastItem]}>
-      <View style={[styles.iconContainer, { backgroundColor: iconColor + '15' }]}>
+      <View style={[styles.iconContainer, {backgroundColor: iconColor + '15'}]}>
         <MaterialCommunityIcons name={icon} size={22} color={iconColor} />
       </View>
       <View style={styles.settingContent}>
@@ -199,7 +220,7 @@ const SettingsScreen = () => {
       <Switch
         value={value}
         onValueChange={onValueChange}
-        trackColor={{ false: '#ddd', true: colors.primary }}
+        trackColor={{false: '#ddd', true: colors.primary}}
         thumbColor="#fff"
       />
     </View>
@@ -213,34 +234,41 @@ const SettingsScreen = () => {
           <Pressable
             onPress={() => navigation.goBack()}
             style={styles.backButton}>
-            <MaterialCommunityIcons name="arrow-left" size={28} color={colors.textPrimary} />
+            <MaterialCommunityIcons
+              name="arrow-left"
+              size={28}
+              color={colors.textPrimary}
+            />
           </Pressable>
           <Text style={styles.headerTitle}>Settings</Text>
-          <View style={{ width: 40 }} />
+          <View style={{width: 40}} />
         </View>
 
         <ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: insets.bottom + 120 }}>
-
+          contentContainerStyle={{paddingBottom: insets.bottom + 120}}>
           {/* Premium Card */}
           {!isPremium && (
             <Pressable
               onPress={() => navigation.navigate('SubscriptionUpsell')}
-              style={styles.premiumCardContainer}
-            >
+              style={styles.premiumCardContainer}>
               <LinearGradient
                 colors={[colors.primary, '#6A11CB']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.premiumCard}
-              >
+                start={{x: 0, y: 0}}
+                end={{x: 1, y: 1}}
+                style={styles.premiumCard}>
                 <View style={styles.premiumInfo}>
                   <Text style={styles.premiumTitle}>Upgrade to Premium</Text>
-                  <Text style={styles.premiumSubtitle}>See who liked you, unlimited likes & more!</Text>
+                  <Text style={styles.premiumSubtitle}>
+                    See who liked you, unlimited likes & more!
+                  </Text>
                 </View>
                 <View style={styles.premiumBadge}>
-                  <MaterialCommunityIcons name="crown" size={32} color="#FFD700" />
+                  <MaterialCommunityIcons
+                    name="crown"
+                    size={32}
+                    color="#FFD700"
+                  />
                 </View>
               </LinearGradient>
             </Pressable>
@@ -313,11 +341,28 @@ const SettingsScreen = () => {
               iconColor="#AF52DE"
               title="Show Online Status"
               value={showOnline}
-              onValueChange={setShowOnline}
+              onValueChange={async val => {
+                setShowOnline(val); // optimistic update
+                try {
+                  const response = await updateOnlineStatus(val);
+                  if (!response?.success) {
+                    setShowOnline(!val); // revert on failure
+                    Alert.alert('Error', 'Failed to update online status.');
+                  }
+                } catch (e) {
+                  setShowOnline(!val);
+                  Alert.alert('Error', 'Failed to save preference.');
+                }
+              }}
             />
             <View style={styles.settingItem}>
-              <View style={[styles.iconContainer, { backgroundColor: '#FFCC0015' }]}>
-                <MaterialCommunityIcons name="pause" size={22} color="#FFCC00" />
+              <View
+                style={[styles.iconContainer, {backgroundColor: '#FFCC0015'}]}>
+                <MaterialCommunityIcons
+                  name="pause"
+                  size={22}
+                  color="#FFCC00"
+                />
               </View>
               <View style={styles.settingContent}>
                 <Text style={styles.settingTitle}>Pause Profile</Text>
@@ -331,7 +376,7 @@ const SettingsScreen = () => {
                 <Switch
                   value={isPaused}
                   onValueChange={handlePauseProfile}
-                  trackColor={{ false: '#ddd', true: colors.primary }}
+                  trackColor={{false: '#ddd', true: colors.primary}}
                   thumbColor="#fff"
                 />
               )}
@@ -377,7 +422,9 @@ const SettingsScreen = () => {
               iconColor="#50C878"
               title="Contact Us"
               isLast={true}
-              onPress={() => Alert.alert('Contact', 'Email us at pryvo@traincapetech.in')}
+              onPress={() =>
+                Alert.alert('Contact', 'Email us at pryvo@traincapetech.in')
+              }
             />
           </View>
 
@@ -415,14 +462,25 @@ const SettingsScreen = () => {
               iconColor="#8E8E93"
               title="Log Out from All Devices"
               onPress={handleLogoutAllDevices}
-              rightElement={loadingLogoutAll ? <ActivityIndicator size="small" color="#999" /> : null}
+              rightElement={
+                loadingLogoutAll ? (
+                  <ActivityIndicator size="small" color="#999" />
+                ) : null
+              }
             />
             <Pressable
               style={[styles.dangerItem, styles.lastItem]}
-              onPress={() => navigation.navigate('DeleteAccount')}
-            >
-              <View style={[styles.iconContainer, { backgroundColor: colors.reject + '15' }]}>
-                <MaterialCommunityIcons name="delete-outline" size={22} color={colors.reject} />
+              onPress={() => navigation.navigate('DeleteAccount')}>
+              <View
+                style={[
+                  styles.iconContainer,
+                  {backgroundColor: colors.reject + '15'},
+                ]}>
+                <MaterialCommunityIcons
+                  name="delete-outline"
+                  size={22}
+                  color={colors.reject}
+                />
               </View>
               <Text style={styles.dangerText}>Delete Account</Text>
             </Pressable>
@@ -474,7 +532,7 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     borderRadius: 20,
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 10 },
+    shadowOffset: {width: 0, height: 10},
     shadowOpacity: 0.3,
     shadowRadius: 15,
     elevation: 8,
@@ -511,7 +569,7 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing.lg,
     borderRadius: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 2,

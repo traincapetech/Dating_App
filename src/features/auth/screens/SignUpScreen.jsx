@@ -91,7 +91,7 @@ const SignUpScreen = () => {
         phone: form.phone.trim(),
         password: form.password,
       });
-      navigation.navigate(AppRoute.PhoneInput);
+      navigation.navigate(AppRoute.Welcome);
     } catch (error) {
       const message = error?.message || 'Failed to create your account.';
       setErrors(prev => ({...prev, api: message}));

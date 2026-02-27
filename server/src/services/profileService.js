@@ -138,10 +138,18 @@ export async function getProfile(userId) {
 
   const ageFromDob = computeAge(profile.basicInfo?.dob);
 
+  // Determine active today status
+  const isActiveToday =
+    user?.showOnlineStatus &&
+    user?.lastActive &&
+    Date.now() - new Date(user.lastActive).getTime() < 24 * 60 * 60 * 1000;
+
   return {
     ...profile,
     name: fullName,
     email: user?.email || '',
+    showOnlineStatus: user?.showOnlineStatus !== false, // Defaults to true
+    isActiveToday: !!isActiveToday,
     // Extract age from profile if available
     age:
       ageFromDob ??
@@ -330,10 +338,17 @@ export async function getAllProfiles(excludeUserId = null, options = {}) {
 
       const ageFromDob = computeAge(profile.basicInfo?.dob);
 
+      // Determine active today status
+      const isActiveToday =
+        user?.showOnlineStatus &&
+        user?.lastActive &&
+        Date.now() - new Date(user.lastActive).getTime() < 24 * 60 * 60 * 1000;
+
       return {
         ...profile,
         name: fullName,
         email: user?.email || '',
+        isActiveToday: !!isActiveToday,
         // Extract age from profile if available
         age:
           ageFromDob ??

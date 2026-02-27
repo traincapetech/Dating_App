@@ -20,7 +20,7 @@ import {
   getAllProfiles,
 } from '../services/profileService.js';
 import {deleteProfile} from '../models/profileModel.js';
-import {deleteUser, findUserById} from '../models/userModel.js';
+import {deleteUser, findUserById, updateUser} from '../models/userModel.js';
 import {storage} from '../storage/index.js';
 import {randomUUID} from 'crypto';
 import {config} from '../config/env.js';
@@ -150,6 +150,31 @@ export const pauseProfileController = asyncHandler(async (req, res) => {
       ? 'Profile paused successfully'
       : 'Profile resumed successfully',
     profile,
+  });
+});
+
+export const updateOnlineStatusController = asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.body.userId;
+  if (!userId) {
+    return res.status(401).json({error: 'User ID is required'});
+  }
+
+  const {showOnlineStatus} = req.body;
+
+  if (typeof showOnlineStatus !== 'boolean') {
+    return res.status(400).json({error: 'showOnlineStatus must be a boolean'});
+  }
+
+  const user = await updateUser(userId, {showOnlineStatus});
+
+  if (!user) {
+    return res.status(404).json({error: 'User not found'});
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'Online status preference updated successfully',
+    showOnlineStatus: user.showOnlineStatus,
   });
 });
 

@@ -160,17 +160,17 @@ const ProfileDetailsScreen = () => {
         datingPreferences: {},
       };
 
-      // Basic Info - only include if not empty
-      if (editedProfile.firstName?.trim()) {
+      // Basic Info - send empty strings to allow clearing
+      if (editedProfile.firstName !== undefined) {
         payload.basicInfo.firstName = editedProfile.firstName.trim();
       }
-      if (editedProfile.lastName?.trim()) {
+      if (editedProfile.lastName !== undefined) {
         payload.basicInfo.lastName = editedProfile.lastName.trim();
       }
-      if (editedProfile.dob?.trim()) {
+      if (editedProfile.dob !== undefined) {
         payload.basicInfo.dob = editedProfile.dob.trim();
       }
-      if (editedProfile.location?.trim()) {
+      if (editedProfile.location !== undefined) {
         payload.basicInfo.location = editedProfile.location.trim();
       }
       if (editedProfile.gender) {
@@ -182,17 +182,17 @@ const ProfileDetailsScreen = () => {
       }
 
       // Profile Prompts
-      if (editedProfile.bio?.trim()) {
+      if (editedProfile.bio !== undefined) {
         payload.profilePrompts.aboutMe = {
           answer: editedProfile.bio.trim(),
         };
       }
 
       // Personal Details
-      if (editedProfile.occupation?.trim()) {
+      if (editedProfile.occupation !== undefined) {
         payload.personalDetails.jobTitle = editedProfile.occupation.trim();
       }
-      if (editedProfile.education?.trim()) {
+      if (editedProfile.education !== undefined) {
         payload.personalDetails.school = editedProfile.education.trim();
       }
 
@@ -208,11 +208,11 @@ const ProfileDetailsScreen = () => {
       if (editedProfile.whoToDate && editedProfile.whoToDate.length > 0) {
         payload.datingPreferences.whoToDate = editedProfile.whoToDate;
       }
-      if (editedProfile.datingIntention?.trim()) {
+      if (editedProfile.datingIntention !== undefined) {
         payload.datingPreferences.datingIntention =
           editedProfile.datingIntention.trim();
       }
-      if (editedProfile.relationshipType) {
+      if (editedProfile.relationshipType !== undefined) {
         payload.datingPreferences.relationshipType =
           editedProfile.relationshipType;
       }
@@ -791,7 +791,8 @@ const ProfileDetailsScreen = () => {
                   onPress={() =>
                     setEditedProfile(prev => ({
                       ...prev,
-                      relationshipType: option,
+                      relationshipType:
+                        prev.relationshipType === option ? '' : option,
                     }))
                   }>
                   <Text

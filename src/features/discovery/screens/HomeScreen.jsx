@@ -871,6 +871,12 @@ const HomeScreen = ({navigation}) => {
                       {currentProfile.name}
                       {currentProfile.age ? `, (${currentProfile.age})` : ''}
                     </Text>
+                    {currentProfile.isActiveToday && (
+                      <View style={styles.activeTodayContainer}>
+                        <View style={styles.activeTodayDot} />
+                        <Text style={styles.activeTodayText}>Active today</Text>
+                      </View>
+                    )}
                     {(() => {
                       let dist = currentProfile.distance
                         ? parseFloat(currentProfile.distance)
@@ -904,11 +910,7 @@ const HomeScreen = ({navigation}) => {
                         ? currentProfile.city || ''
                         : locationStr;
 
-                      if (!displayLocation && (dist === null || dist < 0))
-                        return null;
-
-                      // For dating apps, huge distances (e.g. 12000km) look like a bug.
-                      // We show "Far away" for anything over 1000km.
+                      // Determine distance label
                       const distanceLabel =
                         dist !== null && dist > 0
                           ? dist > 1000
@@ -916,12 +918,20 @@ const HomeScreen = ({navigation}) => {
                             : `${dist} km away`
                           : null;
 
-                      const finalLocation = displayLocation || 'Nearby';
+                      // Construct the final string mutually exclusively
+                      let finalString = '';
+                      if (displayLocation) {
+                        finalString = displayLocation;
+                        if (distanceLabel) finalString += ` • ${distanceLabel}`;
+                      } else if (distanceLabel) {
+                        finalString = distanceLabel;
+                      }
+
+                      if (!finalString) return null;
 
                       return (
-                        <Text className="text-sm font-mona-sans-regular text-white">
-                          📍 {finalLocation}
-                          {distanceLabel ? ` • ${distanceLabel}` : ''}
+                        <Text style={styles.locationBadgeText}>
+                          📍 {finalString}
                         </Text>
                       );
                     })()}
@@ -1108,51 +1118,18 @@ const HomeScreen = ({navigation}) => {
         </View>
       )}
 
-      {/* Action Buttons */}
-      <View style={styles.actionButtons}>
-        {/* Pass (Cancel) Icon */}
-        <Pressable
-          style={[styles.actionButton, styles.passButtonContainer]}
-          onPress={() => processSwipe('left')}
-          disabled={!currentProfile}>
-          <MaterialCommunityIcons
-            name="close"
-            size={32}
-            color="red"
-            style={{opacity: !currentProfile ? 0.5 : 1}}
-          />
-        </Pressable>
-
-        {/* Like Icon (Middle, Larger) */}
-        <Pressable
-          style={[
-            styles.actionButton,
-            styles.likeButtonContainer,
-            styles.largeActionButton,
-          ]}
-          onPress={() => processSwipe('right')}
-          disabled={dailyLikeInfo.remaining <= 0}>
-          <MaterialCommunityIcons
-            name="heart"
-            size={48}
-            color="#9411fa"
-            style={{opacity: dailyLikeInfo.remaining <= 0 ? 0.5 : 1}}
-          />
-        </Pressable>
-
-        {/* Rewind (Back) Icon */}
-        <Pressable
-          style={[styles.actionButton, styles.rewindButtonContainer]}
-          onPress={handleRewind}
-          disabled={currentIndex === 0}>
-          <MaterialCommunityIcons
-            name="undo"
-            size={28}
-            color="#F5B900"
-            style={{opacity: currentIndex === 0 ? 0.5 : 1}}
-          />
-        </Pressable>
-      </View>
+      {/* Floating Rewind Button */}
+      <Pressable
+        style={styles.floatingRewindButton}
+        onPress={handleRewind}
+        disabled={currentIndex === 0}>
+        <MaterialCommunityIcons
+          name="undo-variant"
+          size={28}
+          color="#F5B900"
+          style={{opacity: currentIndex === 0 ? 0.4 : 1}}
+        />
+      </Pressable>
 
       {/* Tinder-style Match Popup */}
       <MatchPopup
@@ -1193,165 +1170,139 @@ const styles = StyleSheet.create({
   },
   cardContainer: {
     flex: 1,
-    justifyContent: 'center',
+    paddingVertical: spacing.md, // Clean vertical margins since buttons are gone
     alignItems: 'center',
+    justifyContent: 'center',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
     backgroundColor: colors.background,
-  },
-  headerLogoGradient: {
-    width: 170,
-    height: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerLogoText: {
-    fontFamily: typography.fontFamilyBold,
-    letterSpacing: 1,
-    fontSize: 32,
-    color: '#000',
-  },
-  headerLogoMaskWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerLogoGradientBackground: {
-    flex: 1,
-    borderRadius: 999,
-  },
-  headerLogoMask: {
-    backgroundColor: 'transparent',
-    color: '#000',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.03)',
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.sm,
   },
   headerIconButton: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  filterIcon: {
-    fontSize: 16,
-    fontFamily: typography.fontFamilyBold,
-    color: colors.textSecondary,
-  },
-  filterBar: {
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
-    gap: spacing.sm,
-  },
-  filterLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  filterTitle: {
-    fontFamily: typography.fontFamilyBold,
-    fontSize: typography.body.large,
-    color: colors.textPrimary,
-  },
-  filterToggle: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  filterToggleActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.secondary,
-  },
-  filterToggleText: {
-    fontFamily: typography.fontFamilyMedium,
-    fontSize: typography.body.small,
-    color: colors.textSecondary,
-  },
-  filterToggleTextActive: {
-    color: colors.primary,
-  },
-  presetScroll: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  presetRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
+    backgroundColor: '#F3F4F6',
   },
   card: {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
     borderRadius: 24,
-    backgroundColor: colors.surface,
+    backgroundColor: '#ffffff',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 10},
-    shadowOpacity: 0.1,
-    shadowRadius: 20,
-    elevation: 10,
+    shadowOffset: {width: 0, height: 12},
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 8,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.04)',
   },
   mainPhotoContainer: {
     width: '100%',
-    height: CARD_HEIGHT,
+    height: CARD_HEIGHT * 0.9,
+    position: 'relative',
   },
   scrollContent: {
-    paddingBottom: 110,
+    paddingBottom: spacing.xxxl * 2,
+    backgroundColor: '#FAFAFB',
   },
   mainPhoto: {
     width: '100%',
     height: '100%',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   mainPhotoGradient: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: '50%',
+    height: '60%',
     justifyContent: 'flex-end',
     padding: spacing.xl,
-    paddingBottom: 80,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   mainPhotoInfo: {
-    gap: 2,
+    gap: 4,
   },
-  mainName: {
-    fontSize: 28,
-    fontFamily: typography.fontFamilyBold,
-    color: '#fff',
-  },
-  mainLocation: {
-    fontSize: 16,
+  locationBadgeText: {
+    fontSize: 15,
     fontFamily: typography.fontFamilyMedium,
-    color: 'rgba(255,255,255,0.9)',
+    color: 'rgba(255,255,255,0.95)',
+    marginTop: 4,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: {width: 0, height: 1},
+    textShadowRadius: 3,
+  },
+  activeTodayContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(76, 175, 80, 0.4)', // modern translucent green backdrop
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  activeTodayDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4ade80', // bright modern green
+    marginRight: 6,
+    shadowColor: '#4ade80',
+    shadowOffset: {width: 0, height: 0},
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  activeTodayText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontFamily: typography.fontFamilyBold,
   },
   detailsSection: {
+    marginHorizontal: spacing.md,
+    marginTop: spacing.md,
     padding: spacing.xl,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.03,
+    shadowRadius: 4,
+    elevation: 1,
   },
   sectionHeader: {
-    fontSize: 18,
+    fontSize: 13,
     fontFamily: typography.fontFamilyBold,
-    color: '#000',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
     marginBottom: spacing.md,
   },
   bioText: {
-    fontSize: 16,
-    fontFamily: typography.fontFamilyRegular,
-    color: '#444',
-    lineHeight: 24,
+    fontSize: 20,
+    fontFamily: typography.fontFamilyMedium,
+    color: '#111827',
+    lineHeight: 28,
   },
   badgeGrid: {
     flexDirection: 'row',
@@ -1360,29 +1311,32 @@ const styles = StyleSheet.create({
   },
   badge: {
     paddingHorizontal: spacing.md,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: '#f5f5f5',
+    paddingVertical: 10,
+    borderRadius: 100,
+    backgroundColor: '#F9FAFB',
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: '#E5E7EB',
   },
   badgeText: {
     fontSize: 14,
     fontFamily: typography.fontFamilyMedium,
-    color: '#333',
+    color: '#374151',
   },
   secondaryPhotoContainer: {
     width: '100%',
     height: CARD_HEIGHT * 0.8,
-    marginVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    marginTop: spacing.md,
   },
   secondaryPhoto: {
     width: '100%',
     height: '100%',
+    borderRadius: 20,
   },
   intentionBadge: {
-    backgroundColor: colors.secondary,
-    borderColor: colors.primary,
+    backgroundColor: colors.primary + '10', // 10% opacity primary
+    borderColor: colors.primary + '30',
+    alignSelf: 'flex-start',
   },
   intentionText: {
     fontSize: 15,
@@ -1447,62 +1401,49 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   promptSection: {
+    marginHorizontal: spacing.md,
+    marginVertical: spacing.md,
     padding: spacing.xl,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
   promptQuestion: {
-    fontSize: 14,
-    fontFamily: typography.fontFamilyMedium,
-    color: '#666',
-    marginBottom: spacing.xs,
-  },
-  promptAnswer: {
-    fontSize: 22,
+    fontSize: 13,
     fontFamily: typography.fontFamilyBold,
     color: colors.primary,
-    lineHeight: 30,
+    marginBottom: spacing.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  actionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: spacing.xl,
+  promptAnswer: {
+    fontSize: 24,
+    fontFamily: typography.fontFamilyRegular,
+    color: '#111827',
+    lineHeight: 32,
+  },
+  floatingRewindButton: {
     position: 'absolute',
-    // Sitting perfectly on the border line
-    bottom: -5,
-    left: 0,
-    right: 0,
-    zIndex: 999,
-  },
-  actionButton: {
-    width: 65,
-    height: 65,
-    borderRadius: 32.5,
+    bottom: spacing.xxxl,
+    right: spacing.xl,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 6},
+    shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 12,
-  },
-  largeActionButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginBottom: 15,
-  },
-  rewindButtonContainer: {
-    backgroundColor: '#ffffff',
-  },
-  passButtonContainer: {
-    // No extra styles needed
-  },
-  likeButtonContainer: {
-    // No extra styles needed
+    shadowRadius: 12,
+    elevation: 8,
+    zIndex: 1000,
   },
   passIcon: {
     fontSize: 24,

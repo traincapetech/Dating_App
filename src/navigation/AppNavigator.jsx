@@ -39,6 +39,7 @@ import NotificationPreferencesScreen from '../features/settings/screens/Notifica
 import SubscriptionManagementScreen from '../features/settings/screens/SubscriptionManagementScreen.jsx';
 import BoostProfileScreen from '../features/settings/screens/BoostProfileScreen.jsx';
 import AdvancedFiltersScreen from '../features/settings/screens/AdvancedFiltersScreen.jsx';
+import CategoryHelpScreen from '../features/settings/screens/CategoryHelpScreen.jsx';
 import {colors, typography} from '../theme';
 import {setupNotificationHandlers} from '../services/notifications/notificationService';
 import {useEffect} from 'react';
@@ -125,6 +126,7 @@ const AppNavigator = () => {
           component={AdvancedFiltersScreen}
         />
         <Stack.Screen name="HelpCentre" component={HelpCentreScreen} />
+        <Stack.Screen name="CategoryHelp" component={CategoryHelpScreen} />
         <Stack.Screen name="ReportProblem" component={ReportProblemScreen} />
       </Stack.Navigator>
     </NavigationContainer>

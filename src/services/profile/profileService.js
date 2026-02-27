@@ -202,3 +202,12 @@ export async function pauseProfile(isPaused) {
   const headers = await getAuthHeaders();
   return apiClient.post('/profile/pause', {isPaused}, headers);
 }
+
+export async function updateOnlineStatus(showOnlineStatus) {
+  const headers = await getAuthHeaders();
+  return apiClient.put(
+    '/profile/settings/online-status',
+    {showOnlineStatus},
+    headers,
+  );
+}
