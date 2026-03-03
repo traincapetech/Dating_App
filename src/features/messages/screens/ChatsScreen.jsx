@@ -14,14 +14,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useFocusEffect} from '@react-navigation/native';
 import {colors, typography, spacing} from '../../../theme';
 import {fetchMatches, fetchLastMessages} from '../../../services/chatService';
+
+import {fetchUserStreaks} from '../../../services/streakService';
+import StreakBadge from '../../../components/common/StreakBadge';
 import {initSocket} from '../../../services/socket';
+
 import {useLoading} from '../../../context/LoadingContext';
 
 const ChatsScreen = ({navigation}) => {
   const {setLoading: setGlobalLoading} = useLoading();
   const [matches, setMatches] = useState([]);
   const [lastMessages, setLastMessages] = useState({});
+  const [streaks, setStreaks] = useState({});
   const [currentUserId, setCurrentUserId] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -53,6 +59,14 @@ const ChatsScreen = ({navigation}) => {
                   (prev[msg.matchId]?.unreadCount || 0) +
                   (msg.receiverId === user.id ? 1 : 0),
               },
+            }));
+          });
+
+          // Real-time streak updates
+          socket.on('streak:update', data => {
+            setStreaks(prev => ({
+              ...prev,
+              [data.userPairId]: data,
             }));
           });
         } catch (e) {
@@ -104,6 +118,19 @@ const ChatsScreen = ({navigation}) => {
             };
           });
           setLastMessages(msgMap);
+        }
+
+        // Load Streaks
+        try {
+          const streakList = await fetchUserStreaks(user.id);
+          const streakMap = {};
+          streakList.forEach(s => {
+            const pairId = s.userPairId;
+            streakMap[pairId] = s;
+          });
+          setStreaks(streakMap);
+        } catch (err) {
+          console.warn('[ChatsScreen] Streak fetch silently failed:', err);
         }
       }
     } catch (error) {
@@ -162,6 +189,10 @@ const ChatsScreen = ({navigation}) => {
     const lastMessage = matchData.lastMessage;
     const unreadCount = matchData.unreadCount || 0;
 
+    const ids = [currentUserId, theirId].sort();
+    const pairId = `${ids[0]}_${ids[1]}`;
+    const streakData = streaks[pairId];
+
     return (
       <Pressable
         style={styles.chatItem}
@@ -188,6 +219,15 @@ const ChatsScreen = ({navigation}) => {
               <Text style={styles.unreadText}>
                 {unreadCount > 9 ? '9+' : unreadCount}
               </Text>
+            </View>
+          )}
+          {streakData && streakData.streakCount > 0 && (
+            <View style={styles.streakBadgeOverlay}>
+              <StreakBadge
+                count={streakData.streakCount}
+                graceUsed={streakData.graceUsed}
+                compact={true}
+              />
             </View>
           )}
         </View>
@@ -315,6 +355,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 11,
     fontWeight: 'bold',
+  },
+  streakBadgeOverlay: {
+    position: 'absolute',
+    bottom: -6,
+    right: -4,
+    transform: [{scale: 0.85}],
   },
   textContainer: {
     flex: 1,

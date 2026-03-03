@@ -29,7 +29,7 @@ export const AppColors = {
   },
 };
 
-const theme = {
+const themePalette = {
   light: {
     primary: AppColors.primary,
     onPrimary: '#FFFFFF',
@@ -65,15 +65,15 @@ const theme = {
 };
 
 export const colors = {
-  primary: theme.light.primary,
-  primaryDark: theme.dark.primary,
+  primary: themePalette.light.primary,
+  primaryDark: themePalette.dark.primary,
   primaryLight: '#C48EFF',
-  secondary: theme.light.secondary,
+  secondary: themePalette.light.secondary,
   accent: AppColors.accent,
-  background: theme.light.background,
+  background: themePalette.light.background,
   backgroundSecondary: '#F4F4F8',
-  surface: theme.light.surface,
-  textPrimary: theme.light.onBackground,
+  surface: themePalette.light.surface,
+  textPrimary: themePalette.light.onBackground,
   textSecondary: '#6C757D',
   textTertiary: '#A9A9B3',
   textInverse: '#FFFFFF',
@@ -82,20 +82,22 @@ export const colors = {
   inputBackground: '#F6F5FF',
   success: AppColors.like,
   warning: '#FFC857',
-  error: theme.light.error,
+  error: themePalette.light.error,
   like: AppColors.like,
   reject: AppColors.reject,
   match: AppColors.match,
 };
 
+export default colors;
+
 export function useAppTheme() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
-  const currentTheme = isDark ? theme.dark : theme.light;
+  const currentTheme = isDark ? themePalette.dark : themePalette.light;
 
   return {
     isDark,
-    theme,
+    theme: themePalette,
     colors: {
       ...currentTheme,
       ...colors,

@@ -42,9 +42,12 @@ import {
   unmatchUser,
   deleteMessageApi,
 } from '../../../services/chatService';
+import CountdownTimer from '../components/CountdownTimer';
 import {getMatchDetails, scheduleDate} from '../../../services/matchService';
 import DateSchedulerModal from '../components/DateSchedulerModal';
-import CountdownTimer from '../components/CountdownTimer';
+import streakService from '../../../services/streakService';
+import StreakBadge from '../../../components/common/StreakBadge';
+import StreakWarningBanner from '../../../components/common/StreakWarningBanner';
 
 const REPORT_REASONS = [
   {id: 'harassment', label: 'Harassment'},
@@ -78,6 +81,8 @@ const ChatScreen = ({route, navigation}) => {
   const [matchDetails, setMatchDetails] = useState(null);
   const [showDateModal, setShowDateModal] = useState(false);
   const [scheduling, setScheduling] = useState(false);
+  const [streak, setStreak] = useState(null);
+  const [showStreakWarning, setShowStreakWarning] = useState(false);
 
   const flatListRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -104,7 +109,9 @@ const ChatScreen = ({route, navigation}) => {
         socketRef.current.off('stopTyping');
         socketRef.current.off('messagesSeen');
         socketRef.current.off('messageStatusUpdate');
+        socketRef.current.off('streak:update');
       }
+
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
@@ -144,6 +151,28 @@ const ChatScreen = ({route, navigation}) => {
         // Fetch Match Details (Status & Expiration)
         const details = await getMatchDetails(matchId);
         setMatchDetails(details);
+
+        // Fetch Streak Data
+        try {
+          const streakData = await streakService.getStreakForPair(
+            user.id,
+            theirId,
+          );
+          if (streakData) {
+            setStreak(streakData);
+            // Check for streak warning (if 20h+ passed)
+            if (streakData.lastActivityDate) {
+              const lastActivity = new Date(streakData.lastActivityDate);
+              const now = new Date();
+              const diffInHours = (now - lastActivity) / (1000 * 60 * 60);
+              if (diffInHours >= 20 && diffInHours < 24) {
+                setShowStreakWarning(true);
+              }
+            }
+          }
+        } catch (err) {
+          console.warn('[ChatScreen] Streak fetch silently failed:', err);
+        }
 
         // Init socket
 
@@ -206,6 +235,15 @@ const ChatScreen = ({route, navigation}) => {
           setMessages(prev =>
             prev.map(m => (m._id === messageId ? {...m, status} : m)),
           );
+        });
+
+        // Real-time streak updates
+        socket.on('streak:update', data => {
+          const ourPairId = [user.id, theirId].sort().join('_');
+          if (data.userPairId === ourPairId) {
+            setStreak(data);
+            setShowStreakWarning(false); // New activity clears the warning
+          }
         });
       } else {
         navigation.goBack();
@@ -681,8 +719,7 @@ const ChatScreen = ({route, navigation}) => {
                     style={{
                       width: '100%',
                       height: '100%',
-                      borderRadius: 24,
-                      overflow: 'hidden',
+                      borderRadius: 20,
                     }}
                   />
                 ) : (
@@ -691,39 +728,47 @@ const ChatScreen = ({route, navigation}) => {
                   </Text>
                 )}
               </View>
-              <View>
-                <View
-                  style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
-                  <Text style={styles.headerTitle}>
-                    {theirName || 'Chat'}
-                    {theirAge ? `, ${theirAge}` : ''}
-                  </Text>
-                  {matchDetails && (
-                    <CountdownTimer
-                      expiresAt={matchDetails.expiresAt}
-                      status={matchDetails.status}
+              <View style={styles.headerInfo}>
+                <Text style={styles.headerTitle} numberOfLines={1}>
+                  {theirName || 'Chat'}
+                  {theirAge ? `, ${theirAge}` : ''}
+                </Text>
+                <View style={styles.headerSubRow}>
+                  {matchDetails?.status === 'active' ? (
+                    <View style={styles.onlineBadgeContainer}>
+                      <View style={styles.onlineBadge} />
+                      <Text style={styles.onlineText}>Online</Text>
+                    </View>
+                  ) : matchDetails?.status === 'secured' ? (
+                    <Text style={[styles.onlineText, {color: '#4CAF50'}]}>
+                      📅{' '}
+                      {new Date(
+                        matchDetails.dateScheduled,
+                      ).toLocaleDateString()}
+                    </Text>
+                  ) : (
+                    <Text style={[styles.onlineText, {color: colors.error}]}>
+                      ⌛ Expired
+                    </Text>
+                  )}
+
+                  {streak && streak.streakCount > 0 && (
+                    <StreakBadge
+                      count={streak.streakCount}
+                      graceUsed={streak.graceUsed}
                     />
                   )}
                 </View>
-                {matchDetails?.status === 'active' ? (
-                  <View style={styles.onlineBadgeContainer}>
-                    <View style={styles.onlineBadge} />
-                    <Text style={styles.onlineText}>Online</Text>
-                  </View>
-                ) : matchDetails?.status === 'secured' ? (
-                  <Text style={[styles.onlineText, {color: '#4CAF50'}]}>
-                    Date:{' '}
-                    {new Date(matchDetails.dateScheduled).toLocaleDateString()}
-                  </Text>
-                ) : (
-                  <Text style={[styles.onlineText, {color: colors.error}]}>
-                    Timer Expired
-                  </Text>
-                )}
               </View>
             </View>
 
             <View style={styles.headerActions}>
+              {matchDetails && matchDetails.status !== 'expired' && (
+                <CountdownTimer
+                  expiresAt={matchDetails.expiresAt}
+                  status={matchDetails.status}
+                />
+              )}
               {matchDetails?.status === 'active' && (
                 <Pressable
                   onPress={() => setShowDateModal(true)}
@@ -732,13 +777,14 @@ const ChatScreen = ({route, navigation}) => {
                     {
                       backgroundColor: colors.primary,
                       borderRadius: 20,
-                      paddingHorizontal: 12,
-                      marginRight: 8,
+                      paddingHorizontal: 10,
+                      paddingVertical: 4,
+                      marginLeft: 8,
                     },
                   ]}>
                   <Text
-                    style={{color: '#fff', fontWeight: 'bold', fontSize: 12}}>
-                    Book Date
+                    style={{color: '#fff', fontWeight: 'bold', fontSize: 11}}>
+                    Date
                   </Text>
                 </Pressable>
               )}
@@ -764,7 +810,17 @@ const ChatScreen = ({route, navigation}) => {
           </View>
         </View>
 
+        {showStreakWarning && streak?.lastActivityDate && (
+          <StreakWarningBanner
+            expiresAt={
+              new Date(streak.lastActivityDate).getTime() + 24 * 60 * 60 * 1000
+            }
+            onDismiss={() => setShowStreakWarning(false)}
+          />
+        )}
+
         {/* Messages */}
+
         <FlatList
           ref={flatListRef}
           data={messages}
@@ -1030,6 +1086,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginLeft: spacing.sm,
+  },
+  headerInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  headerSubRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
   },
   headerAvatar: {
     width: 40,

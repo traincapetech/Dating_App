@@ -124,6 +124,24 @@ const startServer = async () => {
           }
         });
         console.log('✅ GDPR deletion cron scheduled (daily at 2 AM)');
+
+        // Setup Streak hourly cron
+        cron.schedule('0 * * * *', async () => {
+          console.log('[Cron] Running hourly streak check...');
+          try {
+            const {default: streakCron} = await import(
+              './modules/streak/streak.cron.js'
+            );
+            await streakCron.runHourlyTask();
+          } catch (error) {
+            console.error('[Cron] Error in streak cron:', error);
+          }
+        });
+        console.log('✅ Streak hourly cron scheduled');
+
+        // Initialize Streak event listeners/hooks
+        await import('./modules/streak/streak.listener.js');
+        console.log('✅ Streak module initialized');
       } catch (error) {
         console.warn('[WARNING] node-cron not installed. Cron jobs disabled.');
         console.warn('[WARNING] Install node-cron: npm install node-cron');
