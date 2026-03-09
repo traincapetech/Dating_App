@@ -36,6 +36,7 @@ const TabNavigator = () => {
     return () => clearInterval(interval);
   }, []);
 
+
   useEffect(() => {
     let nameToSet = 'User';
     if (profile) {
