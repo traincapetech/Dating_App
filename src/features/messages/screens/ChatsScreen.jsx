@@ -12,6 +12,7 @@ import {
 import {SafeAreaView} from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useFocusEffect} from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/Ionicons';
 import {colors, typography, spacing} from '../../../theme';
 import {fetchMatches, fetchLastMessages} from '../../../services/chatService';
 
@@ -264,6 +265,12 @@ const ChatsScreen = ({navigation}) => {
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Messages</Text>
+        <Pressable
+          style={styles.leaderboardButton}
+          onPress={() => navigation.navigate('StreakLeaderboard')}>
+          <Icon name="medal-outline" size={24} color={colors.primary} />
+          <Text style={styles.leaderboardText}>Top</Text>
+        </Pressable>
       </View>
 
       <FlatList
@@ -300,11 +307,28 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   headerTitle: {
     fontSize: 24,
     fontFamily: typography.fontFamilyBold,
     color: colors.textPrimary,
+  },
+  leaderboardButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF0F0',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  leaderboardText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: colors.primary,
+    marginLeft: 4,
   },
   emptyEmoji: {
     fontSize: 48,

@@ -28,6 +28,7 @@ import ReportProblemScreen from '../features/settings/screens/ReportProblemScree
 import TabNavigator from './TabNavigator';
 import ChatsScreen from '../features/messages/screens/ChatsScreen.jsx';
 import ChatScreen from '../features/messages/screens/ChatScreen.jsx';
+import StreakLeaderboardScreen from '../features/messages/screens/StreakLeaderboardScreen.jsx';
 import ProfileDetailsScreen from '../features/profile/screens/ProfileDetailsScreen.jsx';
 import SettingsScreen from '../features/settings/screens/SettingsScreen.jsx';
 import ChangeEmailScreen from '../features/settings/screens/ChangeEmailScreen.jsx';
@@ -105,6 +106,10 @@ const AppNavigator = () => {
         <Stack.Screen name="HomeTabs" component={TabNavigator} />
         <Stack.Screen name="Messages" component={ChatsScreen} />
         <Stack.Screen name="ChatScreen" component={ChatScreen} />
+        <Stack.Screen
+          name="StreakLeaderboard"
+          component={StreakLeaderboardScreen}
+        />
         <Stack.Screen name="ProfileDetails" component={ProfileDetailsScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="ChangeEmail" component={ChangeEmailScreen} />
