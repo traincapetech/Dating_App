@@ -116,8 +116,8 @@ export async function resetPassword(email, code, newPassword) {
   });
 }
 
-export async function deleteAccount(userId) {
-  return await apiClient.delete(`/auth/user/${userId}`);
+export async function deleteAccount(userId, password) {
+  return await apiClient.delete(`/auth/user/${userId}`, {password});
 }
 
 /**

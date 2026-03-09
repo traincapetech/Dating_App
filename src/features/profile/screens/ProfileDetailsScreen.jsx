@@ -22,6 +22,7 @@ import {
 } from '../../../services/profile/profileService';
 import {launchImageLibrary} from 'react-native-image-picker';
 import {DraggableGrid} from 'react-native-draggable-grid';
+import {useAuth} from '../../../context/AuthContext';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 const PHOTO_SIZE = (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm * 2) / 3;
@@ -29,6 +30,7 @@ const PHOTO_SIZE = (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm * 2) / 3;
 const ProfileDetailsScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
+  const {loadProfile: reloadGlobalProfile} = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -247,7 +249,7 @@ const ProfileDetailsScreen = () => {
           })),
       };
 
-      if (mediaPayload.media.length > 0 || profile.photos?.length > 0) {
+      if (mediaPayload.media.length > 0 || profile?.photos?.length > 0) {
         // Only update if we have photos or had photos (allow deleting all)
         await updateMedia(mediaPayload);
       }
@@ -259,6 +261,12 @@ const ProfileDetailsScreen = () => {
 
       await updateProfileApi(payload);
       Alert.alert('Success', 'Profile updated successfully');
+
+      // Reload global state if it's our own profile
+      if (isOwnProfile) {
+        await reloadGlobalProfile(currentUserId);
+      }
+
       setIsEditing(false);
       loadProfile();
     } catch (error) {

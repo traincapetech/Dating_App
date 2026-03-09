@@ -11,11 +11,13 @@ import SettingsScreen from '../features/settings/screens/SettingsScreen';
 import {colors, typography} from '../theme';
 import {getLikesCount} from '../services/swipeActions';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import {useAuth} from '../context/AuthContext';
 import {enableNotifications} from '../services/notifications';
 
 const Tab = createBottomTabNavigator();
 
 const TabNavigator = () => {
+  const {profile, user} = useAuth();
   const [likesCount, setLikesCount] = useState(0);
   const [userName, setUserName] = useState('User');
   const insets = useSafeAreaInsets();
@@ -27,36 +29,30 @@ const TabNavigator = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Register for push notifications on mount and extract name
+  useEffect(() => {
+    let nameToSet = 'User';
+    if (profile) {
+      const firstName =
+        profile?.basicInfo?.firstName ||
+        profile?.basicInfo?.name ||
+        profile?.name;
+      if (firstName) {
+        nameToSet = firstName;
+      }
+    }
+    if (nameToSet === 'User' && user?.fullName) {
+      nameToSet = user.fullName.split(' ')[0] || 'User';
+    }
+    setUserName(nameToSet);
+  }, [profile, user]);
+
+  // Register for push notifications on mount
   useEffect(() => {
     const initializeUser = async () => {
       try {
         const userData = await AsyncStorage.getItem('@pryvo_user');
         if (userData && userData !== 'undefined') {
           const user = JSON.parse(userData);
-
-          // Fallback to local storage name first
-          let nameToDisplay = user.firstName || user.name || 'Profile';
-          setUserName(nameToDisplay);
-
-          // Fetch the full profile to get the most accurate name
-          try {
-            const {getProfile} = require('../services/profile/profileService');
-            const response = await getProfile(user.id);
-            const profileData = response?.profile || response;
-            if (profileData) {
-              const firstName =
-                profileData?.basicInfo?.firstName ||
-                profileData?.basicInfo?.name ||
-                profileData?.name;
-              if (firstName) {
-                setUserName(firstName);
-              }
-            }
-          } catch (e) {
-            console.log('Failed to fetch profile name for tab:', e);
-          }
-
           await enableNotifications(user.id);
         }
       } catch (error) {

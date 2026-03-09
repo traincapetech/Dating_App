@@ -18,10 +18,12 @@ import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
 import {signUp} from '../../../services/auth';
 import {useLoading} from '../../../context/LoadingContext';
+import {useAuth} from '../../../context/AuthContext';
 
 const SignUpScreen = () => {
   const navigation = useNavigation();
   const {setLoading} = useLoading();
+  const {login} = useAuth();
   const {height} = useWindowDimensions();
   const [form, setForm] = useState({
     fullName: '',
@@ -85,12 +87,15 @@ const SignUpScreen = () => {
     setIsSubmitting(true);
     setLoading(true);
     try {
-      await signUp({
+      const data = await signUp({
         fullName: form.fullName.trim(),
         email: form.email.trim().toLowerCase(),
         phone: form.phone.trim(),
         password: form.password,
       });
+      if (data?.user) {
+        await login(data.user);
+      }
       navigation.navigate(AppRoute.Welcome);
     } catch (error) {
       const message = error?.message || 'Failed to create your account.';

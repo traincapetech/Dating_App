@@ -4,11 +4,19 @@ import {useNavigation} from '@react-navigation/native';
 import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
 
+import {useAuth} from '../../../context/AuthContext';
+
 const WelcomeScreen = () => {
   const navigation = useNavigation();
+  const {logout} = useAuth();
 
   const handleContinue = () => {
     navigation.navigate(AppRoute.BasicInfo);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    // Auth state change will handle navigation back to SplashScreen/Landing
   };
 
   return (
@@ -22,9 +30,16 @@ const WelcomeScreen = () => {
         </Text>
       </View>
 
-      <Pressable style={styles.primaryButton} onPress={handleContinue}>
-        <Text style={styles.primaryButtonText}>Enter basic info</Text>
-      </Pressable>
+      <View style={styles.footer}>
+        <Pressable style={styles.primaryButton} onPress={handleContinue}>
+          <Text style={styles.primaryButtonText}>Enter basic info</Text>
+        </Pressable>
+
+        <Pressable style={styles.logoutButton} onPress={handleLogout}>
+          <Text style={styles.logoutText}>Not you? </Text>
+          <Text style={styles.logoutAction}>Sign out</Text>
+        </Pressable>
+      </View>
     </ScrollView>
   );
 };
@@ -67,6 +82,27 @@ const styles = StyleSheet.create({
     color: colors.surface,
     fontFamily: typography.fontFamilyBold,
     fontSize: typography.body.large,
+  },
+  footer: {
+    marginTop: spacing.xl,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: spacing.lg,
+    paddingVertical: spacing.sm,
+  },
+  logoutText: {
+    fontFamily: typography.fontFamilyRegular,
+    fontSize: typography.body.medium,
+    color: colors.textSecondary,
+  },
+  logoutAction: {
+    fontFamily: typography.fontFamilyBold,
+    fontSize: typography.body.medium,
+    color: colors.primary,
+    textDecorationLine: 'underline',
   },
 });
 

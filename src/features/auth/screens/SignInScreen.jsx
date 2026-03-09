@@ -17,10 +17,12 @@ import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
 import {signIn} from '../../../services/auth';
 import {useLoading} from '../../../context/LoadingContext';
+import {useAuth} from '../../../context/AuthContext';
 
 const SignInScreen = () => {
   const navigation = useNavigation();
   const {setLoading} = useLoading();
+  const {login} = useAuth();
   const {height} = useWindowDimensions();
   const [form, setForm] = useState({email: '', password: ''});
   const [errors, setErrors] = useState({});
@@ -52,13 +54,17 @@ const SignInScreen = () => {
     setIsSubmitting(true);
     setLoading(true);
     try {
-      await signIn({
+      const data = await signIn({
         email: form.email.trim().toLowerCase(),
         password: form.password,
       });
+      let hasProfile = false;
+      if (data?.user) {
+        hasProfile = await login(data.user);
+      }
       navigation.reset({
         index: 0,
-        routes: [{name: AppRoute.HomeTabs}],
+        routes: [{name: hasProfile ? AppRoute.HomeTabs : AppRoute.Welcome}],
       });
     } catch (error) {
       const message = error?.message || 'Unable to sign you in right now.';

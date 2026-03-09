@@ -13,12 +13,13 @@ import {
 } from 'react-native';
 import {colors, typography} from '../../../theme';
 import {AppRoute} from '../../../constants/routes';
-import {getAccessToken} from '../../../services/storage/tokenStorage';
 import {googleSignIn} from '../../../services/auth/authService';
+import {useAuth} from '../../../context/AuthContext';
 import google from '../../../assets/images/google.png';
 
 const SplashScreen = ({navigation}) => {
   const {width} = useWindowDimensions();
+  const {isAuthenticated, profile, loading: authLoading} = useAuth();
   const heroImageSize = Math.min(width * 0.65, 250);
   const heroFontSize = Math.min(32, Math.max(24, width * 0.08));
   const bodyFontSize = Math.min(15, Math.max(14, width * 0.045));
@@ -27,22 +28,35 @@ const SplashScreen = ({navigation}) => {
   const [googleLoading, setGoogleLoading] = useState(false);
 
   useEffect(() => {
-    const checkSession = async () => {
-      try {
-        const token = await getAccessToken();
-        if (token) {
-          navigation?.reset({
-            index: 0,
-            routes: [{name: AppRoute.HomeTabs}],
-          });
+    let timer;
+    if (!authLoading) {
+      // Add a small delay so the splash screen logo is actually visible
+      timer = setTimeout(() => {
+        if (isAuthenticated) {
+          if (profile) {
+            console.log(
+              '[SplashScreen] Session found with profile, navigating to Home',
+            );
+            navigation?.reset({
+              index: 0,
+              routes: [{name: AppRoute.HomeTabs}],
+            });
+          } else {
+            console.log(
+              '[SplashScreen] Session found but no profile, navigating to Onboarding',
+            );
+            navigation?.reset({
+              index: 0,
+              routes: [{name: AppRoute.Welcome}],
+            });
+          }
         }
-      } catch (error) {
-        console.error('Error checking session:', error);
-      }
+      }, 1500); // 1.5 second delay
+    }
+    return () => {
+      if (timer) clearTimeout(timer);
     };
-
-    checkSession();
-  }, [navigation]);
+  }, [authLoading, isAuthenticated, profile, navigation]);
 
   const handleCreateAccount = () => {
     navigation?.navigate(AppRoute.SignIn);

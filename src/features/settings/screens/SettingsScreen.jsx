@@ -21,11 +21,13 @@ import {
   updateOnlineStatus,
 } from '../../../services/profile/profileService';
 import {logoutFromAllDevices} from '../../../services/auth/authService';
+import {useAuth} from '../../../context/AuthContext';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
 const SettingsScreen = () => {
   const navigation = useNavigation();
+  const {logout} = useAuth();
   const insets = useSafeAreaInsets();
   const [showOnline, setShowOnline] = React.useState(true);
   const [isPremium, setIsPremium] = React.useState(false);
@@ -163,11 +165,7 @@ const SettingsScreen = () => {
         text: 'Logout',
         style: 'destructive',
         onPress: async () => {
-          await AsyncStorage.multiRemove([
-            '@pryvo_user',
-            '@pryvo/token',
-            '@pryvo/refresh',
-          ]);
+          await logout();
           navigation.reset({
             index: 0,
             routes: [{name: 'OnboardingIntro'}],

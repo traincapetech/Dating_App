@@ -65,9 +65,8 @@ const DeleteAccountScreen = () => {
 
               const user = JSON.parse(userData);
 
-              // Note: The backend delete endpoint doesn't require password verification
-              // In production, you might want to add password verification
-              await deleteAccount(user.id);
+              // Now requiring password verification
+              await deleteAccount(user.id, password);
 
               // Clear all local data
               await clearTokens();

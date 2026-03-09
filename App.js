@@ -4,6 +4,7 @@ import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
 import {LoadingProvider} from './src/context/LoadingContext';
+import {AuthProvider} from './src/context/AuthContext';
 import {StripeProvider} from '@stripe/stripe-react-native';
 
 import './global.css';
@@ -68,20 +69,22 @@ const App = () => {
   return (
     <ErrorBoundary>
       <LoadingProvider>
-        <SafeAreaProvider>
-          <GestureHandlerRootView style={styles.container}>
-            <StatusBar
-              barStyle="dark-content"
-              backgroundColor={Platform.OS === 'android' ? '#FFF' : undefined}
-              translucent={Platform.OS === 'android'}
-            />
-            <StripeProvider
-              publishableKey={process.env.STRIPE_PUBLISHABLE_KEY} // Placeholder, should be from env ideally
-            >
-              <AppNavigator />
-            </StripeProvider>
-          </GestureHandlerRootView>
-        </SafeAreaProvider>
+        <AuthProvider>
+          <SafeAreaProvider>
+            <GestureHandlerRootView style={styles.container}>
+              <StatusBar
+                barStyle="dark-content"
+                backgroundColor={Platform.OS === 'android' ? '#FFF' : undefined}
+                translucent={Platform.OS === 'android'}
+              />
+              <StripeProvider
+                publishableKey={process.env.STRIPE_PUBLISHABLE_KEY} // Placeholder, should be from env ideally
+              >
+                <AppNavigator />
+              </StripeProvider>
+            </GestureHandlerRootView>
+          </SafeAreaProvider>
+        </AuthProvider>
       </LoadingProvider>
     </ErrorBoundary>
   );
