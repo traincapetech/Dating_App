@@ -324,15 +324,14 @@ const HomeScreen = ({navigation}) => {
 
         // Fetch profiles from backend
         const response = await getDiscoverProfiles(excludeUserId, {
-          useMatching: false,
+          useMatching: true,
+          sortBy: 'score',
+          minScore: 0,
           maxDistance:
             distanceEnabled && (distanceOverride || maxDistance)
               ? distanceOverride || maxDistance
               : undefined,
           filters: advancedFilters,
-          // useMatching: true,
-          // minScore: 30,
-          // sortBy: 'score',
         });
 
         console.log(
@@ -430,6 +429,8 @@ const HomeScreen = ({navigation}) => {
                   profile.profilePrompts?.selfCare,
                   profile.profilePrompts?.gettingPersonal,
                 ].filter(p => p && p.answer),
+                isMostCompatible: profile.isMostCompatible || false,
+                matchPercentage: profile.matchPercentage || null,
               };
             })
             .filter(profile => profile.photos && profile.photos.length > 0);
@@ -855,6 +856,29 @@ const HomeScreen = ({navigation}) => {
                     style={styles.mainPhoto}
                     resizeMode="cover"
                   />
+                )}
+
+                {/* Most Compatible Badge (Hinge Style) */}
+                {currentProfile.isMostCompatible && (
+                  <View style={styles.mostCompatibleBadge}>
+                    <MaterialCommunityIcons
+                      name="star"
+                      size={14}
+                      color="#FFF"
+                    />
+                    <Text style={styles.mostCompatibleText}>
+                      MOST COMPATIBLE
+                    </Text>
+                  </View>
+                )}
+
+                {/* Match Score (Bumble/Tinder Style) */}
+                {currentProfile.matchPercentage && (
+                  <View style={styles.matchScoreBadge}>
+                    <Text style={styles.matchScoreText}>
+                      {currentProfile.matchPercentage}% Match
+                    </Text>
+                  </View>
                 )}
 
                 <LinearGradient
@@ -1373,14 +1397,55 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: '#F3F4F6', // Lighter background for interest tags
     borderWidth: 1,
-    borderColor: colors.surface,
+    borderColor: '#E5E7EB',
   },
   interestText: {
-    fontSize: typography.body.small,
+    fontSize: 13,
     fontFamily: typography.fontFamilyMedium,
-    color: colors.textInverse,
+    color: '#374151', // Darker text for readability
+  },
+  mostCompatibleBadge: {
+    position: 'absolute',
+    top: 20,
+    left: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#6366F1', // Indigo color like Hinge
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 100,
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+    gap: 4,
+  },
+  mostCompatibleText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: typography.fontFamilyBold,
+    letterSpacing: 0.5,
+  },
+  matchScoreBadge: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    zIndex: 10,
+  },
+  matchScoreText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontFamily: typography.fontFamilyBold,
   },
   emptyContainer: {
     flex: 1,

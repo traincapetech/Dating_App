@@ -139,26 +139,8 @@ export function setupNotificationHandlers(navigation) {
   const unsubscribeForeground = getMessaging().onMessage(
     async remoteMessage => {
       console.log('Foreground notification received:', remoteMessage);
-
-      // You can show a local notification or update UI here
-      Alert.alert(
-        remoteMessage.notification?.title || 'New Notification',
-        remoteMessage.notification?.body || '',
-        [
-          {
-            text: 'View',
-            onPress: () => {
-              // Navigate to relevant screen based on notification data
-              if (remoteMessage.data?.type === 'message') {
-                navigation?.navigate('Messages');
-              } else if (remoteMessage.data?.type === 'match') {
-                navigation?.navigate('HomeTabs');
-              }
-            },
-          },
-          {text: 'OK'},
-        ],
-      );
+      // NOTE: We rely on the Socket.IO receiveMessage event for real-time foreground updates
+      // as it's faster and contains more structured data for the GlobalNotification banner.
     },
   );
 

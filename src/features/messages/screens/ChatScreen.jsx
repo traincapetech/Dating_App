@@ -90,6 +90,7 @@ const ChatScreen = ({route, navigation}) => {
   const [showStreakWarning, setShowStreakWarning] = useState(false);
   const [showGiftAnimation, setShowGiftAnimation] = useState(false);
   const [receivedGiftForAnimation, setReceivedGiftForAnimation] = useState(null);
+  const [isUserOnlineNow, setIsUserOnlineNow] = useState(false);
 
   const flatListRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -122,6 +123,7 @@ const ChatScreen = ({route, navigation}) => {
         socketRef.current.off('messagesSeen');
         socketRef.current.off('messageStatusUpdate');
         socketRef.current.off('streak:update');
+        socketRef.current.off('userStatusChanged');
       }
 
       if (typingTimeoutRef.current) {
@@ -281,6 +283,13 @@ const ChatScreen = ({route, navigation}) => {
           if (data.userPairId === ourPairId) {
             setStreak(data);
             setShowStreakWarning(false); // New activity clears the warning
+          }
+        });
+
+        // Real-time online/offline status updates
+        socket.on('userStatusChanged', data => {
+          if (data.userId === theirId) {
+            setIsUserOnlineNow(data.status === 'online');
           }
         });
       } else {
@@ -825,10 +834,19 @@ const ChatScreen = ({route, navigation}) => {
                   {theirAge ? `, ${theirAge}` : ''}
                 </Text>
                 <View style={styles.headerSubRow}>
-                  {matchDetails?.status === 'active' ? (
+                  {isUserOnlineNow ? (
                     <View style={styles.onlineBadgeContainer}>
                       <View style={styles.onlineBadge} />
                       <Text style={styles.onlineText}>Online</Text>
+                    </View>
+                  ) : matchDetails?.status === 'active' ? (
+                    <View style={styles.onlineBadgeContainer}>
+                      <View
+                        style={[styles.onlineBadge, {backgroundColor: '#ccc'}]}
+                      />
+                      <Text style={[styles.onlineText, {color: '#999'}]}>
+                        Offline
+                      </Text>
                     </View>
                   ) : matchDetails?.status === 'secured' ? (
                     <Text style={[styles.onlineText, {color: '#4CAF50'}]}>
