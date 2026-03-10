@@ -454,9 +454,6 @@ export const deleteUserController = asyncHandler(async (req, res) => {
       }
     }
   }
-    }
-  }
-
   // Perform industry-standard thorough deletion (photos, matches, messages, scores, etc.)
   const {performThoroughAccountDeletion} = await import(
     '../services/accountDeletionService.js'
