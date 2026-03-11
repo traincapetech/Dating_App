@@ -25,3 +25,4 @@ cd ..
 
 echo "✅ APK built successfully!"
 echo "📱 APK location: android/app/build/outputs/apk/release/app-release.apk"
+

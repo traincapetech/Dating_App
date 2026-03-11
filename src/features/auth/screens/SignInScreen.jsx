@@ -27,7 +27,8 @@ const SignInScreen = () => {
   const [form, setForm] = useState({email: '', password: ''});
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-
+  const [showPassword, setShowPassword] = useState(false);
+  
   const headerSpacing = Math.min(72, height * 0.08);
   const contentPaddingBottom = Platform.OS === 'ios' ? 70 : 50;
 
@@ -145,12 +146,21 @@ const SignInScreen = () => {
               value={form.password}
               onChangeText={value => handleChange('password', value)}
               placeholder="Password"
-              secureTextEntry
+              secureTextEntry={!showPassword}
               style={styles.input}
               placeholderTextColor={colors.textSecondary}
               returnKeyType="done"
               onSubmitEditing={handleSubmit}
             />
+            <Pressable
+              onPress={() => setShowPassword(!showPassword)}
+              style={styles.eyeIcon}>
+              <MaterialCommunityIcons
+                name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                size={22}
+                color={colors.textSecondary}
+              />
+            </Pressable>
           </View>
           {errors.password && (
             <Text style={styles.errorText}>{errors.password}</Text>
@@ -284,6 +294,9 @@ const styles = StyleSheet.create({
   secondaryCtaHighlight: {
     color: colors.primary,
     fontWeight: '700',
+  },
+  eyeIcon: {
+    padding: spacing.xs,
   },
 });
 
