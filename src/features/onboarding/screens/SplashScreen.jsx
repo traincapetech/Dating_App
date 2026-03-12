@@ -1,4 +1,4 @@
-﻿import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   View,
   Text,
@@ -19,44 +19,42 @@ import google from '../../../assets/images/google.png';
 
 const SplashScreen = ({navigation}) => {
   const {width} = useWindowDimensions();
-  const {isAuthenticated, profile, loading: authLoading} = useAuth();
+  const {
+    isAuthenticated,
+    profile,
+    loading: authLoading,
+    profileLoading,
+    getNextOnboardingScreen,
+  } = useAuth();
   const heroImageSize = Math.min(width * 0.65, 250);
   const heroFontSize = Math.min(32, Math.max(24, width * 0.08));
   const bodyFontSize = Math.min(15, Math.max(14, width * 0.045));
   const heroSpacingTop = width < 360 ? 20 : 40;
   const actionCardWidth = Math.min(420, width - 32);
   const [googleLoading, setGoogleLoading] = useState(false);
-
   useEffect(() => {
     let timer;
-    if (!authLoading) {
-      // Add a small delay so the splash screen logo is actually visible
+    // Wait for BOTH the auth check AND the profile fetch to complete
+    if (!authLoading && !profileLoading) {
+      // Small delay so the splash logo is visible
       timer = setTimeout(() => {
         if (isAuthenticated) {
-          if (profile) {
-            console.log(
-              '[SplashScreen] Session found with profile, navigating to Home',
-            );
-            navigation?.reset({
-              index: 0,
-              routes: [{name: AppRoute.HomeTabs}],
-            });
-          } else {
-            console.log(
-              '[SplashScreen] Session found but no profile, navigating to Onboarding',
-            );
-            navigation?.reset({
-              index: 0,
-              routes: [{name: AppRoute.Welcome}],
-            });
-          }
+          const nextScreen = getNextOnboardingScreen();
+          console.log(
+            '[SplashScreen] Authenticated user found, resuming to:',
+            nextScreen,
+          );
+          navigation?.reset({
+            index: 0,
+            routes: [{name: nextScreen}],
+          });
         }
-      }, 1500); // 1.5 second delay
+      }, 800); // Shorter delay since we now wait for profile to fully load
     }
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [authLoading, isAuthenticated, profile, navigation]);
+  }, [authLoading, profileLoading, isAuthenticated, getNextOnboardingScreen, navigation]);
 
   const handleCreateAccount = () => {
     navigation?.navigate(AppRoute.SignIn);

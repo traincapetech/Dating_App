@@ -27,8 +27,10 @@ import {
 import {saveBasicInfo} from '../../../services/profile/profileService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import {useAuth} from '../../../context/AuthContext';
 
 const BasicInfoScreen = () => {
+  const {loadProfile} = useAuth();
   const navigation = useNavigation();
   const [step, setStep] = useState(1); // 1: Name, 2: Email, 3: Notifications, 4: Location, 5: Gender
   const [form, setForm] = useState({
@@ -42,6 +44,7 @@ const BasicInfoScreen = () => {
     locationDetails: null,
     gender: '',
     showGenderOnProfile: true,
+    isVerified: false,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -51,10 +54,149 @@ const BasicInfoScreen = () => {
   const [showOTPInput, setShowOTPInput] = useState(false);
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const otpInputRefs = React.useRef([]);
+  const [hasInitialized, setHasInitialized] = useState(false);
+
+  // Pre-fill form from stored user data on mount
+  React.useEffect(() => {
+    const prefillData = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('@pryvo_user');
+        if (userData && userData !== 'undefined') {
+          const user = JSON.parse(userData);
+          const fullName = user.fullName || '';
+          const email = user.email || '';
+
+          // Split full name into first and last name
+          let firstName = '';
+          let lastName = '';
+          if (fullName) {
+            const parts = fullName.trim().split(' ');
+            firstName = parts[0] || '';
+            lastName = parts.slice(1).join(' ') || '';
+          }
+
+          setForm(prev => ({
+            ...prev,
+            firstName: prev.firstName || firstName,
+            lastName: prev.lastName || lastName,
+            email: prev.email || email,
+          }));
+        }
+      } catch (error) {
+        console.warn('Failed to pre-fill device data:', error);
+      } finally {
+        setHasInitialized(true);
+      }
+    };
+
+    prefillData();
+  }, []);
 
   const handleChange = (field, value) => {
     setForm(prev => ({...prev, [field]: value}));
   };
+
+  // Pre-fill form and determine starting step from backend or storage
+  React.useEffect(() => {
+    const initializeOnboarding = async () => {
+      try {
+        setIsSubmitting(true);
+        // 1. Get basic user info from storage (from signup/login)
+        const userData = await AsyncStorage.getItem('@pryvo_user');
+        let userId = null;
+        let storedEmail = '';
+        let storedFirstName = '';
+        let storedLastName = '';
+
+        if (userData && userData !== 'undefined') {
+          const user = JSON.parse(userData);
+          userId = user.id;
+          storedEmail = user.email || '';
+          const fullName = user.fullName || '';
+          if (fullName) {
+            const parts = fullName.trim().split(' ');
+            storedFirstName = parts[0] || '';
+            storedLastName = parts.slice(1).join(' ') || '';
+          }
+        }
+
+        if (!userId) {
+          setHasInitialized(true);
+          setIsSubmitting(false);
+          return;
+        }
+
+        // 2. Fetch full profile from backend to see what's missing
+        const {getProfile} = await import(
+          '../../../services/profile/profileService'
+        );
+        const profileResponse = await getProfile(userId);
+
+        if (profileResponse?.profile) {
+          const p = profileResponse.profile;
+          // Important: Our enriched profile from server flattens email and isVerified,
+          // but firstName, lastName etc are in basicInfo
+          const firstName = p.basicInfo?.firstName || storedFirstName;
+          const lastName = p.basicInfo?.lastName || storedLastName;
+          const email = p.email || storedEmail; // Enriched top-level
+          const dob = p.basicInfo?.dob || '';
+          const isVerified = p.isVerified || false; // Enriched top-level
+          const notificationsEnabled = p.basicInfo?.notificationsEnabled;
+          const location = p.basicInfo?.location || '';
+          const locationDetails = p.basicInfo?.locationDetails || null;
+          const gender = p.basicInfo?.gender || '';
+
+          setForm({
+            firstName,
+            lastName,
+            dob,
+            email,
+            emailVerified: isVerified,
+            isVerified,
+            notificationsEnabled,
+            location,
+            locationDetails,
+            gender,
+            showGenderOnProfile: p.basicInfo?.showGenderOnProfile !== false,
+          });
+
+          // 3. Determine the first incomplete step
+          if (!firstName || !lastName || !dob) {
+            setStep(1);
+          } else if (!isVerified) {
+            setStep(2);
+          } else if (notificationsEnabled === undefined) {
+            setStep(3);
+          } else if (!locationDetails) {
+            setStep(4);
+          } else if (!gender) {
+            setStep(5);
+          } else {
+            // Everything done in basic info, maybe advance to next screen?
+            // Actually let's stay on step 5 or just navigate away
+            setStep(5);
+          }
+        } else {
+          // Fallback to pre-fill from storage if profile fetch empty
+          setForm(prev => ({
+            ...prev,
+            firstName: storedFirstName,
+            lastName: storedLastName,
+            email: storedEmail,
+          }));
+          setStep(1);
+        }
+      } catch (error) {
+        console.warn('Failed to initialize onboarding progress:', error);
+        setStep(1);
+      } finally {
+        setIsSubmitting(false);
+        setHasInitialized(true);
+      }
+    };
+
+    initializeOnboarding();
+  }, []);
 
   // Request location permission
   const requestLocationPermission = async () => {
@@ -262,6 +404,15 @@ const BasicInfoScreen = () => {
       Alert.alert(
         'Email Verified',
         'Your email has been verified successfully',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              // Auto-advance to next step
+              setStep(3);
+            },
+          },
+        ],
       );
     } catch (error) {
       Alert.alert('Verification Failed', error?.message || 'Invalid OTP code');
@@ -327,6 +478,12 @@ const BasicInfoScreen = () => {
       await saveBasicInfo(basicInfoData);
 
       console.log('Basic info saved successfully');
+
+      // Reload profile in context
+      if (userId) {
+        await loadProfile(userId);
+      }
+
       navigation.navigate(AppRoute.DatingPreferences);
     } catch (error) {
       console.error('Error saving basic info:', error);

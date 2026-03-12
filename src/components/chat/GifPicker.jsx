@@ -119,9 +119,7 @@ const GifPicker = ({visible, onSelect, onClose}) => {
   };
 
   const renderGif = ({item}) => (
-    <Pressable
-      style={styles.gifItem}
-      onPress={() => handleSelectGif(item)}>
+    <Pressable style={styles.gifItem} onPress={() => handleSelectGif(item)}>
       <Image source={{uri: item.preview || item.url}} style={styles.gifImage} />
     </Pressable>
   );
@@ -288,4 +286,3 @@ const styles = StyleSheet.create({
 });
 
 export default GifPicker;
-

@@ -690,7 +690,59 @@ const HomeScreen = ({navigation}) => {
     }, [loadDailyLikeInfo]),
   );
 
-  // Removed the blocking loading screen so the main UI shell shows immediately while loading in background
+  // Show loading spinner while profiles are being fetched for the first time
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <StatusBar
+          barStyle="dark-content"
+          backgroundColor={colors.background}
+        />
+        <View style={styles.header}>
+          <Pressable
+            onPress={() => navigation.navigate('Matches')}
+            style={styles.headerIconButton}>
+            <MaterialCommunityIcons
+              name="heart"
+              size={24}
+              color={colors.primary}
+            />
+          </Pressable>
+          <Text className="text-4xl font-mona-sans-semibold tracking-[2px] text-black">
+            Pryvo
+          </Text>
+          <View style={styles.headerRight}>
+            <Pressable
+              onPress={() => navigation.navigate('Chats')}
+              style={styles.headerIconButton}>
+              <MaterialCommunityIcons
+                name="chat"
+                size={24}
+                color={colors.textPrimary}
+              />
+            </Pressable>
+            <Pressable
+              onPress={() => navigation.navigate('AdvancedFilters')}
+              style={styles.headerIconButton}>
+              <MaterialCommunityIcons
+                name="filter-variant"
+                size={24}
+                color={colors.textPrimary}
+              />
+            </Pressable>
+          </View>
+        </View>
+        <View style={styles.emptyContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.emptySubtitle, {marginTop: 16}]}>
+            Finding profiles for you...
+          </Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Show empty state only once loading is done with no results
   if (!currentProfile) {
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
@@ -744,7 +796,7 @@ const HomeScreen = ({navigation}) => {
           <Text style={styles.emptyTitle}>No more profiles</Text>
           <Text style={styles.emptySubtitle}>
             We've run out of people nearby. Try adjusting your distance or age
-            fil ageters to see more people.
+            filters to see more people.
           </Text>
           <Pressable
             style={{

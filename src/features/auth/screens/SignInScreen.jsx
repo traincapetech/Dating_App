@@ -1,4 +1,4 @@
-﻿import React, {useState} from 'react';
+import React, {useState} from 'react';
 import {
   View,
   Text,
@@ -22,7 +22,7 @@ import {useAuth} from '../../../context/AuthContext';
 const SignInScreen = () => {
   const navigation = useNavigation();
   const {setLoading} = useLoading();
-  const {login} = useAuth();
+  const {login, getNextOnboardingScreen} = useAuth();
   const {height} = useWindowDimensions();
   const [form, setForm] = useState({email: '', password: ''});
   const [errors, setErrors] = useState({});
@@ -60,11 +60,17 @@ const SignInScreen = () => {
       });
       let hasProfile = false;
       if (data?.user) {
+        // login() awaits loadProfile internally and returns true if profile exists
         hasProfile = await login(data.user);
       }
+      // getNextOnboardingScreen() now has the profile in context (set by login)
+      // and will correctly route to HomeTabs or the right onboarding step
+      const nextScreen = hasProfile
+        ? getNextOnboardingScreen()
+        : AppRoute.Welcome;
       navigation.reset({
         index: 0,
-        routes: [{name: hasProfile ? AppRoute.HomeTabs : AppRoute.Welcome}],
+        routes: [{name: nextScreen}],
       });
     } catch (error) {
       const message = error?.message || 'Unable to sign you in right now.';

@@ -13,8 +13,10 @@ import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
 import {saveDatingPreferences} from '../../../services/profile/profileService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {useAuth} from '../../../context/AuthContext';
 
 const DatingPreferencesScreen = () => {
+  const {profile, loadProfile} = useAuth();
   const navigation = useNavigation();
   const [preferences, setPreferences] = useState({
     whoToDate: [],
@@ -53,6 +55,14 @@ const DatingPreferencesScreen = () => {
     }
   };
 
+  const canProceed = () => {
+    return (
+      preferences.whoToDate.length > 0 &&
+      preferences.datingIntention &&
+      preferences.relationshipType
+    );
+  };
+
   const handleContinue = async () => {
     setIsSubmitting(true);
     try {
@@ -86,6 +96,12 @@ const DatingPreferencesScreen = () => {
       await saveDatingPreferences({...preferences, userId});
 
       console.log('Dating preferences saved successfully');
+
+      // Reload profile in context
+      if (userId) {
+        await loadProfile(userId);
+      }
+
       navigation.navigate(AppRoute.PersonalDetails);
     } catch (error) {
       console.error('Error saving dating preferences:', error);
@@ -219,10 +235,10 @@ const DatingPreferencesScreen = () => {
       <Pressable
         style={[
           styles.primaryButton,
-          isSubmitting && styles.primaryButtonDisabled,
+          (isSubmitting || !canProceed()) && styles.primaryButtonDisabled,
         ]}
         onPress={handleContinue}
-        disabled={isSubmitting}>
+        disabled={isSubmitting || !canProceed()}>
         {isSubmitting ? (
           <ActivityIndicator color={colors.surface} />
         ) : (

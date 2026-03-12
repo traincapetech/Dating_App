@@ -1,17 +1,92 @@
 import {API_BASE_URL} from '../../config/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const defaultHeaders = {
   'Content-Type': 'application/json',
 };
 
+// Singleton promise to prevent multiple concurrent refresh requests
+let refreshPromise = null;
+
+async function getStoredTokens() {
+  const [accessToken, refreshToken] = await Promise.all([
+    AsyncStorage.getItem('@pryvo/token'),
+    AsyncStorage.getItem('@pryvo/refresh'),
+  ]);
+  return {accessToken, refreshToken};
+}
+
+async function storeNewTokens(tokens) {
+  const ops = [];
+  if (tokens?.accessToken) {
+    ops.push(AsyncStorage.setItem('@pryvo/token', tokens.accessToken));
+  }
+  if (tokens?.refreshToken) {
+    ops.push(AsyncStorage.setItem('@pryvo/refresh', tokens.refreshToken));
+  }
+  await Promise.all(ops);
+}
+
+async function doRefresh() {
+  const {refreshToken} = await getStoredTokens();
+  if (!refreshToken) {
+    throw new Error('No refresh token available');
+  }
+
+  const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({refreshToken}),
+  });
+
+  if (!response.ok) {
+    // Refresh failed – clear all tokens so the user is sent to login
+    await AsyncStorage.multiRemove([
+      '@pryvo/token',
+      '@pryvo/refresh',
+      '@pryvo_user',
+    ]);
+    throw new Error('Session expired. Please sign in again.');
+  }
+
+  const data = await response.json();
+  if (data?.tokens) {
+    await storeNewTokens(data.tokens);
+    // Also update stored user data if returned
+    if (data?.user) {
+      await AsyncStorage.setItem('@pryvo_user', JSON.stringify(data.user));
+    }
+    return data.tokens.accessToken;
+  }
+  throw new Error('Refresh response missing tokens');
+}
+
+async function refreshTokensOnce() {
+  if (!refreshPromise) {
+    refreshPromise = doRefresh().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
+
 async function request(
   path,
   {method = 'GET', body, data: reqData, headers = {}, token} = {},
+  isRetry = false,
 ) {
   const finalBody = body || reqData;
   const finalHeaders = {...defaultHeaders, ...headers};
-  if (token) {
-    finalHeaders.Authorization = `Bearer ${token}`;
+
+  // Attach auth token — prefer explicitly passed token, then stored token
+  let authToken = token;
+  if (!authToken) {
+    authToken = await AsyncStorage.getItem('@pryvo/token');
+  }
+  if (authToken) {
+    finalHeaders.Authorization = `Bearer ${authToken}`;
+    // Also set legacy 'token' header for compatibility with older middleware paths
+    finalHeaders.token = authToken;
   }
 
   let response;
@@ -24,7 +99,6 @@ async function request(
     });
     console.log(`[API Response] ${method} ${path} -> ${response.status}`);
   } catch (networkError) {
-    // Handle network errors (connection refused, timeout, etc.)
     console.error('[API Client] Network error:', networkError);
     const error = new Error(
       'Network error. Please check your internet connection and try again.',
@@ -32,6 +106,24 @@ async function request(
     error.isNetworkError = true;
     error.originalError = networkError;
     throw error;
+  }
+
+  // Auto-refresh on 401 (once per request, not on retry to avoid loops)
+  if (response.status === 401 && !isRetry) {
+    try {
+      console.log('[API Client] Got 401 – attempting token refresh...');
+      const newAccessToken = await refreshTokensOnce();
+      console.log('[API Client] Token refreshed – retrying original request');
+      // Retry original call with the fresh token
+      return request(
+        path,
+        {method, body, data: reqData, headers, token: newAccessToken},
+        true, // mark as retry so we don't loop
+      );
+    } catch (refreshErr) {
+      console.error('[API Client] Token refresh failed:', refreshErr);
+      // Refresh failed — fall through to throw the 401 error below
+    }
   }
 
   const text = await response.text();
@@ -53,16 +145,13 @@ async function request(
   try {
     data = text && text !== 'undefined' ? JSON.parse(text) : null;
   } catch (parseError) {
-    // If response is not JSON, use the text as message
     console.warn('[API Client] Failed to parse response as JSON:', parseError);
     console.warn('[API Client] Response text:', text.substring(0, 200));
   }
 
   if (!response.ok) {
-    // Handle specific error cases
     let errorMessage = 'Something went wrong';
 
-    // Try to extract error message from various possible formats
     if (data) {
       errorMessage =
         data.message ||
@@ -71,7 +160,6 @@ async function request(
         data.Error ||
         errorMessage;
 
-      // Handle validation errors
       if (data.errors && Array.isArray(data.errors) && data.errors.length > 0) {
         const firstError = data.errors[0];
         errorMessage =
@@ -80,11 +168,9 @@ async function request(
           errorMessage;
       }
     } else if (text) {
-      // If not JSON, use the text as error message
       errorMessage = text;
     }
 
-    // Provide more specific messages based on status code
     if (response.status === 400) {
       if (!data?.message && !data?.error) {
         errorMessage = 'Invalid request. Please check your input.';

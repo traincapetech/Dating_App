@@ -14,8 +14,10 @@ import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
 import {savePersonalDetails} from '../../../services/profile/profileService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {useAuth} from '../../../context/AuthContext';
 
 const PersonalDetailsScreen = () => {
+  const {profile, loadProfile} = useAuth();
   const navigation = useNavigation();
   const [details, setDetails] = useState({
     familyPlans: '',
@@ -69,6 +71,10 @@ const PersonalDetailsScreen = () => {
     'Prefer not to say',
   ];
 
+  const canProceed = () => {
+    return details.height;
+  };
+
   const handleContinue = async () => {
     setIsSubmitting(true);
     try {
@@ -102,6 +108,12 @@ const PersonalDetailsScreen = () => {
       await savePersonalDetails({...details, userId});
 
       console.log('Personal details saved successfully');
+
+      // Reload profile in context
+      if (userId) {
+        await loadProfile(userId);
+      }
+
       navigation.navigate(AppRoute.Lifestyle);
     } catch (error) {
       console.error('Error saving personal details:', error);
@@ -297,10 +309,10 @@ const PersonalDetailsScreen = () => {
       <Pressable
         style={[
           styles.primaryButton,
-          isSubmitting && styles.primaryButtonDisabled,
+          (isSubmitting || !canProceed()) && styles.primaryButtonDisabled,
         ]}
         onPress={handleContinue}
-        disabled={isSubmitting}>
+        disabled={isSubmitting || !canProceed()}>
         {isSubmitting ? (
           <ActivityIndicator color={colors.surface} />
         ) : (

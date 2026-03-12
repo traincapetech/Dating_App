@@ -13,14 +13,16 @@ import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
 import {saveLifestyle} from '../../../services/profile/profileService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {useAuth} from '../../../context/AuthContext';
 
 const LifestyleScreen = () => {
+  const {profile, loadProfile} = useAuth();
   const navigation = useNavigation();
   const [lifestyle, setLifestyle] = useState({
     drink: '',
     smokeTobacco: '',
     smokeWeed: '',
-    useDrugs: '',
+    drugs: '',
     politicalBeliefs: '',
     religiousBeliefs: '',
   });
@@ -49,6 +51,17 @@ const LifestyleScreen = () => {
     'Other',
     'Prefer not to say',
   ];
+
+  const canProceed = () => {
+    return (
+      lifestyle.drink &&
+      lifestyle.smokeTobacco &&
+      lifestyle.smokeWeed &&
+      lifestyle.drugs &&
+      lifestyle.politicalBeliefs &&
+      lifestyle.religiousBeliefs
+    );
+  };
 
   const handleContinue = async () => {
     setIsSubmitting(true);
@@ -83,6 +96,12 @@ const LifestyleScreen = () => {
       await saveLifestyle({...lifestyle, userId});
 
       console.log('Lifestyle saved successfully');
+
+      // Reload profile in context
+      if (userId) {
+        await loadProfile(userId);
+      }
+
       navigation.navigate(AppRoute.ProfilePrompts);
     } catch (error) {
       console.error('Error saving lifestyle:', error);
@@ -132,7 +151,7 @@ const LifestyleScreen = () => {
       {renderQuestion('Do you drink?', 'drink', yesNoOptions)}
       {renderQuestion('Do you smoke tobacco?', 'smokeTobacco', yesNoOptions)}
       {renderQuestion('Did you smoke weed?', 'smokeWeed', yesNoOptions)}
-      {renderQuestion('Do you use drugs?', 'useDrugs', yesNoOptions)}
+      {renderQuestion('Do you use drugs?', 'drugs', yesNoOptions)}
       {renderQuestion(
         'What are your political beliefs?',
         'politicalBeliefs',
@@ -147,10 +166,10 @@ const LifestyleScreen = () => {
       <Pressable
         style={[
           styles.primaryButton,
-          isSubmitting && styles.primaryButtonDisabled,
+          (isSubmitting || !canProceed()) && styles.primaryButtonDisabled,
         ]}
         onPress={handleContinue}
-        disabled={isSubmitting}>
+        disabled={isSubmitting || !canProceed()}>
         {isSubmitting ? (
           <ActivityIndicator color={colors.surface} />
         ) : (

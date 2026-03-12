@@ -36,7 +36,7 @@ const getApiBaseUrl = () => {
   }
 
   // For iOS simulator, use localhost
-  // if (Platform.OS === 'ios') {
+    // if (Platform.OS === 'ios') {
   //   return 'http://localhost:3000/api';
   // }
 

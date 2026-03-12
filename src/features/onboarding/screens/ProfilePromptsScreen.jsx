@@ -15,15 +15,56 @@ import {colors, typography, spacing} from '../../../theme';
 import {saveProfilePrompts} from '../../../services/profile/profileService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import {useAuth} from '../../../context/AuthContext';
+
 const ProfilePromptsScreen = () => {
+  const {profile, loadProfile} = useAuth();
   const navigation = useNavigation();
   const [activeCategory, setActiveCategory] = useState('aboutMe');
   const [selectedPrompts, setSelectedPrompts] = useState({
-    aboutMe: {prompt: '', answer: ''},
-    selfCare: {prompt: '', answer: ''},
-    gettingPersonal: {prompt: '', answer: ''},
+    aboutMe: {question: '', answer: ''},
+    selfCare: {question: '', answer: ''},
+    gettingPersonal: {question: '', answer: ''},
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  // Load existing prompts if available
+  React.useEffect(() => {
+    const init = async () => {
+      if (profile?.profilePrompts) {
+        console.log(
+          '[ProfilePrompts] Existing prompts found in profile context',
+        );
+        setSelectedPrompts({
+          aboutMe: profile.profilePrompts.aboutMe || {question: '', answer: ''},
+          selfCare: profile.profilePrompts.selfCare || {
+            question: '',
+            answer: '',
+          },
+          gettingPersonal: profile.profilePrompts.gettingPersonal || {
+            question: '',
+            answer: '',
+          },
+        });
+      } else {
+        // Try to load from server if not in context
+        try {
+          const userData = await AsyncStorage.getItem('@pryvo_user');
+          if (userData) {
+            const user = JSON.parse(userData);
+            console.log(
+              '[ProfilePrompts] Fetching profile from server for init',
+            );
+            await loadProfile(user.id);
+          }
+        } catch (error) {
+          console.error('[ProfilePrompts] Init error:', error);
+        }
+      }
+    };
+    init();
+  }, [profile, loadProfile]);
 
   const promptCategories = {
     aboutMe: {
@@ -75,7 +116,7 @@ const ProfilePromptsScreen = () => {
   const handlePromptSelect = prompt => {
     setSelectedPrompts(prev => ({
       ...prev,
-      [activeCategory]: {...prev[activeCategory], prompt},
+      [activeCategory]: {...prev[activeCategory], question: prompt},
     }));
   };
 
@@ -84,6 +125,17 @@ const ProfilePromptsScreen = () => {
       ...prev,
       [activeCategory]: {...prev[activeCategory], answer},
     }));
+  };
+
+  const canProceed = () => {
+    return (
+      selectedPrompts.aboutMe.question &&
+      selectedPrompts.aboutMe.answer.trim() &&
+      selectedPrompts.selfCare.question &&
+      selectedPrompts.selfCare.answer.trim() &&
+      selectedPrompts.gettingPersonal.question &&
+      selectedPrompts.gettingPersonal.answer.trim()
+    );
   };
 
   const handleContinue = async () => {
@@ -128,6 +180,12 @@ const ProfilePromptsScreen = () => {
       await saveProfilePrompts(promptsData);
 
       console.log('Profile prompts saved successfully');
+
+      // Reload profile in context to ensure next screen logic is correct
+      if (userId) {
+        await loadProfile(userId);
+      }
+
       navigation.navigate(AppRoute.MediaUpload);
     } catch (error) {
       console.error('Error saving profile prompts:', error);
@@ -178,14 +236,14 @@ const ProfilePromptsScreen = () => {
             key={prompt}
             style={[
               styles.promptButton,
-              selectedPrompts[activeCategory].prompt === prompt &&
+              selectedPrompts[activeCategory].question === prompt &&
                 styles.promptButtonSelected,
             ]}
             onPress={() => handlePromptSelect(prompt)}>
             <Text
               style={[
                 styles.promptText,
-                selectedPrompts[activeCategory].prompt === prompt &&
+                selectedPrompts[activeCategory].question === prompt &&
                   styles.promptTextSelected,
               ]}>
               {prompt}
@@ -194,10 +252,10 @@ const ProfilePromptsScreen = () => {
         ))}
       </View>
 
-      {selectedPrompts[activeCategory].prompt && (
+      {selectedPrompts[activeCategory].question && (
         <View style={styles.answerContainer}>
           <Text style={styles.answerLabel}>
-            {selectedPrompts[activeCategory].prompt}
+            {selectedPrompts[activeCategory].question}
           </Text>
           <TextInput
             value={selectedPrompts[activeCategory].answer}
@@ -215,10 +273,10 @@ const ProfilePromptsScreen = () => {
       <Pressable
         style={[
           styles.primaryButton,
-          isSubmitting && styles.primaryButtonDisabled,
+          (isSubmitting || !canProceed()) && styles.primaryButtonDisabled,
         ]}
         onPress={handleContinue}
-        disabled={isSubmitting}>
+        disabled={isSubmitting || !canProceed()}>
         {isSubmitting ? (
           <ActivityIndicator color={colors.surface} />
         ) : (
