@@ -14,6 +14,7 @@ import {
   Modal,
   TouchableOpacity,
   StatusBar,
+  Dimensions,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -123,7 +124,6 @@ const ChatScreen = ({route, navigation}) => {
         socketRef.current.off('messagesSeen');
         socketRef.current.off('messageStatusUpdate');
         socketRef.current.off('streak:update');
-        socketRef.current.off('userStatusChanged');
       }
 
       if (typingTimeoutRef.current) {
@@ -283,13 +283,6 @@ const ChatScreen = ({route, navigation}) => {
           if (data.userPairId === ourPairId) {
             setStreak(data);
             setShowStreakWarning(false); // New activity clears the warning
-          }
-        });
-
-        // Real-time online/offline status updates
-        socket.on('userStatusChanged', data => {
-          if (data.userId === theirId) {
-            setIsUserOnlineNow(data.status === 'online');
           }
         });
       } else {
@@ -575,8 +568,7 @@ const ChatScreen = ({route, navigation}) => {
         ],
       );
     },
-    [matchId, currentUserId], // Add missing dependencies if needed, or keep generic
-    [matchId, currentUserId], // Add missing dependencies if needed, or keep generic
+    [matchId, currentUserId],
   );
 
   const handleScheduleDate = async date => {
@@ -792,250 +784,192 @@ const ChatScreen = ({route, navigation}) => {
     );
   }
 
-  return (<>
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <KeyboardAvoidingView
-        style={styles.container}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}>
-        {/* Header */}
-        <View style={styles.headerContainer}>
-          <LinearGradient
-            colors={['#fff', '#f8f8f8']}
-            style={styles.headerBackground}
-          />
-          <View style={styles.headerContent}>
-            <Pressable
-              onPress={() => navigation.goBack()}
-              style={styles.headerButton}>
-              <Icon name="chevron-back" size={28} color={colors.textPrimary} />
-            </Pressable>
+  return (
+    <>
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+        <KeyboardAvoidingView
+          style={styles.container}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}>
+          {/* Header */}
+          <View style={styles.headerContainer}>
+            <LinearGradient
+              colors={['#ffffff', '#f8f9fa']}
+              style={styles.headerBackground}
+            />
+            <View style={styles.headerContent}>
+              <Pressable
+                onPress={() => navigation.goBack()}
+                style={({pressed}) => ({
+                  opacity: pressed ? 0.7 : 1,
+                  padding: spacing.xs,
+                })}>
+                <Icon name="chevron-back" size={28} color="#1a1a1a" />
+              </Pressable>
 
-            <View style={styles.headerTitleContainer}>
-              <View style={styles.headerAvatar}>
-                {theirPhoto ? (
-                  <Image
-                    source={{uri: theirPhoto}}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      borderRadius: 20,
-                    }}
-                  />
-                ) : (
-                  <Text style={styles.headerAvatarText}>
-                    {theirName?.[0] || '?'}
-                  </Text>
-                )}
-              </View>
-              <View style={styles.headerInfo}>
-                <Text style={styles.headerTitle} numberOfLines={1}>
-                  {theirName || 'Chat'}
-                  {theirAge ? `, ${theirAge}` : ''}
-                </Text>
-                <View style={styles.headerSubRow}>
-                  {isUserOnlineNow ? (
-                    <View style={styles.onlineBadgeContainer}>
-                      <View style={styles.onlineBadge} />
-                      <Text style={styles.onlineText}>Online</Text>
-                    </View>
-                  ) : matchDetails?.status === 'active' ? (
-                    <View style={styles.onlineBadgeContainer}>
-                      <View
-                        style={[styles.onlineBadge, {backgroundColor: '#ccc'}]}
-                      />
-                      <Text style={[styles.onlineText, {color: '#999'}]}>
-                        Offline
-                      </Text>
-                    </View>
-                  ) : matchDetails?.status === 'secured' ? (
-                    <Text style={[styles.onlineText, {color: '#4CAF50'}]}>
-                      📅{' '}
-                      {new Date(
-                        matchDetails.dateScheduled,
-                      ).toLocaleDateString()}
-                    </Text>
-                  ) : (
-                    <Text style={[styles.onlineText, {color: colors.error}]}>
-                      ⌛ Expired
-                    </Text>
-                  )}
-
-                  {streak && streak.streakCount > 0 && (
-                    <StreakBadge
-                      count={streak.streakCount}
-                      graceUsed={streak.graceUsed}
+              <View style={styles.headerTitleContainer}>
+                <View style={styles.headerAvatar}>
+                  {theirPhoto ? (
+                    <Image
+                      source={{uri: theirPhoto}}
+                      style={{width: 40, height: 40, borderRadius: 20}}
                     />
+                  ) : (
+                    <Text style={styles.headerAvatarText}>
+                      {theirName?.[0] || '?'}
+                    </Text>
                   )}
                 </View>
+                <View style={styles.headerInfo}>
+                  <Text style={styles.headerTitle} numberOfLines={1}>
+                    {theirName || 'Chat'}
+                  </Text>
+                  <View style={styles.headerSubRow}>
+                    {isUserOnlineNow ? (
+                      <View style={styles.onlineBadgeContainer}>
+                        <View style={styles.onlineBadge} />
+                        <Text style={styles.onlineText}>Online</Text>
+                      </View>
+                    ) : (
+                      <Text style={styles.offlineText}>Offline</Text>
+                    )}
+                    {streak && (
+                      <StreakBadge count={streak.count} size="small" />
+                    )}
+                  </View>
+                </View>
               </View>
-            </View>
 
-            <View style={styles.headerActions}>
-              {matchDetails && matchDetails.status !== 'expired' && (
-                <CountdownTimer
-                  expiresAt={matchDetails.expiresAt}
-                  status={matchDetails.status}
-                />
-              )}
-              {matchDetails?.status === 'active' && (
+              <View style={styles.headerActions}>
                 <Pressable
                   onPress={() => setShowDateModal(true)}
-                  style={[
-                    styles.headerActionButton,
-                    {
-                      backgroundColor: colors.primary,
-                      borderRadius: 20,
-                      paddingHorizontal: 10,
-                      paddingVertical: 4,
-                      marginLeft: 8,
-                    },
-                  ]}>
-                  <Text
-                    style={{color: '#fff', fontWeight: 'bold', fontSize: 11}}>
-                    Date
-                  </Text>
+                  style={({pressed}) => ({
+                    opacity: pressed ? 0.7 : 1,
+                    marginRight: spacing.md,
+                  })}>
+                  <Icon name="calendar-outline" size={24} color={colors.primary} />
                 </Pressable>
-              )}
-              <Pressable
-                onPress={() => setShowUnmatchModal(true)}
-                style={styles.headerActionButton}>
-                <Icon
-                  name="heart-dislike-outline"
-                  size={24}
-                  color={colors.error}
-                />
-              </Pressable>
-              <Pressable
-                onPress={() => setShowReportModal(true)}
-                style={styles.headerActionButton}>
-                <Icon
-                  name="ellipsis-vertical"
-                  size={24}
-                  color={colors.textPrimary}
-                />
-              </Pressable>
+                <Pressable
+                  onPress={() => setShowReportModal(true)}
+                  style={({pressed}) => ({
+                    opacity: pressed ? 0.7 : 1,
+                  })}>
+                  <Icon
+                    name="ellipsis-vertical"
+                    size={24}
+                    color={colors.textSecondary}
+                  />
+                </Pressable>
+              </View>
             </View>
           </View>
-        </View>
 
-        {showStreakWarning && streak?.lastActivityDate && (
-          <StreakWarningBanner
-            expiresAt={
-              new Date(streak.lastActivityDate).getTime() + 24 * 60 * 60 * 1000
-            }
-            onDismiss={() => setShowStreakWarning(false)}
-          />
-        )}
-
-        {/* Messages */}
-
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          keyExtractor={item => item._id}
-          renderItem={renderItem}
-          contentContainerStyle={styles.messagesContainer}
-          onContentSizeChange={scrollToBottom}
-          onLayout={scrollToBottom}
-        />
-
-        {/* Typing indicator */}
-        {typing && (
-          <View style={styles.typingContainer}>
-            <Text style={styles.typingText}>typing...</Text>
-          </View>
-        )}
-
-        {/* Input */}
-        <View
-          style={[
-            styles.inputContainer,
-            {paddingBottom: (insets.bottom || 0) + spacing.sm},
-          ]}>
-          <Pressable
-            style={styles.attachButton}
-            onPress={handlePickImage}
-            disabled={uploadingMedia}>
-            {uploadingMedia ? (
-              <ActivityIndicator size="small" color={colors.primary} />
-            ) : (
-              <Icon
-                name="image-outline"
-                size={24}
-                color={colors.textSecondary}
-              />
-            )}
-          </Pressable>
-
-          <Pressable
-            style={styles.attachButton}
-            onPress={() => setShowGiftModal(true)}>
-            <Icon
-              name="gift-outline"
-              size={24}
-              color={colors.primary}
+          {/* Streak Warning Banner */}
+          {showStreakWarning && streak && (
+            <StreakWarningBanner
+              hoursRemaining={24 - (Date.now() - new Date(streak.lastActivityDate)) / 3600000}
             />
-          </Pressable>
+          )}
 
-          {matchDetails?.status === 'expired' ? (
-            <View
-              style={[
-                styles.inputWrapper,
-                {backgroundColor: '#f0f0f0', justifyContent: 'center'},
-              ]}>
-              <Text style={{color: colors.textSecondary, textAlign: 'center'}}>
-                Chat expired. You missed the date!
-              </Text>
+          {/* Countdown & Match Info */}
+          {matchDetails && (
+            <View style={styles.timerBadge}>
+              <CountdownTimer
+                expiresAt={matchDetails.expiresAt}
+                status={matchDetails.status}
+              />
             </View>
-          ) : (
+          )}
+
+          {/* Messages */}
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={renderItem}
+            keyExtractor={item => item._id}
+            contentContainerStyle={styles.messagesList}
+            onContentSizeChange={scrollToBottom}
+            onLayout={scrollToBottom}
+            showsVerticalScrollIndicator={false}
+          />
+
+          {/* Typing Indicator */}
+          {typing && (
+            <View style={styles.typingContainer}>
+              <Text style={styles.typingText}>{theirName} is typing...</Text>
+            </View>
+          )}
+
+          {/* Input Area */}
+          <View style={[styles.inputContainer, {paddingBottom: insets.bottom || spacing.md}]}>
             <View style={styles.inputWrapper}>
+              <Pressable
+                style={styles.iconButton}
+                onPress={() => setShowEmojiPicker(true)}>
+                <Icon name="happy-outline" size={24} color={colors.textSecondary} />
+              </Pressable>
+
+              <Pressable
+                style={styles.iconButton}
+                onPress={() => setShowGifPicker(true)}>
+                <Icon name="images-outline" size={24} color={colors.textSecondary} />
+              </Pressable>
+
+              <Pressable
+                style={styles.iconButton}
+                onPress={() => setShowGiftModal(true)}>
+                <Icon name="gift-outline" size={24} color={colors.primary} />
+              </Pressable>
+
               <TextInput
                 style={styles.input}
-                placeholder="Message..."
-                placeholderTextColor={colors.textSecondary}
+                placeholder="Type a message..."
+                placeholderTextColor="#999"
                 value={inputText}
                 onChangeText={onChangeText}
                 multiline
                 maxLength={1000}
               />
+
               <Pressable
                 style={styles.iconButton}
-                onPress={() => setShowEmojiPicker(true)}>
+                onPress={handlePickImage}
+                disabled={uploadingMedia}>
                 <Icon
-                  name="happy-outline"
+                  name="camera-outline"
                   size={24}
                   color={colors.textSecondary}
                 />
               </Pressable>
             </View>
-          )}
 
-          <Pressable
-            style={[
-              styles.sendButton,
-              (!inputText.trim() || sending) && styles.sendButtonDisabled,
-            ]}
-            onPress={handleSend}
-            disabled={!inputText.trim() || sending}>
-            {sending ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <LinearGradient
-                colors={[colors.primary, '#FF6B6B']}
-                start={{x: 0, y: 0}}
-                end={{x: 1, y: 1}}
-                style={styles.sendButtonGradient}>
-                <Icon
-                  name="send"
-                  size={20}
-                  color="#fff"
-                  style={{marginLeft: 2}}
-                />
-              </LinearGradient>
-            )}
-          </Pressable>
-        </View>
+            <Pressable
+              style={[
+                styles.sendButton,
+                (!inputText.trim() || sending) && styles.sendButtonDisabled,
+              ]}
+              onPress={handleSend}
+              disabled={!inputText.trim() || sending}>
+              {sending ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <LinearGradient
+                  colors={[colors.primary, '#FF6B6B']}
+                  start={{x: 0, y: 0}}
+                  end={{x: 1, y: 1}}
+                  style={styles.sendButtonGradient}>
+                  <Icon
+                    name="send"
+                    size={20}
+                    color="#fff"
+                    style={{marginLeft: 2}}
+                  />
+                </LinearGradient>
+              )}
+            </Pressable>
+          </View>
+        </KeyboardAvoidingView>
 
         {/* Emoji Picker */}
         <EmojiPicker
@@ -1072,13 +1006,18 @@ const ChatScreen = ({route, navigation}) => {
           visible={showUnmatchModal}
           transparent
           animationType="fade"
+          statusBarTranslucent
           onRequestClose={() => setShowUnmatchModal(false)}>
-          <View style={styles.modalOverlay}>
-            <View style={styles.unmatchModalContent}>
+          <Pressable
+            style={styles.modalOverlayCentered}
+            onPress={() => setShowUnmatchModal(false)}>
+            <Pressable
+              style={styles.unmatchModalContent}
+              onPress={e => e.stopPropagation()}>
               <Text style={styles.modalTitle}>Unmatch</Text>
               <Text style={styles.modalSubtitle}>
-                Are you sure you want to unmatch with {theirName || 'this user'}
-                ? This will remove your conversation and you won't be able to
+                Are you sure you want to unmatch with {theirName || 'this user'}?
+                This will remove your conversation and you won't be able to
                 message each other anymore.
               </Text>
               <View style={styles.modalButtons}>
@@ -1102,20 +1041,23 @@ const ChatScreen = ({route, navigation}) => {
                   )}
                 </Pressable>
               </View>
-            </View>
-          </View>
+            </Pressable>
+          </Pressable>
         </Modal>
-
-        {/* Note: GiftReceiverAnimation is rendered via its own Modal below */}
 
         {/* Report Modal */}
         <Modal
           visible={showReportModal}
           transparent
-          animationType="slide"
+          animationType="fade"
+          statusBarTranslucent
           onRequestClose={() => setShowReportModal(false)}>
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
+          <Pressable
+            style={styles.modalOverlay}
+            onPress={() => setShowReportModal(false)}>
+            <Pressable
+              style={styles.modalContent}
+              onPress={e => e.stopPropagation()}>
               <Text style={styles.modalTitle}>Report & Block User</Text>
               <Text style={styles.modalSubtitle}>
                 Why are you reporting this user?
@@ -1169,27 +1111,27 @@ const ChatScreen = ({route, navigation}) => {
                   <Text style={styles.reportButtonText}>Block & Report</Text>
                 </Pressable>
               </View>
-            </View>
-          </View>
+            </Pressable>
+          </Pressable>
         </Modal>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </SafeAreaView>
 
-    {/* Gift Receiver Animation - rendered OUTSIDE SafeAreaView so it
-        is never clipped by KeyboardAvoidingView on Android */}
-    <GiftReceiverAnimation
-      visible={showGiftAnimation}
-      gift={receivedGiftForAnimation}
-      onComplete={() => {
-        setShowGiftAnimation(false);
-        setReceivedGiftForAnimation(null);
-      }}
-    />
-  </>);
+      {/* Gift Receiver Animation - rendered OUTSIDE SafeAreaView so it
+          is never clipped by KeyboardAvoidingView on Android */}
+      <GiftReceiverAnimation
+        visible={showGiftAnimation}
+        gift={receivedGiftForAnimation}
+        onComplete={() => {
+          setShowGiftAnimation(false);
+          setReceivedGiftForAnimation(null);
+        }}
+      />
+    </>
+  );
 };
 
 const styles = StyleSheet.create({
-  safe: {flex: 1, backgroundColor: '#fff'},
+  safe: {flex: 1, backgroundColor: '#f8f9fa'},
   container: {flex: 1, backgroundColor: '#f8f9fa'},
   center: {
     flex: 1,
@@ -1263,78 +1205,81 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   onlineBadge: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#4CAF50',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#4ade80',
     marginRight: 4,
   },
   onlineText: {
-    fontSize: 12,
-    color: '#4CAF50',
+    fontSize: 11,
+    color: '#4ade80',
+    fontFamily: typography.fontFamilyMedium,
+  },
+  offlineText: {
+    fontSize: 11,
+    color: colors.textTertiary,
     fontFamily: typography.fontFamilyMedium,
   },
   headerActions: {
     flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  headerButton: {
-    padding: 8,
-  },
-  headerActionButton: {
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: '#f5f5f5',
+    alignItems: 'center',
   },
 
   // Messages
-  messagesContainer: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    flexGrow: 1,
+  messagesList: {
+    padding: spacing.md,
+    paddingBottom: spacing.xl,
   },
   dateSeparator: {
     alignItems: 'center',
-    marginVertical: spacing.md,
+    marginVertical: spacing.lg,
   },
   dateSeparatorText: {
     fontSize: 12,
-    color: '#999',
+    fontFamily: typography.fontFamilyMedium,
+    color: colors.textTertiary,
     backgroundColor: '#eee',
     paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 10,
+    borderRadius: 12,
     overflow: 'hidden',
   },
   messageRow: {
-    marginVertical: 4,
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    marginBottom: spacing.md,
+    maxWidth: '85%',
   },
   rowLeft: {
-    justifyContent: 'flex-start',
+    alignSelf: 'flex-start',
   },
   rowRight: {
-    justifyContent: 'flex-end',
+    alignSelf: 'flex-end',
+    flexDirection: 'row-reverse',
   },
   avatarContainer: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#e0e0e0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
+    marginRight: spacing.xs,
+    alignSelf: 'flex-end',
     marginBottom: 4,
   },
   avatarText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#666',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#eee',
+    textAlign: 'center',
+    lineHeight: 32,
+    fontSize: 14,
+    fontFamily: typography.fontFamilyBold,
+    color: colors.primary,
   },
   bubbleContainer: {
-    maxWidth: '75%',
     borderRadius: 20,
+    overflow: 'hidden',
+  },
+  bubbleLeft: {
+    backgroundColor: '#fff',
+    borderBottomLeftRadius: 4,
     elevation: 1,
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 1},
@@ -1344,31 +1289,39 @@ const styles = StyleSheet.create({
   bubbleRight: {
     borderBottomRightRadius: 4,
   },
-  bubbleLeft: {
-    borderBottomLeftRadius: 4,
-  },
   bubbleGradient: {
+    padding: spacing.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    borderRadius: 20,
-    borderBottomRightRadius: 4,
   },
   bubbleContentThem: {
-    backgroundColor: '#fff',
+    padding: spacing.sm,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
-    borderRadius: 20,
-    borderBottomLeftRadius: 4,
-    borderWidth: 1,
-    borderColor: '#eee',
   },
   messageText: {
+    fontSize: 15,
+    fontFamily: typography.fontFamilyRegular,
     color: '#fff',
-    fontSize: 16,
-    lineHeight: 22,
+    lineHeight: 20,
   },
   messageTextThem: {
     color: '#1a1a1a',
+  },
+  messageFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    marginTop: 4,
+  },
+  timeText: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.7)',
+    marginRight: 4,
+  },
+  timeTextThem: {
+    color: colors.textTertiary,
+  },
+  statusContainer: {
+    marginLeft: 2,
   },
   messageImage: {
     width: 200,
@@ -1377,245 +1330,229 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   gifImage: {
-    width: 250,
-    height: 200,
-  },
-  messageFooter: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  timeText: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.8)',
-    marginRight: 4,
-  },
-  timeTextThem: {
-    color: '#999',
-  },
-  statusContainer: {
-    marginLeft: 2,
+    width: 150,
+    height: 150,
   },
 
-  // Typing
-  typingContainer: {
-    paddingHorizontal: spacing.md,
-    paddingBottom: 8,
-    marginLeft: 36, // Align with bubble (avatar width + gap)
-  },
-  typingText: {
-    fontSize: 12,
-    color: '#999',
-    fontStyle: 'italic',
-  },
-
-  // Input
+  // Input Area
   inputContainer: {
     flexDirection: 'row',
-    padding: spacing.md,
+    alignItems: 'flex-end',
+    padding: spacing.sm,
+    backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#f0f0f0',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-  },
-  attachButton: {
-    padding: 8,
-    marginRight: 8,
   },
   inputWrapper: {
     flex: 1,
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
+    alignItems: 'flex-end',
+    backgroundColor: '#f8f9fa',
     borderRadius: 24,
-    paddingHorizontal: 12,
-    marginRight: 8,
+    paddingHorizontal: spacing.sm,
+    marginRight: spacing.sm,
     borderWidth: 1,
     borderColor: '#eee',
   },
   input: {
     flex: 1,
-    paddingVertical: Platform.OS === 'ios' ? 10 : 6,
-    fontSize: 16,
-    color: '#1a1a1a',
+    minHeight: 40,
     maxHeight: 100,
+    paddingTop: 10,
+    paddingBottom: 10,
+    paddingHorizontal: spacing.xs,
+    fontSize: 15,
+    fontFamily: typography.fontFamilyRegular,
+    color: '#1a1a1a',
   },
   iconButton: {
-    padding: 6,
+    padding: 8,
   },
   sendButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: colors.primary,
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-  },
-  sendButtonGradient: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
+    overflow: 'hidden',
   },
   sendButtonDisabled: {
-    backgroundColor: '#f5f5f5',
-    elevation: 0,
+    opacity: 0.6,
+  },
+  sendButtonGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
-  // Modal styles (keeping mostly same but refining)
+  // Typing
+  typingContainer: {
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.xs,
+  },
+  typingText: {
+    fontSize: 12,
+    color: colors.textTertiary,
+    fontStyle: 'italic',
+  },
+
+  // Modals
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
+  },
+  modalOverlayCentered: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
   modalContent: {
     backgroundColor: '#fff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: spacing.lg,
-    paddingBottom: spacing.xl + 20,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontFamily: typography.fontFamilyBold,
-    color: '#1a1a1a',
-    marginBottom: spacing.xs,
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: spacing.lg,
-  },
-  reasonItem: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#eee',
-    marginBottom: 8,
-    backgroundColor: '#fafafa',
-  },
-  reasonItemSelected: {
-    borderColor: colors.primary,
-    backgroundColor: `${colors.primary}10`,
-  },
-  reasonText: {
-    fontSize: 16,
-    color: '#333',
-  },
-  reasonTextSelected: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  descriptionInput: {
-    borderWidth: 1,
-    borderColor: '#eee',
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 16,
-    minHeight: 100,
-    textAlignVertical: 'top',
-    fontSize: 16,
-    color: '#1a1a1a',
-    backgroundColor: '#fafafa',
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    marginTop: 24,
-    gap: 12,
-  },
-  cancelButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    color: '#333',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  reportButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: '#E53935',
-    alignItems: 'center',
-    elevation: 2,
-  },
-  reportButtonDisabled: {
-    backgroundColor: '#ffcdd2',
-    elevation: 0,
-  },
-  reportButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
+    padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
   },
   unmatchModalContent: {
     backgroundColor: '#fff',
     borderRadius: 24,
     padding: 24,
-    margin: 20,
+    width: '100%',
     maxWidth: 400,
-    alignSelf: 'center',
-    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontFamily: typography.fontFamilyBold,
+    color: '#1a1a1a',
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    fontFamily: typography.fontFamilyRegular,
+    color: colors.textSecondary,
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  reasonItem: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: '#f8f9fa',
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  reasonItemSelected: {
+    backgroundColor: colors.primary + '10',
+    borderColor: colors.primary,
+  },
+  reasonText: {
+    fontSize: 15,
+    fontFamily: typography.fontFamilyMedium,
+    color: '#1a1a1a',
+  },
+  reasonTextSelected: {
+    color: colors.primary,
+    fontFamily: typography.fontFamilyBold,
+  },
+  descriptionInput: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 12,
+    height: 100,
+    textAlignVertical: 'top',
+    fontSize: 14,
+    color: '#1a1a1a',
+    marginTop: 8,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  cancelButton: {
+    flex: 1,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
+    backgroundColor: '#f0f0f0',
+  },
+  cancelButtonText: {
+    fontSize: 15,
+    fontFamily: typography.fontFamilyBold,
+    color: '#666',
+  },
+  reportButton: {
+    flex: 2,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+  },
+  reportButtonDisabled: {
+    opacity: 0.5,
+  },
+  reportButtonText: {
+    fontSize: 15,
+    fontFamily: typography.fontFamilyBold,
+    color: '#fff',
   },
   unmatchButton: {
-    flex: 1,
-    paddingVertical: 14,
-    borderRadius: 12,
-    backgroundColor: colors.error,
+    flex: 2,
+    height: 48,
+    justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: 12,
+    backgroundColor: '#ff4b4b',
   },
   unmatchButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   unmatchButtonText: {
+    fontSize: 15,
+    fontFamily: typography.fontFamilyBold,
     color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
   },
   blockedText: {
     fontSize: 16,
-    color: '#666',
+    color: colors.textSecondary,
+    marginBottom: 20,
     textAlign: 'center',
-    marginBottom: spacing.lg,
   },
   backButton: {
     paddingHorizontal: 24,
-    paddingVertical: 14,
+    paddingVertical: 12,
     backgroundColor: colors.primary,
-    borderRadius: 12,
+    borderRadius: 24,
   },
   backButtonText: {
     color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
+    fontWeight: 'bold',
   },
-  // Gift Styles
+  timerBadge: {
+    alignSelf: 'center',
+    marginTop: spacing.sm,
+  },
+
+  // Gifts in chat
   giftMessageContainer: {
-    padding: spacing.xs,
     alignItems: 'center',
-    width: 150,
+    padding: 8,
   },
   giftMessageImage: {
-    width: 100,
-    height: 100,
-    marginBottom: spacing.xs,
+    width: 60,
+    height: 60,
+    marginBottom: 8,
   },
   giftMessageText: {
-    color: '#fff',
-    fontFamily: typography.fontFamilyBold,
     fontSize: 14,
+    fontFamily: typography.fontFamilyBold,
+    color: '#fff',
     textAlign: 'center',
   },
   giftMessageTextThem: {

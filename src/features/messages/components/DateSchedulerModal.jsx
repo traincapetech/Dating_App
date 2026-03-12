@@ -156,17 +156,17 @@ const DateSchedulerModal = ({visible, onClose, onSchedule, loading}) => {
 
 const styles = StyleSheet.create({
   modalOverlay: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.lg,
+    width: '100%',
   },
   modalContent: {
     backgroundColor: '#fff',
     borderRadius: 20,
     padding: spacing.lg,
-    width: '100%',
+    width: '90%',
     maxWidth: 400,
   },
   titleRow: {
