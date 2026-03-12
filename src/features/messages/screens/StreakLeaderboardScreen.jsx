@@ -13,6 +13,7 @@ import {
 import {SafeAreaView} from 'react-native-safe-area-context';
 import Icon from 'react-native-vector-icons/Ionicons';
 import LinearGradient from 'react-native-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {colors, typography, spacing} from '../../../theme';
 import {getStreakLeaderboard} from '../../../services/streakService';
 
@@ -21,10 +22,24 @@ const {width} = Dimensions.get('window');
 const StreakLeaderboardScreen = ({navigation}) => {
   const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState(null);
 
   useEffect(() => {
     fetchLeaderboard();
+    fetchCurrentUser();
   }, []);
+
+  const fetchCurrentUser = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('@pryvo_user');
+      if (userData && userData !== 'undefined') {
+        const user = JSON.parse(userData);
+        setCurrentUserId(user.id || user._id);
+      }
+    } catch (e) {
+      console.error('[Streak Leaderboard] User fetch error:', e);
+    }
+  };
 
   const fetchLeaderboard = async () => {
     try {
@@ -66,6 +81,10 @@ const StreakLeaderboardScreen = ({navigation}) => {
   const renderItem = ({item, index}) => {
     const isFirst = index === 0;
 
+    const isCurrentUserEntry =
+      item.userA?.id === currentUserId || item.userB?.id === currentUserId;
+    const shouldBlur = !isCurrentUserEntry && currentUserId !== null;
+
     return (
       <View style={[styles.card, isFirst && styles.firstCard]}>
         <View style={styles.cardContent}>
@@ -86,6 +105,7 @@ const StreakLeaderboardScreen = ({navigation}) => {
                         )}`,
                     }}
                     style={styles.avatar}
+                    blurRadius={shouldBlur ? 50 : 0}
                   />
                 </View>
               </View>
@@ -104,12 +124,15 @@ const StreakLeaderboardScreen = ({navigation}) => {
                         )}`,
                     }}
                     style={styles.avatar}
+                    blurRadius={shouldBlur ? 35 : 0}
                   />
                 </View>
               </View>
             </View>
             <View style={styles.nameContainer}>
-              <Text style={styles.pairNamesText} numberOfLines={1}>
+              <Text
+                style={[styles.pairNamesText, shouldBlur && styles.blurredText]}
+                numberOfLines={1}>
                 {item.userA?.name} & {item.userB?.name}
               </Text>
             </View>
@@ -329,6 +352,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: colors.textPrimary,
+  },
+  blurredText: {
+    color: 'transparent',
+    textShadowColor: 'rgba(0, 0, 0, 0.4)',
+    textShadowOffset: {width: 0, height: 0},
+    textShadowRadius: 10,
   },
   streakContainer: {
     flexDirection: 'row',

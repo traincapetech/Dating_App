@@ -1,0 +1,184 @@
+diff --git a/node_modules/@react-native/codegen/lib/parsers/typescript/components/componentsUtils.js b/node_modules/@react-native/codegen/lib/parsers/typescript/components/componentsUtils.js
+index 3ba47fe..e112569 100644
+--- a/node_modules/@react-native/codegen/lib/parsers/typescript/components/componentsUtils.js
++++ b/node_modules/@react-native/codegen/lib/parsers/typescript/components/componentsUtils.js
+@@ -293,9 +293,19 @@ function getTypeAnnotationForArray(
+     }
+     return arrayType;
+   }
++  const getTypeName = typeAnnotation => {
++    if (typeAnnotation.type === 'TSTypeReference') {
++      const typeName = typeAnnotation.typeName;
++      if (typeName.type === 'TSQualifiedName') {
++        return typeName.right.name;
++      }
++      return typeName.name;
++    }
++    return typeAnnotation.type;
++  };
+   const type =
+-    extractedTypeAnnotation.elementType === 'TSTypeReference'
+-      ? extractedTypeAnnotation.elementType.typeName.name
++    extractedTypeAnnotation.type === 'TSTypeReference'
++      ? getTypeName(extractedTypeAnnotation)
+       : ((_extractedTypeAnnotat = extractedTypeAnnotation.elementType) ===
+           null || _extractedTypeAnnotat === void 0
+           ? void 0
+diff --git a/node_modules/@react-native/codegen/lib/parsers/typescript/parseTopLevelType.js b/node_modules/@react-native/codegen/lib/parsers/typescript/parseTopLevelType.js
+index 0ef998d..083f496 100644
+--- a/node_modules/@react-native/codegen/lib/parsers/typescript/parseTopLevelType.js
++++ b/node_modules/@react-native/codegen/lib/parsers/typescript/parseTopLevelType.js
+@@ -10,11 +10,25 @@
+ 
+ 'use strict';
+ 
++function getTypeName(type) {
++  if (type.type !== 'TSTypeReference') {
++    return undefined;
++  }
++  const typeName = type.typeName;
++  if (typeName.type === 'TSQualifiedName') {
++    return typeName.right.name;
++  }
++  return typeName.name;
++}
+ function getValueFromTypes(value, types) {
++  if (!types) {
++    return value;
++  }
+   switch (value.type) {
+     case 'TSTypeReference':
+-      if (types[value.typeName.name]) {
+-        return getValueFromTypes(types[value.typeName.name], types);
++      const name = getTypeName(value);
++      if (types[name]) {
++        return getValueFromTypes(types[name], types);
+       } else {
+         return value;
+       }
+@@ -89,9 +103,10 @@ function handleUnionAndParen(type, result, knownTypes) {
+       break;
+     }
+     case 'TSTypeReference':
+-      if (type.typeName.name === 'Readonly') {
++      const name = getTypeName(type);
++      if (name === 'Readonly') {
+         handleUnionAndParen(type.typeParameters.params[0], result, knownTypes);
+-      } else if (type.typeName.name === 'WithDefault') {
++      } else if (name === 'WithDefault') {
+         if (result.optional) {
+           throw new Error(
+             'WithDefault<> is optional and does not need to be marked as optional. Please remove the union of undefined and/or null',
+@@ -116,7 +131,7 @@ function handleUnionAndParen(type, result, knownTypes) {
+         const resolvedType = getValueFromTypes(type, knownTypes);
+         if (
+           resolvedType.type === 'TSTypeReference' &&
+-          resolvedType.typeName.name === type.typeName.name
++          getTypeName(resolvedType) === name
+         ) {
+           result.unions.push(type);
+         } else {
+@@ -166,13 +181,14 @@ function handleIntersectionAndParen(type, result, knownTypes) {
+       break;
+     }
+     case 'TSTypeReference':
+-      if (type.typeName.name === 'Readonly') {
++      const name = getTypeName(type);
++      if (name === 'Readonly') {
+         handleIntersectionAndParen(
+           type.typeParameters.params[0],
+           result,
+           knownTypes,
+         );
+-      } else if (type.typeName.name === 'WithDefault') {
++      } else if (name === 'WithDefault') {
+         throw new Error('WithDefault<> is now allowed in intersection types.');
+       } else if (!knownTypes) {
+         result.push(type);
+@@ -180,7 +196,7 @@ function handleIntersectionAndParen(type, result, knownTypes) {
+         const resolvedType = getValueFromTypes(type, knownTypes);
+         if (
+           resolvedType.type === 'TSTypeReference' &&
+-          resolvedType.typeName.name === type.typeName.name
++          getTypeName(resolvedType) === name
+         ) {
+           result.push(type);
+         } else {
+diff --git a/node_modules/@react-native/codegen/lib/parsers/typescript/parser.js b/node_modules/@react-native/codegen/lib/parsers/typescript/parser.js
+index c351766..3a590f0 100644
+--- a/node_modules/@react-native/codegen/lib/parsers/typescript/parser.js
++++ b/node_modules/@react-native/codegen/lib/parsers/typescript/parser.js
+@@ -100,13 +100,14 @@ class TypeScriptParser {
+     return 'TypeScript';
+   }
+   getTypeAnnotationName(typeAnnotation) {
+-    var _typeAnnotation$typeN;
+-    return typeAnnotation === null ||
+-      typeAnnotation === void 0 ||
+-      (_typeAnnotation$typeN = typeAnnotation.typeName) === null ||
+-      _typeAnnotation$typeN === void 0
+-      ? void 0
+-      : _typeAnnotation$typeN.name;
++    const typeName = typeAnnotation === null || typeAnnotation === void 0 ? void 0 : typeAnnotation.typeName;
++    if (!typeName) {
++      return undefined;
++    }
++    if (typeName.type === 'TSQualifiedName') {
++      return typeName.right.name;
++    }
++    return typeName.name;
+   }
+   checkIfInvalidModule(typeArguments) {
+     return (
+@@ -327,7 +328,9 @@ class TypeScriptParser {
+     return type === 'TSTypeReference';
+   }
+   extractAnnotatedElement(typeAnnotation, types) {
+-    return types[typeAnnotation.typeParameters.params[0].typeName.name];
++    const typeName = typeAnnotation.typeParameters.params[0].typeName;
++    const name = typeName.type === 'TSQualifiedName' ? typeName.right.name : typeName.name;
++    return types ? types[name] : undefined;
+   }
+ 
+   /**
+@@ -400,8 +403,10 @@ class TypeScriptParser {
+ 
+   // This FlowFixMe is supposed to refer to typeArgumentParams and funcArgumentParams of generated AST.
+   getNativeComponentType(typeArgumentParams, funcArgumentParams) {
++    const typeName = typeArgumentParams[0].typeName;
++    const propsTypeName = typeName.type === 'TSQualifiedName' ? typeName.right.name : typeName.name;
+     return {
+-      propsTypeName: typeArgumentParams[0].typeName.name,
++      propsTypeName: propsTypeName,
+       componentName: funcArgumentParams[0].value,
+     };
+   }
+@@ -554,11 +559,9 @@ class TypeScriptParser {
+     };
+   }
+   getProperties(typeName, types) {
+-    const alias = types[typeName];
++    const alias = types ? types[typeName] : undefined;
+     if (!alias) {
+-      throw new Error(
+-        `Failed to find definition for "${typeName}", please check that you have a valid codegen typescript file`,
+-      );
++      return [];
+     }
+     const aliasKind =
+       alias.type === 'TSInterfaceDeclaration' ? 'interface' : 'type';
+@@ -594,9 +597,11 @@ class TypeScriptParser {
+     return `A non GenericTypeAnnotation must be a type declaration ('${this.typeAlias}'), an interface ('${this.interfaceDeclaration}'), or enum ('${this.enumDeclaration}'). Instead, got the unsupported ${typeAnnotation.type}.`;
+   }
+   extractTypeFromTypeAnnotation(typeAnnotation) {
+-    return typeAnnotation.type === 'TSTypeReference'
+-      ? typeAnnotation.typeName.name
+-      : typeAnnotation.type;
++    if (typeAnnotation.type === 'TSTypeReference') {
++      const typeName = typeAnnotation.typeName;
++      return typeName.type === 'TSQualifiedName' ? typeName.right.name : typeName.name;
++    }
++    return typeAnnotation.type;
+   }
+   getObjectProperties(typeAnnotation) {
+     return typeAnnotation.members;
