@@ -208,10 +208,9 @@ const GifPicker = ({visible, onSelect, onClose}) => {
 
 const styles = StyleSheet.create({
   modalOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'flex-end',
-    width: '100%',
   },
   modalContent: {
     backgroundColor: colors.background,
