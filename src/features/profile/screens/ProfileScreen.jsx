@@ -168,11 +168,13 @@ const ProfileScreen = () => {
         {/* Top Header */}
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Account</Text>
-          <Pressable
-            style={styles.settingsBtn}
-            onPress={() => navigation.navigate('Settings')}>
-            <Icon name="cog-outline" size={24} color={colors.textPrimary} />
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable
+              style={styles.headerBtn}
+              onPress={() => navigation.navigate('Settings')}>
+              <Icon name="cog-outline" size={24} color={colors.textPrimary} />
+            </Pressable>
+          </View>
         </View>
 
         {/* Centered Identity Section */}
@@ -281,7 +283,6 @@ const ProfileScreen = () => {
               colors.primary,
               colors.primary + '15',
             )}
-            <View style={styles.menuDivider} />
             {renderMenuItem(
               'tune-variant',
               'Match Preferences',
@@ -354,7 +355,11 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamilyBold,
     color: '#111827',
   },
-  settingsBtn: {
+  headerActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  headerBtn: {
     padding: 10,
     backgroundColor: '#FFFFFF',
     borderRadius: 50,

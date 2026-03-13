@@ -45,9 +45,13 @@ import {
 import CountdownTimer from '../components/CountdownTimer';
 import {getMatchDetails, scheduleDate} from '../../../services/matchService';
 import DateSchedulerModal from '../components/DateSchedulerModal';
+import giftService from '../../../services/giftService';
+import GiftSelectionModal from '../../../components/chat/GiftSelectionModal';
 import streakService from '../../../services/streakService';
 import StreakBadge from '../../../components/common/StreakBadge';
 import StreakWarningBanner from '../../../components/common/StreakWarningBanner';
+import GiftReceiverAnimation from '../../../components/chat/GiftReceiverAnimation';
+import giftImages from '../../../assets/images/gifts';
 
 const REPORT_REASONS = [
   {id: 'harassment', label: 'Harassment'},
@@ -76,6 +80,7 @@ const ChatScreen = ({route, navigation}) => {
   const [unmatching, setUnmatching] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
+  const [showGiftModal, setShowGiftModal] = useState(false);
 
   // Date or Dissolve State
   const [matchDetails, setMatchDetails] = useState(null);
@@ -83,6 +88,8 @@ const ChatScreen = ({route, navigation}) => {
   const [scheduling, setScheduling] = useState(false);
   const [streak, setStreak] = useState(null);
   const [showStreakWarning, setShowStreakWarning] = useState(false);
+  const [showGiftAnimation, setShowGiftAnimation] = useState(false);
+  const [receivedGiftForAnimation, setReceivedGiftForAnimation] = useState(null);
 
   const flatListRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -139,13 +146,26 @@ const ChatScreen = ({route, navigation}) => {
         const data = await fetchMessages(matchId, user.id);
         setMessages(data || []);
 
-        // Mark messages as seen
-        const unseenMessages = (data || [])
-          .filter(m => m.receiverId === user.id && m.status !== 'seen')
-          .map(m => m._id);
+        // Filter unseen messages for the current user
+        const unseenMessages = (data || []).filter(
+          m => m.receiverId === user.id && m.status !== 'seen'
+        );
 
         if (unseenMessages.length > 0) {
+          const unseenIds = unseenMessages.map(m => m._id);
           await markMessagesAsSeen(matchId, user.id);
+          
+          // Trigger Gift Animation for newly received (unseen) gifts
+          const unseenGifts = unseenMessages.filter(m => m.mediaType === 'gift');
+          if (unseenGifts.length > 0) {
+            // Show animation for the most recent gift in the batch
+            const latestGift = unseenGifts[unseenGifts.length - 1];
+            if (latestGift.giftMetadata) {
+              console.log('[ChatScreen] 🎁 Triggering animation for unseen gift:', latestGift.giftMetadata.slug);
+              setReceivedGiftForAnimation({...latestGift.giftMetadata, isSender: false});
+              setShowGiftAnimation(true);
+            }
+          }
         }
 
         // Fetch Match Details (Status & Expiration)
@@ -192,6 +212,14 @@ const ChatScreen = ({route, navigation}) => {
               return [...prev, msg];
             });
             scrollToBottom();
+
+            // Trigger Gift Animation only for the RECEIVER via socket
+            // (Sender animation is triggered directly in handleSendGift after API response)
+            if (msg.mediaType === 'gift' && msg.senderId !== user.id) {
+              console.log('[ChatScreen] 🎁 Receiver gift animation for:', msg.giftMetadata?.slug);
+              setReceivedGiftForAnimation({...msg.giftMetadata, isSender: false});
+              setShowGiftAnimation(true);
+            }
 
             // Mark as seen immediately if it's for us
             if (msg.receiverId === user.id) {
@@ -372,6 +400,38 @@ const ChatScreen = ({route, navigation}) => {
     } catch (e) {
       console.log('GIF send error', e);
       Alert.alert('Error', 'Failed to send GIF. Please try again.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleSendGift = async gift => {
+    if (!currentUserId || sending) return;
+
+    setSending(true);
+    try {
+      const res = await giftService.sendGiftApi({
+        matchId,
+        senderId: currentUserId,
+        receiverId: theirId,
+        giftId: gift._id,
+      });
+
+      if (res.success) {
+        setMessages(prev => {
+          if (prev.some(m => m._id === res.message._id)) return prev;
+          return [...prev, res.message];
+        });
+        scrollToBottom();
+        // Immediately show sender-side animation (don't wait for socket)
+        if (res.message?.giftMetadata) {
+          setReceivedGiftForAnimation({...res.message.giftMetadata, isSender: true});
+          setShowGiftAnimation(true);
+        }
+      }
+    } catch (e) {
+      console.log('Gift send error', e);
+      Alert.alert('Error', e.message || 'Failed to send gift. Please try again.');
     } finally {
       setSending(false);
     }
@@ -586,6 +646,7 @@ const ChatScreen = ({route, navigation}) => {
   const renderItem = ({item, index}) => {
     const isMe = item.senderId === currentUserId;
     const isGif = item.mediaType === 'gif';
+    const isGift = item.mediaType === 'gift';
     const showDateSeparator = renderDateSeparator(item, messages[index - 1]);
 
     return (
@@ -626,11 +687,11 @@ const ChatScreen = ({route, navigation}) => {
                 start={{x: 0, y: 0}}
                 end={{x: 1, y: 1}}
                 style={styles.bubbleGradient}>
-                {renderBubbleContent(item, isMe, isGif)}
+                {renderBubbleContent(item, isMe, isGif, isGift)}
               </LinearGradient>
             ) : (
               <View style={styles.bubbleContentThem}>
-                {renderBubbleContent(item, isMe, isGif)}
+                {renderBubbleContent(item, isMe, isGif, isGift)}
               </View>
             )}
           </Pressable>
@@ -639,15 +700,35 @@ const ChatScreen = ({route, navigation}) => {
     );
   };
 
-  const renderBubbleContent = (item, isMe, isGif) => (
+  const renderBubbleContent = (item, isMe, isGif, isGift) => (
     <>
-      {item.mediaUrl && (
+      {isGift && item.giftMetadata ? (
+        <View style={styles.giftMessageContainer}>
+          <Image
+            source={giftImages[item.giftMetadata.slug]}
+            style={styles.giftMessageImage}
+            resizeMode="contain"
+          />
+          <Text style={[styles.giftMessageText, !isMe && styles.giftMessageTextThem]}>
+            {(() => {
+              const slug = item.giftMetadata.slug;
+              if (isMe) return `You sent a ${item.giftMetadata.name}`;
+              if (slug === 'rose') return 'A beautiful rose has been sent to you 🌹';
+              if (slug === 'teddy-bear') return 'You received a cute teddy bear 🧸';
+              if (slug === 'ring') return 'A sparkling ring just arrived for you 💍';
+              if (slug === 'diamond') return 'You’ve been gifted a shining diamond 💎';
+              if (slug === 'crown') return 'You’ve been crowned with a royal gift 👑';
+              return `You received a ${item.giftMetadata.name}`;
+            })()}
+          </Text>
+        </View>
+      ) : item.mediaUrl ? (
         <Image
           source={{uri: item.mediaUrl}}
           style={[styles.messageImage, isGif && styles.gifImage]}
           resizeMode={isGif ? 'contain' : 'cover'}
         />
-      )}
+      ) : null}
       {item.text && (
         <Text style={[styles.messageText, !isMe && styles.messageTextThem]}>
           {item.text}
@@ -692,7 +773,7 @@ const ChatScreen = ({route, navigation}) => {
     );
   }
 
-  return (
+  return (<>
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
         style={styles.container}
@@ -859,6 +940,16 @@ const ChatScreen = ({route, navigation}) => {
             )}
           </Pressable>
 
+          <Pressable
+            style={styles.attachButton}
+            onPress={() => setShowGiftModal(true)}>
+            <Icon
+              name="gift-outline"
+              size={24}
+              color={colors.primary}
+            />
+          </Pressable>
+
           {matchDetails?.status === 'expired' ? (
             <View
               style={[
@@ -932,6 +1023,14 @@ const ChatScreen = ({route, navigation}) => {
           onClose={() => setShowGifPicker(false)}
         />
 
+        {/* Gift Selection Modal */}
+        <GiftSelectionModal
+          visible={showGiftModal}
+          onClose={() => setShowGiftModal(false)}
+          onSend={handleSendGift}
+          userId={currentUserId}
+        />
+
         {/* Date Scheduler Modal */}
         <DateSchedulerModal
           visible={showDateModal}
@@ -978,6 +1077,8 @@ const ChatScreen = ({route, navigation}) => {
             </View>
           </View>
         </Modal>
+
+        {/* Note: GiftReceiverAnimation is rendered via its own Modal below */}
 
         {/* Report Modal */}
         <Modal
@@ -1045,7 +1146,18 @@ const ChatScreen = ({route, navigation}) => {
         </Modal>
       </KeyboardAvoidingView>
     </SafeAreaView>
-  );
+
+    {/* Gift Receiver Animation - rendered OUTSIDE SafeAreaView so it
+        is never clipped by KeyboardAvoidingView on Android */}
+    <GiftReceiverAnimation
+      visible={showGiftAnimation}
+      gift={receivedGiftForAnimation}
+      onComplete={() => {
+        setShowGiftAnimation(false);
+        setReceivedGiftForAnimation(null);
+      }}
+    />
+  </>);
 };
 
 const styles = StyleSheet.create({
@@ -1460,6 +1572,26 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '600',
     fontSize: 16,
+  },
+  // Gift Styles
+  giftMessageContainer: {
+    padding: spacing.xs,
+    alignItems: 'center',
+    width: 150,
+  },
+  giftMessageImage: {
+    width: 100,
+    height: 100,
+    marginBottom: spacing.xs,
+  },
+  giftMessageText: {
+    color: '#fff',
+    fontFamily: typography.fontFamilyBold,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  giftMessageTextThem: {
+    color: colors.primary,
   },
 });
 

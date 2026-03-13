@@ -30,6 +30,7 @@ import ChatsScreen from '../features/messages/screens/ChatsScreen.jsx';
 import ChatScreen from '../features/messages/screens/ChatScreen.jsx';
 import StreakLeaderboardScreen from '../features/messages/screens/StreakLeaderboardScreen.jsx';
 import ProfileDetailsScreen from '../features/profile/screens/ProfileDetailsScreen.jsx';
+import WalletScreen from '../features/profile/screens/WalletScreen.jsx';
 import SettingsScreen from '../features/settings/screens/SettingsScreen.jsx';
 import ChangeEmailScreen from '../features/settings/screens/ChangeEmailScreen.jsx';
 import ChangePasswordScreen from '../features/settings/screens/ChangePasswordScreen.jsx';
@@ -111,6 +112,7 @@ const AppNavigator = () => {
           component={StreakLeaderboardScreen}
         />
         <Stack.Screen name="ProfileDetails" component={ProfileDetailsScreen} />
+        <Stack.Screen name="Wallet" component={WalletScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="ChangeEmail" component={ChangeEmailScreen} />
         <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />

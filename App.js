@@ -4,6 +4,7 @@ import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
 import {LoadingProvider} from './src/context/LoadingContext';
+import {StripeProvider} from '@stripe/stripe-react-native';
 
 import './global.css';
 class ErrorBoundary extends React.Component {
@@ -74,7 +75,11 @@ const App = () => {
               backgroundColor={Platform.OS === 'android' ? '#FFF' : undefined}
               translucent={Platform.OS === 'android'}
             />
-            <AppNavigator />
+            <StripeProvider
+              publishableKey={process.env.STRIPE_PUBLISHABLE_KEY} // Placeholder, should be from env ideally
+            >
+              <AppNavigator />
+            </StripeProvider>
           </GestureHandlerRootView>
         </SafeAreaProvider>
       </LoadingProvider>

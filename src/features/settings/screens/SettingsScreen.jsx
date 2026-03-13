@@ -284,6 +284,13 @@ const SettingsScreen = () => {
               onPress={() => navigation.navigate('ProfileDetails')}
             />
             <SettingItem
+              icon="wallet-outline"
+              iconColor="#F59E0B"
+              title="Wallet & Balance"
+              subtitle="Manage your coins"
+              onPress={() => navigation.navigate('Wallet')}
+            />
+            <SettingItem
               icon="email-outline"
               iconColor="#50C878"
               title="Email"
