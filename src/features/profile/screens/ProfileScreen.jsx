@@ -253,11 +253,18 @@ const ProfileScreen = () => {
           <Text style={styles.headerTitle}>
             {firstName.toLowerCase() || 'profile'}
           </Text>
-          <Pressable
-            style={styles.headerIconBtn}
-            onPress={() => navigation.navigate('Settings')}>
-            <Icon name="menu" size={26} color={colors.textPrimary} />
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable
+              style={styles.headerIconBtn}
+              onPress={() => navigation.navigate('Wallet')}>
+              <Icon name="wallet-outline" size={26} color={colors.textPrimary} />
+            </Pressable>
+            <Pressable
+              style={styles.headerIconBtn}
+              onPress={() => navigation.navigate('Settings')}>
+              <Icon name="menu" size={26} color={colors.textPrimary} />
+            </Pressable>
+          </View>
         </View>
 
         {/* Profile Header (Avatar + Stats) */}
@@ -383,6 +390,34 @@ const ProfileScreen = () => {
                 ))}
             </View>
           )}
+
+        {/* Credits/Wallet Balance Card (Integrated) */}
+        <Pressable
+          onPress={() => navigation.navigate('Wallet')}
+          style={styles.walletShortcutCard}>
+          <LinearGradient
+            colors={['#FFD700' + '20', '#FFA500' + '10']}
+            start={{x: 0, y: 0}}
+            end={{x: 1, y: 1}}
+            style={styles.walletGradient}>
+            <View style={styles.walletHeaderInfo}>
+              <View style={styles.walletIconContainer}>
+                <Icon name="piggy-bank" size={24} color="#DAA520" />
+              </View>
+              <View style={styles.walletTextCol}>
+                <Text style={styles.walletTitle}>My Credits</Text>
+                <Text style={styles.walletSubtitle}>
+                  {profile?.credits || 0} Pryvo Credits
+                </Text>
+              </View>
+              <Pressable
+                style={styles.addCreditsBtn}
+                onPress={() => navigation.navigate('Wallet')}>
+                <Text style={styles.addCreditsText}>Buy More</Text>
+              </Pressable>
+            </View>
+          </LinearGradient>
+        </Pressable>
         </View>
 
         {/* Dating Intention Badge (Integrated) */}
@@ -581,6 +616,20 @@ const styles = StyleSheet.create({
   },
   headerIconBtn: {
     padding: 4,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  headerBtn: {
+    padding: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 50,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   profileHeader: {
     flexDirection: 'row',
