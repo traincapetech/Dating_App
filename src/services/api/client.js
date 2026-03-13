@@ -92,7 +92,8 @@ async function request(
   let response;
   try {
     console.log(`[API Request] ${method} ${path}`);
-    response = await fetch(`${API_BASE_URL}${path}`, {
+    const url = `${API_BASE_URL}${path}`;
+    response = await fetch(url, {
       method,
       headers: finalHeaders,
       body: finalBody ? JSON.stringify(finalBody) : undefined,
@@ -100,10 +101,17 @@ async function request(
     console.log(`[API Response] ${method} ${path} -> ${response.status}`);
   } catch (networkError) {
     console.error('[API Client] Network error:', networkError);
-    const error = new Error(
-      'Network error. Please check your internet connection and try again.',
-    );
+    const originalMessage =
+      typeof networkError?.message === 'string' ? networkError.message : '';
+    const errorMessage = originalMessage
+      ? `Network error: ${originalMessage}`
+      : 'Network error. Please check your internet connection and try again.';
+    const error = new Error(errorMessage);
     error.isNetworkError = true;
+    error.status = 0;
+    error.method = method;
+    error.path = path;
+    error.baseUrl = API_BASE_URL;
     error.originalError = networkError;
     throw error;
   }

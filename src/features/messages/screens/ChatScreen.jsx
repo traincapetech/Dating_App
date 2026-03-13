@@ -140,14 +140,17 @@ const ChatScreen = ({route, navigation}) => {
   }, [matchId]);
 
   const initChat = async () => {
+    console.log('[ChatScreen] Initializing chat for matchId:', matchId);
     try {
       const userData = await AsyncStorage.getItem('@pryvo_user');
       if (userData && userData !== 'undefined') {
         const user = JSON.parse(userData);
         setCurrentUserId(user.id);
+        console.log('[ChatScreen] Current User ID:', user.id);
 
         // Check if blocked
         const blockStatus = await checkIfBlocked(user.id, theirId);
+        console.log('[ChatScreen] Block status:', blockStatus);
         if (blockStatus.isBlocked) {
           setIsBlocked(true);
           setLoading(false);
@@ -156,6 +159,7 @@ const ChatScreen = ({route, navigation}) => {
 
         // Load existing messages
         const data = await fetchMessages(matchId, user.id);
+        console.log('[ChatScreen] Messages fetched:', data?.length || 0);
         setMessages(data || []);
 
         // Filter unseen messages for the current user
@@ -205,8 +209,6 @@ const ChatScreen = ({route, navigation}) => {
         } catch (err) {
           console.warn('[ChatScreen] Streak fetch silently failed:', err);
         }
-
-        // Init socket
 
         // Init socket
         const socket = initSocket(user.id);
@@ -499,31 +501,19 @@ const ChatScreen = ({route, navigation}) => {
   };
 
   const handleUnmatch = async () => {
-    Alert.alert(
-      'Unmatch',
-      "Are you sure you want to unmatch? This will remove this conversation and you won't be able to message each other anymore.",
-      [
-        {text: 'Cancel', style: 'cancel'},
-        {
-          text: 'Unmatch',
-          style: 'destructive',
-          onPress: async () => {
-            setUnmatching(true);
-            try {
-              await unmatchUser(matchId, currentUserId);
-              Alert.alert('Unmatched', 'You have unmatched with this user.', [
-                {text: 'OK', onPress: () => navigation.goBack()},
-              ]);
-            } catch (e) {
-              console.log('Unmatch error', e);
-              Alert.alert('Error', 'Failed to unmatch. Please try again.');
-            } finally {
-              setUnmatching(false);
-            }
-          },
-        },
-      ],
-    );
+    try {
+      setUnmatching(true);
+      await unmatchUser(matchId, currentUserId);
+      setShowUnmatchModal(false);
+      Alert.alert('Unmatched', 'You have unmatched with this user.', [
+        {text: 'OK', onPress: () => navigation.goBack()},
+      ]);
+    } catch (e) {
+      console.log('Unmatch error', e);
+      Alert.alert('Error', 'Failed to unmatch. Please try again.');
+    } finally {
+      setUnmatching(false);
+    }
   };
 
   const handleDeleteMessage = useCallback(
@@ -846,9 +836,17 @@ const ChatScreen = ({route, navigation}) => {
                   onPress={() => setShowDateModal(true)}
                   style={({pressed}) => ({
                     opacity: pressed ? 0.7 : 1,
-                    marginRight: spacing.md,
+                    marginRight: spacing.sm,
                   })}>
                   <Icon name="calendar-outline" size={24} color={colors.primary} />
+                </Pressable>
+                <Pressable
+                  onPress={() => setShowUnmatchModal(true)}
+                  style={({pressed}) => ({
+                    opacity: pressed ? 0.7 : 1,
+                    marginRight: spacing.sm,
+                  })}>
+                  <Icon name="heart-dislike-outline" size={24} color={colors.error} />
                 </Pressable>
                 <Pressable
                   onPress={() => setShowReportModal(true)}

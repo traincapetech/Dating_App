@@ -38,14 +38,24 @@ export const AuthProvider = ({children}) => {
           return true;
         }
       } catch (error) {
-        console.error('[AuthContext] Error loading profile:', error);
+        const status =
+          typeof error?.status === 'number' ? error.status : undefined;
+        console.error('[AuthContext] Error loading profile:', {
+          message: error?.message,
+          status,
+          isNetworkError: !!error?.isNetworkError,
+          path: error?.path,
+          baseUrl: error?.baseUrl,
+          method: error?.method,
+          originalMessage: error?.originalError?.message,
+        });
         // If the session is invalid (401), we should log out locally
-        if (error.status === 401) {
+        if (status === 401) {
           console.log('[AuthContext] Session invalid (401) - logging out');
           await logout();
         }
         // 404 just means no profile exists yet, which is fine for new users
-        if (error.status === 404) {
+        if (status === 404) {
           console.log('[AuthContext] No profile found (404) - user may be new');
         }
       } finally {
