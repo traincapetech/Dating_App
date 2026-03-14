@@ -15,7 +15,19 @@ buildscript {
         classpath("com.android.tools.build:gradle:8.9.1")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
         classpath("com.google.gms:google-services:4.4.2")
+        classpath fileTree(dir: "../node_modules/@react-native/gradle-plugin/react-native-gradle-plugin/build/libs", include: ["*.jar"])
+        classpath fileTree(dir: "../node_modules/@react-native/gradle-plugin/settings-plugin/build/libs", include: ["*.jar"])
+        classpath fileTree(dir: "../node_modules/@react-native/gradle-plugin/shared/build/libs", include: ["*.jar"])
     }
     
 
+}
+
+allprojects {
+    configurations.all {
+        resolutionStrategy {
+            force "androidx.core:core:1.15.0"
+            force "androidx.core:core-ktx:1.15.0"
+        }
+    }
 }

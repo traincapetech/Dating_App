@@ -323,7 +323,23 @@ export async function authenticateWithGoogle({idToken}) {
   }
 
   const tokens = generateTokens(user);
-  const isNewUser = !user.updatedAt || user.createdAt === user.updatedAt;
+
+  // Determine if this user should go through onboarding:
+  // - If they already have a profile, treat them as an existing user
+  //   even if the user record itself hasn't been updated since creation.
+  let isNewUser = false;
+  try {
+    const {findProfileByUserId} = await import('../models/profileModel.js');
+    const profile = await findProfileByUserId(user.id);
+    isNewUser = !profile;
+  } catch (e) {
+    // If profile lookup fails, fall back to previous heuristic
+    console.warn(
+      '[Google Auth] Failed to check profile for isNewUser, falling back:',
+      e.message,
+    );
+    isNewUser = !user.updatedAt || user.createdAt === user.updatedAt;
+  }
 
   return {
     user: {

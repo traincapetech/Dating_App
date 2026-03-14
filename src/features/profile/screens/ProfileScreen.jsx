@@ -29,6 +29,7 @@ const ProfileScreen = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState(null);
+  const [activeTab, setActiveTab] = useState('gallery'); // gallery or insights
 
   useFocusEffect(
     useCallback(() => {
@@ -132,26 +133,75 @@ const ProfileScreen = () => {
     profile?.basicInfo?.age ||
     null;
   const location = profile?.basicInfo?.location || 'Add your location';
+  const prompts = profile?.profilePrompts
+    ? Object.values(profile.profilePrompts).filter(p => p.question && p.answer)
+    : [];
 
-  const renderMenuItem = (
-    icon,
-    title,
-    subtitle,
-    onPress,
-    iconColor = colors.primary,
-    bgColor = colors.primary + '15',
-  ) => (
-    <Pressable style={styles.menuItem} onPress={onPress}>
-      <View style={[styles.menuIconContainer, {backgroundColor: bgColor}]}>
-        <Icon name={icon} size={24} color={iconColor} />
-      </View>
-      <View style={styles.menuTextContainer}>
-        <Text style={styles.menuTitle}>{title}</Text>
-        {subtitle && <Text style={styles.menuSubtitle}>{subtitle}</Text>}
-      </View>
-      <Icon name="chevron-right" size={24} color={colors.textTertiary} />
-    </Pressable>
-  );
+  const getZodiacIcon = sign => {
+    switch (sign?.toLowerCase()) {
+      case 'aries':
+        return 'zodiac-aries';
+      case 'taurus':
+        return 'zodiac-taurus';
+      case 'gemini':
+        return 'zodiac-gemini';
+      case 'cancer':
+        return 'zodiac-cancer';
+      case 'leo':
+        return 'zodiac-leo';
+      case 'virgo':
+        return 'zodiac-virgo';
+      case 'libra':
+        return 'zodiac-libra';
+      case 'scorpio':
+        return 'zodiac-scorpio';
+      case 'sagittarius':
+        return 'zodiac-sagittarius';
+      case 'capricorn':
+        return 'zodiac-capricorn';
+      case 'aquarius':
+        return 'zodiac-aquarius';
+      case 'pisces':
+        return 'zodiac-pisces';
+      default:
+        return 'star-face';
+    }
+  };
+
+  const basicsItems = [
+    {
+      label: profile?.personalDetails?.height
+        ? `${profile.personalDetails.height} cm`
+        : null,
+      icon: 'arrow-up-down',
+      visible: !!profile?.personalDetails?.height,
+    },
+    {
+      label: profile?.personalDetails?.starSign,
+      icon: getZodiacIcon(profile?.personalDetails?.starSign),
+      visible: !!profile?.personalDetails?.starSign,
+    },
+    {
+      label: profile?.personalDetails?.educationLevel,
+      icon: 'school-outline',
+      visible: !!profile?.personalDetails?.educationLevel,
+    },
+    {
+      label: profile?.lifestyle?.religiousBeliefs,
+      icon: 'hands-pray',
+      visible: !!profile?.lifestyle?.religiousBeliefs,
+    },
+    {
+      label: profile?.lifestyle?.drink,
+      icon: 'glass-wine',
+      visible: !!profile?.lifestyle?.drink,
+    },
+    {
+      label: profile?.lifestyle?.smokeTobacco,
+      icon: 'smoking-off',
+      visible: !!profile?.lifestyle?.smokeTobacco,
+    },
+  ].filter(b => b.visible);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -167,164 +217,284 @@ const ProfileScreen = () => {
         }>
         {/* Top Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Account</Text>
-          <View style={styles.headerActions}>
-            <Pressable
-              style={styles.headerBtn}
-              onPress={() => navigation.navigate('Settings')}>
-              <Icon name="cog-outline" size={24} color={colors.textPrimary} />
-            </Pressable>
+          <Pressable
+            style={styles.headerIconBtn}
+            onPress={() => navigation.navigate('ProfileDetails', {userId})}>
+            <Icon
+              name="plus-box-outline"
+              size={26}
+              color={colors.textPrimary}
+            />
+          </Pressable>
+          <Text style={styles.headerTitle}>
+            {firstName.toLowerCase() || 'profile'}
+          </Text>
+          <Pressable
+            style={styles.headerIconBtn}
+            onPress={() => navigation.navigate('Settings')}>
+            <Icon name="menu" size={26} color={colors.textPrimary} />
+          </Pressable>
+        </View>
+
+        {/* Profile Header (Avatar + Stats) */}
+        <View style={styles.profileHeader}>
+          <View style={styles.avatarContainer}>
+            <View style={styles.avatarWrapper}>
+              {photos.length > 0 ? (
+                <Image source={{uri: photos[0]}} style={styles.avatar} />
+              ) : (
+                <View style={[styles.avatar, styles.avatarPlaceholder]}>
+                  <Icon name="account" size={40} color={colors.textTertiary} />
+                </View>
+              )}
+              {completionPercentage < 100 && (
+                <LinearGradient
+                  colors={[colors.primary, '#8E2DE2']}
+                  style={styles.miniBadge}>
+                  <Text style={styles.miniBadgeText}>
+                    {completionPercentage}%
+                  </Text>
+                </LinearGradient>
+              )}
+              {profile?.isActiveToday && (
+                <View style={styles.onlineIndicator} />
+              )}
+            </View>
+          </View>
+
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{profile?.stats?.likes || 0}</Text>
+              <Text style={styles.statLabel}>Likes</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>
+                {profile?.stats?.matches || 0}
+              </Text>
+              <Text style={styles.statLabel}>Matches</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>
+                {profile?.stats?.views >= 1000
+                  ? `${(profile.stats.views / 1000).toFixed(1)}k`
+                  : profile?.stats?.views || 0}
+              </Text>
+              <Text style={styles.statLabel}>Views</Text>
+            </View>
           </View>
         </View>
 
-        {/* Centered Identity Section */}
-        <View style={styles.identitySection}>
-          <View style={styles.avatarWrapper}>
-            {photos.length > 0 ? (
-              <Image source={{uri: photos[0]}} style={styles.avatar} />
-            ) : (
-              <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                <Icon name="account" size={50} color={colors.textTertiary} />
+        {/* Profile Strength Card (Bumble Style) */}
+        {completionPercentage < 100 && (
+          <Pressable
+            onPress={() => navigation.navigate('ProfileDetails', {userId})}
+            style={styles.strengthCard}>
+            <LinearGradient
+              colors={[colors.primary + '15', colors.primary + '05']}
+              start={{x: 0, y: 0}}
+              end={{x: 1, y: 1}}
+              style={styles.strengthGradient}>
+              <View style={styles.strengthHeader}>
+                <View style={styles.strengthTextCol}>
+                  <Text style={styles.strengthTitle}>
+                    Profile Strength: {completionPercentage}%
+                  </Text>
+                  <Text style={styles.strengthSubtitle}>
+                    Add photos for 3x more matches!
+                  </Text>
+                </View>
+                <Icon name="chevron-right" size={24} color={colors.primary} />
               </View>
-            )}
-
-            {/* Completion or Verfied Badge */}
-            {completionPercentage === 100 ? (
-              <View style={[styles.badge, {backgroundColor: '#10B981'}]}>
-                <Icon name="check-decagram" size={16} color="#FFF" />
+              <View style={styles.progressBarBg}>
+                <View
+                  style={[
+                    styles.progressBarFill,
+                    {width: `${completionPercentage}%`},
+                  ]}
+                />
               </View>
-            ) : (
-              <LinearGradient
-                colors={[colors.primary, '#8E2DE2']}
-                style={styles.badge}>
-                <Text style={styles.badgeText}>{completionPercentage}%</Text>
-              </LinearGradient>
-            )}
-          </View>
+            </LinearGradient>
+          </Pressable>
+        )}
 
-          <Text style={styles.profileName}>
+        {/* Bio Section */}
+        <View style={styles.bioSection}>
+          <Text style={styles.nameLabel}>
             {name}
             {age ? `, ${age}` : ''}
+            {'  '}
+            <Icon name="check-decagram" size={18} color={colors.primary} />
           </Text>
-          <View style={styles.locationRow}>
-            <Icon
-              name="map-marker-outline"
-              size={16}
-              color={colors.textSecondary}
-            />
-            <Text style={styles.locationText}>{location}</Text>
-          </View>
-        </View>
 
-        {/* Quick Stats Grid */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Icon
-              name="heart-multiple"
-              size={28}
-              color="#EF4444"
-              style={styles.statIcon}
-            />
-            <Text style={styles.statValue}>12</Text>
-            <Text style={styles.statLabel}>Likes</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Icon
-              name="account-heart"
-              size={28}
-              color="#8B5CF6"
-              style={styles.statIcon}
-            />
-            <Text style={styles.statValue}>5</Text>
-            <Text style={styles.statLabel}>Matches</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Icon
-              name="lightning-bolt"
-              size={28}
-              color="#F59E0B"
-              style={styles.statIcon}
-            />
-            <Text style={styles.statValue}>0</Text>
-            <Text style={styles.statLabel}>Boosts</Text>
-          </View>
-        </View>
-
-        {/* Subscription Hub */}
-        <Pressable style={styles.premiumCard}>
-          <LinearGradient
-            colors={['#1F2937', '#111827']}
-            start={{x: 0, y: 0}}
-            end={{x: 1, y: 1}}
-            style={styles.premiumGradient}>
-            <View style={styles.premiumHeader}>
-              <Icon name="crown" size={24} color="#FBBF24" />
-              <Text style={styles.premiumTitle}>Pryvo Gold</Text>
-            </View>
-            <Text style={styles.premiumDesc}>
-              Unlock who liked you, advanced filters, and unlimited swipes to
-              find your perfect match faster.
+          {profile?.personalDetails?.jobTitle ||
+          profile?.personalDetails?.school ? (
+            <Text style={styles.occupationText}>
+              {[
+                profile?.personalDetails?.jobTitle,
+                profile?.personalDetails?.school,
+              ]
+                .filter(Boolean)
+                .join(' at ')}
             </Text>
-            <View style={styles.premiumBtn}>
-              <Text style={styles.premiumBtnText}>Upgrade Now</Text>
+          ) : null}
+
+          <Text style={styles.bioText}>
+            {profile?.bio ||
+              profile?.profilePrompts?.aboutMe?.answer ||
+              'Add a bio to express yourself...'}
+          </Text>
+
+          {/* Interests Chips */}
+          {(profile?.interests || profile?.lifestyle?.interests || []).length >
+            0 && (
+            <View style={styles.interestsRow}>
+              {(profile?.interests || profile?.lifestyle?.interests || [])
+                .slice(0, 8)
+                .map((interest, idx) => (
+                  <View key={idx} style={styles.interestTag}>
+                    <Text style={styles.interestTagText}>
+                      #{interest.toLowerCase()}
+                    </Text>
+                  </View>
+                ))}
             </View>
-          </LinearGradient>
-        </Pressable>
-
-        {/* Structured Menu */}
-        <View style={styles.menuSection}>
-          <Text style={styles.sectionTitle}>Profile & Preferences</Text>
-          <View style={styles.menuCard}>
-            {renderMenuItem(
-              'account-edit',
-              'Edit Profile',
-              'Photos, bio, and interests',
-              () => navigation.navigate('ProfileDetails', {userId}),
-              colors.primary,
-              colors.primary + '15',
-            )}
-            {renderMenuItem(
-              'tune-variant',
-              'Match Preferences',
-              'Age, distance, and more',
-              () => navigation.navigate('Settings'),
-              '#8B5CF6',
-              '#8B5CF615',
-            )}
-          </View>
+          )}
         </View>
 
-        <View style={styles.menuSection}>
-          <Text style={styles.sectionTitle}>Safety & Support</Text>
-          <View style={styles.menuCard}>
-            {renderMenuItem(
-              'shield-check',
-              'Safety Centre',
-              'Guidelines and resources',
-              () => navigation.navigate('ReportProblem'),
-              '#10B981',
-              '#10B98115',
-            )}
-            <View style={styles.menuDivider} />
-            {renderMenuItem(
-              'help-circle',
-              'Help & Centre',
-              'FAQs and contact support',
-              () => navigation.navigate('HelpCentre'),
-              '#F59E0B',
-              '#F59E0B15',
-            )}
-            <View style={styles.menuDivider} />
-            {renderMenuItem(
-              'cog',
-              'App Settings',
-              'Notifications, emails, account',
-              () => navigation.navigate('Settings'),
-              '#6B7280',
-              '#F3F4F6',
+        {/* Dating Intention Badge (Integrated) */}
+        {profile?.datingPreferences?.datingIntention && (
+          <View style={styles.intentWrapper}>
+            <LinearGradient
+              colors={['#8E2DE2', '#4A00E0']}
+              start={{x: 0, y: 0}}
+              end={{x: 1, y: 0}}
+              style={styles.intentBadge}>
+              <Icon
+                name="heart-flash"
+                size={16}
+                color="#FFF"
+                style={{marginRight: 6}}
+              />
+              <Text style={styles.intentBadgeText}>
+                Looking for {profile.datingPreferences.datingIntention}
+              </Text>
+            </LinearGradient>
+          </View>
+        )}
+
+        {/* Tabs Selection */}
+        <View style={styles.tabsWrapper}>
+          <Pressable
+            onPress={() => setActiveTab('gallery')}
+            style={[
+              styles.tabBtn,
+              activeTab === 'gallery' && styles.activeTabBtn,
+            ]}>
+            <Icon
+              name="grid"
+              size={24}
+              color={activeTab === 'gallery' ? colors.primary : '#8E8E8E'}
+            />
+          </Pressable>
+          <Pressable
+            onPress={() => setActiveTab('insights')}
+            style={[
+              styles.tabBtn,
+              activeTab === 'insights' && styles.activeTabBtn,
+            ]}>
+            <Icon
+              name="account-details-outline"
+              size={24}
+              color={activeTab === 'insights' ? colors.primary : '#8E8E8E'}
+            />
+          </Pressable>
+        </View>
+
+        {activeTab === 'gallery' ? (
+          /* Media Grid */
+          <View style={styles.gridContainer}>
+            {photos.length > 0 ? (
+              <View style={styles.photoGrid}>
+                {photos.map((photo, index) => (
+                  <Pressable
+                    key={index}
+                    style={styles.gridPhotoWrapper}
+                    onPress={() =>
+                      navigation.navigate('ProfileDetails', {
+                        userId,
+                        initialPhotoIndex: index,
+                      })
+                    }>
+                    <Image source={{uri: photo}} style={styles.gridPhoto} />
+                  </Pressable>
+                ))}
+              </View>
+            ) : (
+              <Pressable
+                style={styles.emptyGridPlaceholder}
+                onPress={() => navigation.navigate('ProfileDetails', {userId})}>
+                <Icon
+                  name="camera-plus-outline"
+                  size={40}
+                  color={colors.textTertiary}
+                />
+                <Text style={styles.emptyGridText}>
+                  Add photos to showcase your vibe
+                </Text>
+              </Pressable>
             )}
           </View>
-        </View>
+        ) : (
+          /* Insights / Prompts & Music Section */
+          <View style={styles.insightsWrapper}>
+            {/* My Basics Grid */}
+            {basicsItems.length > 0 && (
+              <View style={styles.basicsGridSection}>
+                <Text style={styles.insightSectionTitle}>My Basics</Text>
+                <View style={styles.basicsGrid}>
+                  {basicsItems.map((item, idx) => (
+                    <View key={idx} style={styles.basicGridItem}>
+                      <Icon name={item.icon} size={20} color={colors.primary} />
+                      <Text style={styles.basicGridLabel}>{item.label}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {prompts.length > 0 && (
+              <View style={styles.promptsSection}>
+                {prompts.map((prompt, idx) => (
+                  <View key={idx} style={styles.promptCard}>
+                    <Text style={styles.promptQuestion}>{prompt.question}</Text>
+                    <Text style={styles.promptAnswer}>{prompt.answer}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* Music Mockup Section */}
+            <View style={styles.musicSection}>
+              <View style={styles.musicHeader}>
+                <Icon name="spotify" size={24} color="#1DB954" />
+                <Text style={styles.musicTitle}>My Anthem</Text>
+              </View>
+              <View style={styles.musicCard}>
+                <Image
+                  source={{
+                    uri: 'https://i.scdn.co/image/ab67616d0000b27341e3093952945d81232c9676',
+                  }}
+                  style={styles.albumArt}
+                />
+                <View style={styles.musicInfo}>
+                  <Text style={styles.songName}>Starboy</Text>
+                  <Text style={styles.artistName}>The Weeknd • Daft Punk</Text>
+                </View>
+                <Icon name="play-circle" size={32} color={colors.primary} />
+              </View>
+            </View>
+          </View>
+        )}
 
         <View style={styles.footerInfo}>
           <Text style={styles.versionText}>Pryvo Version 1.0.0</Text>
@@ -337,233 +507,391 @@ const ProfileScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFB',
+    backgroundColor: '#FFFFFF',
   },
   scrollContent: {
-    paddingBottom: 60,
+    paddingBottom: 40,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#EFEFEF',
   },
   headerTitle: {
-    fontSize: 28,
+    fontSize: 18,
     fontFamily: typography.fontFamilyBold,
-    color: '#111827',
+    color: '#000',
+    textTransform: 'lowercase',
   },
-  headerActions: {
+  headerIconBtn: {
+    padding: 4,
+  },
+  profileHeader: {
     flexDirection: 'row',
-    gap: 12,
-  },
-  headerBtn: {
-    padding: 10,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 50,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  identitySection: {
     alignItems: 'center',
-    paddingVertical: 20,
     paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 10,
+  },
+  avatarContainer: {
+    flex: 1,
   },
   avatarWrapper: {
     position: 'relative',
-    marginBottom: 16,
+    width: 86,
+    height: 86,
   },
   avatar: {
-    width: 130,
-    height: 130,
-    borderRadius: 65,
-    borderWidth: 4,
-    borderColor: '#FFFFFF',
+    width: 86,
+    height: 86,
+    borderRadius: 43,
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
   },
   avatarPlaceholder: {
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#FAFAFA',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  badge: {
+  miniBadge: {
     position: 'absolute',
-    bottom: 4,
-    right: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 3,
+    bottom: 0,
+    right: 0,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    borderWidth: 2,
     borderColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
   },
-  badgeText: {
+  miniBadgeText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 10,
     fontFamily: typography.fontFamilyBold,
   },
-  profileName: {
-    fontSize: 26,
-    fontFamily: typography.fontFamilyBold,
-    color: '#111827',
-    marginBottom: 6,
+  onlineIndicator: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#4ADE80',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
-  locationRow: {
+  statsRow: {
+    flex: 2.5,
     flexDirection: 'row',
+    justifyContent: 'space-around',
     alignItems: 'center',
-    gap: 6,
   },
-  locationText: {
-    fontSize: 15,
-    fontFamily: typography.fontFamilyMedium,
-    color: '#6B7280',
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 30,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    paddingVertical: 20,
+  statItem: {
     alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.02)',
-  },
-  statIcon: {
-    marginBottom: 8,
   },
   statValue: {
-    fontSize: 22,
+    fontSize: 18,
     fontFamily: typography.fontFamilyBold,
-    color: '#111827',
-    marginBottom: 2,
+    color: '#000',
   },
   statLabel: {
     fontSize: 13,
-    fontFamily: typography.fontFamilyMedium,
-    color: '#6B7280',
-  },
-  premiumCard: {
-    marginHorizontal: 20,
-    marginBottom: 32,
-    borderRadius: 24,
-    overflow: 'hidden',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 8},
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-  },
-  premiumGradient: {
-    padding: 24,
-  },
-  premiumHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 12,
-  },
-  premiumTitle: {
-    fontSize: 22,
-    fontFamily: typography.fontFamilyBold,
-    color: '#FFFFFF',
-  },
-  premiumDesc: {
-    fontSize: 14,
     fontFamily: typography.fontFamilyRegular,
-    color: 'rgba(255,255,255,0.8)',
-    lineHeight: 22,
-    marginBottom: 20,
+    color: '#262626',
   },
-  premiumBtn: {
-    backgroundColor: '#FBBF24',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 100,
-  },
-  premiumBtnText: {
-    fontSize: 15,
-    fontFamily: typography.fontFamilyBold,
-    color: '#78350F',
-  },
-  menuSection: {
+  bioSection: {
     paddingHorizontal: 20,
-    marginBottom: 24,
+    paddingVertical: 10,
   },
-  sectionTitle: {
+  nameLabel: {
     fontSize: 16,
     fontFamily: typography.fontFamilyBold,
-    color: '#4B5563',
-    marginBottom: 12,
-    marginLeft: 8,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  menuCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    paddingVertical: 8,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    borderWidth: 1,
-    borderColor: '#F3F4F6',
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  menuIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  menuTextContainer: {
-    flex: 1,
-  },
-  menuTitle: {
-    fontSize: 16,
-    fontFamily: typography.fontFamilyBold,
-    color: '#1F2937',
+    color: '#262626',
     marginBottom: 2,
   },
-  menuSubtitle: {
+  occupationText: {
+    fontSize: 14,
+    fontFamily: typography.fontFamilyRegular,
+    color: '#8E8E8E',
+    marginBottom: 4,
+  },
+  bioText: {
+    fontSize: 14,
+    fontFamily: typography.fontFamilyRegular,
+    color: '#262626',
+    lineHeight: 18,
+  },
+  interestsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 8,
+    gap: 6,
+  },
+  interestTag: {
+    backgroundColor: colors.primary + '10',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  interestTagText: {
+    fontSize: 12,
+    fontFamily: typography.fontFamilyBold,
+    color: colors.primary,
+  },
+  strengthCard: {
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 10,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colors.primary + '20',
+  },
+  strengthGradient: {
+    padding: 16,
+  },
+  strengthHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  strengthTextCol: {
+    flex: 1,
+  },
+  strengthTitle: {
+    fontSize: 15,
+    fontFamily: typography.fontFamilyBold,
+    color: '#000',
+  },
+  strengthSubtitle: {
+    fontSize: 12,
+    fontFamily: typography.fontFamilyRegular,
+    color: '#666',
+    marginTop: 2,
+  },
+  progressBarBg: {
+    height: 6,
+    backgroundColor: '#E5E7EB',
+    borderRadius: 3,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: colors.primary,
+  },
+  intentWrapper: {
+    paddingHorizontal: 20,
+    marginBottom: 16,
+    marginTop: 8,
+  },
+  intentBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    shadowColor: '#8E2DE2',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  intentBadgeText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontFamily: typography.fontFamilyBold,
+  },
+  tabsWrapper: {
+    flexDirection: 'row',
+    borderTopWidth: 0.5,
+    borderTopColor: '#DBDBDB',
+    marginTop: 10,
+  },
+  tabBtn: {
+    flex: 1,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  activeTabBtn: {
+    borderBottomColor: colors.primary,
+  },
+  insightsWrapper: {
+    paddingTop: 16,
+  },
+  musicSection: {
+    marginHorizontal: 20,
+    marginTop: 10,
+    marginBottom: 20,
+  },
+  musicHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  musicTitle: {
+    fontSize: 16,
+    fontFamily: typography.fontFamilyBold,
+    color: '#262626',
+  },
+  musicCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FAFAFA',
+    borderRadius: 16,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
+  },
+  albumArt: {
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+  },
+  musicInfo: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  songName: {
+    fontSize: 15,
+    fontFamily: typography.fontFamilyBold,
+    color: '#262626',
+  },
+  artistName: {
     fontSize: 13,
     fontFamily: typography.fontFamilyRegular,
-    color: '#6B7280',
+    color: '#8E8E8E',
+    marginTop: 2,
   },
-  menuDivider: {
-    height: 1,
-    backgroundColor: '#F3F4F6',
-    marginLeft: 84, // Align with text
+  insightSectionTitle: {
+    fontSize: 16,
+    fontFamily: typography.fontFamilyBold,
+    color: '#262626',
+    marginBottom: 12,
+    paddingHorizontal: 20,
+  },
+  basicsGridSection: {
+    marginBottom: 24,
+  },
+  basicsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 20,
+    gap: 12,
+  },
+  basicGridItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FAFAFA',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
+    minWidth: (SCREEN_WIDTH - 60) / 2,
+  },
+  basicGridLabel: {
+    fontSize: 14,
+    fontFamily: typography.fontFamilyMedium,
+    color: '#262626',
+    marginLeft: 8,
+  },
+  promptsSection: {
+    paddingHorizontal: 20,
+    marginTop: 10,
+  },
+  promptCard: {
+    backgroundColor: '#FAFAFA',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
+  },
+  promptQuestion: {
+    fontSize: 13,
+    fontFamily: typography.fontFamilyBold,
+    color: '#8E8E8E',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+  },
+  promptAnswer: {
+    fontSize: 16,
+    fontFamily: typography.fontFamilyMedium,
+    color: '#262626',
+    lineHeight: 22,
+  },
+  actionButtonsRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    gap: 8,
+  },
+  actionBtn: {
+    flex: 1,
+    height: 36,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  primaryActionBtn: {
+    backgroundColor: colors.primary,
+  },
+  primaryActionBtnText: {
+    color: '#FFF',
+    fontFamily: typography.fontFamilyBold,
+    fontSize: 14,
+  },
+  secondaryActionBtn: {
+    backgroundColor: '#FAFAFA',
+    borderWidth: 1,
+    borderColor: '#DBDBDB',
+  },
+  secondaryActionBtnText: {
+    color: '#262626',
+    fontFamily: typography.fontFamilyBold,
+    fontSize: 14,
+  },
+  gridContainer: {
+    marginTop: 10,
+    borderTopWidth: 0.5,
+    borderTopColor: '#DBDBDB',
+  },
+  photoGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  gridPhotoWrapper: {
+    width: SCREEN_WIDTH / 3,
+    height: SCREEN_WIDTH / 3,
+    padding: 1,
+  },
+  gridPhoto: {
+    flex: 1,
+    backgroundColor: '#FAFAFA',
+  },
+  emptyGridPlaceholder: {
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  emptyGridText: {
+    textAlign: 'center',
+    marginTop: 12,
+    fontSize: 14,
+    color: '#8E8E8E',
+    fontFamily: typography.fontFamilyRegular,
   },
   footerInfo: {
     alignItems: 'center',

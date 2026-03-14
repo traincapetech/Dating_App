@@ -123,6 +123,12 @@ export async function getProfile(userId) {
     return null;
   }
 
+  // Fetch stats from other models
+  const [likesCount, matchesCount] = await Promise.all([
+    Like.countDocuments({receiverId: userId}),
+    Match.countDocuments({users: userId}),
+  ]);
+
   // Enrich profile with user data and formatted fields (similar to getAllProfiles)
   const users = await getUsers();
   const user = users.find(u => (u._id || u.id) === profile.userId);
@@ -166,6 +172,12 @@ export async function getProfile(userId) {
       '',
     // Get interests from lifestyle
     interests: profile.lifestyle?.interests || [],
+    // Stats for profile screen
+    stats: {
+      likes: likesCount,
+      matches: matchesCount,
+      views: profile.views || 0, // Fallback to 0 if not tracked
+    },
   };
 }
 

@@ -311,19 +311,31 @@ export const verifyWalletPayment = async (req, res) => {
       additionalData,
     );
 
+    console.log('[Wallet Verify] Result:', verification);
+
     if (!verification.success || !verification.verified) {
-      return res.status(400).json({
-        success: false,
-        message: 'Payment verification failed',
-        verification,
-      });
+      // In non-production environments, allow wallet topup to proceed even if
+      // gateway verification fails, so developers can test the flow without
+      // fully wired payment credentials.
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(
+          '[Wallet Verify] Verification failed in non-production, bypassing for dev:',
+          verification,
+        );
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: 'Payment verification failed',
+          verification,
+        });
+      }
     }
 
     // Atomic update to wallet
     const wallet = await Wallet.findOneAndUpdate(
       {userId},
       {$inc: {coinsBalance: amount}},
-      {upsert: true, new: true},
+      {upsert: true, returnDocument: 'after'},
     );
 
     // Log transaction

@@ -114,6 +114,10 @@ const profileSchema = new mongoose.Schema(
     moderationFlags: [String],
     moderationRiskScore: Number,
     autoReviewedAt: Date,
+    views: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,

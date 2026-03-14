@@ -20,6 +20,7 @@ import {
   getAllProfiles,
 } from '../services/profileService.js';
 import {deleteProfile} from '../models/profileModel.js';
+import Profile from '../models/Profile.js';
 import {deleteUser, findUserById, updateUser} from '../models/userModel.js';
 import {storage} from '../storage/index.js';
 import {randomUUID} from 'crypto';
@@ -88,11 +89,27 @@ export const saveMediaController = asyncHandler(async (req, res) => {
 });
 
 export const getProfileController = asyncHandler(async (req, res) => {
-  const userId = req.user?.id || req.params.userId;
-  if (!userId) {
+  const viewerId = req.user?.id;
+  const targetUserId = req.params.userId || viewerId;
+
+  if (!targetUserId) {
     return res.status(401).json({error: 'User ID is required'});
   }
-  const profile = await getProfile(userId);
+
+  // If viewing someone else's profile, increment views
+  if (viewerId && viewerId !== targetUserId) {
+    try {
+      await Profile.findOneAndUpdate(
+        {userId: targetUserId},
+        {$inc: {views: 1}},
+      );
+    } catch (err) {
+      console.error('[getProfileController] Failed to increment views:', err);
+      // Continue even if view increment fails
+    }
+  }
+
+  const profile = await getProfile(targetUserId);
   if (!profile) {
     return res.status(404).json({error: 'Profile not found'});
   }

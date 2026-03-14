@@ -106,7 +106,12 @@ const ChatScreen = ({route, navigation}) => {
     initChat();
 
     // Enable screenshot blocking in chat
-    ScreenshotPrevent.enabled(true);
+    if (
+      ScreenshotPrevent?.enabled &&
+      typeof ScreenshotPrevent.enabled === 'function'
+    ) {
+      ScreenshotPrevent.enabled(true);
+    }
 
     return () => {
       if (socketRef.current) {
@@ -123,7 +128,12 @@ const ChatScreen = ({route, navigation}) => {
         clearTimeout(typingTimeoutRef.current);
       }
       // Disable screenshot blocking when leaving chat
-      ScreenshotPrevent.enabled(false);
+      if (
+        ScreenshotPrevent?.enabled &&
+        typeof ScreenshotPrevent.enabled === 'function'
+      ) {
+        ScreenshotPrevent.enabled(false);
+      }
     };
   }, [matchId]);
 

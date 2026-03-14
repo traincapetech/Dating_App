@@ -9,7 +9,7 @@ require Pod::Executable.execute_command(
 ).strip
 
 # 🚨 FORCE iOS VERSION (CRITICAL)
-platform :ios, '18.0'
+platform :ios, '15.1'
 
 # Disable New Architecture
 ENV['RCT_NEW_ARCH_ENABLED'] = '0'
@@ -42,39 +42,33 @@ target 'Pryvo' do
 
     # Fix Xcode 15+/iOS issues
     installer.pods_project.targets.each do |target|
-      target.build_configurations.each do |config|
-        config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
-        
-        # Add header search paths for codegen
-        header_search_paths = config.build_settings['HEADER_SEARCH_PATHS'] || ['$(inherited)']
-        header_search_paths << '"$(PODS_TARGET_SRCROOT)/../build/generated/ios"' unless header_search_paths.include?('"$(PODS_TARGET_SRCROOT)/../build/generated/ios"')
-        config.build_settings['HEADER_SEARCH_PATHS'] = header_search_paths
-        
-        # Disable New Architecture - remove from all flags
-        config.build_settings['RCT_NEW_ARCH_ENABLED'] = '0'
-        
-        # Remove RCT_NEW_ARCH_ENABLED from preprocessor definitions
-        if config.build_settings['GCC_PREPROCESSOR_DEFINITIONS']
-          definitions = config.build_settings['GCC_PREPROCESSOR_DEFINITIONS']
-          if definitions.is_a?(Array)
-            definitions = definitions.reject { |d| d.to_s.include?('RCT_NEW_ARCH_ENABLED') }
-            definitions << 'RCT_NEW_ARCH_ENABLED=0'
-            config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = definitions
-          elsif definitions.is_a?(String)
-            config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = definitions.gsub(/-DRCT_NEW_ARCH_ENABLED[= ]?[01]?/, '') + ' -DRCT_NEW_ARCH_ENABLED=0'
+      if target.respond_to?(:build_configurations)
+        target.build_configurations.each do |config|
+          config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+
+          # Remove RCT_NEW_ARCH_ENABLED from preprocessor definitions entirely
+          # Using #ifdef means even =0 is treated as "defined"
+          if config.build_settings['GCC_PREPROCESSOR_DEFINITIONS']
+            defs = config.build_settings['GCC_PREPROCESSOR_DEFINITIONS']
+            defs = [defs] if defs.is_a?(String)
+            defs = defs.reject { |d| d.to_s.include?('RCT_NEW_ARCH_ENABLED') }
+            config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = defs
           end
-        else
-          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] = ['$(inherited)', 'RCT_NEW_ARCH_ENABLED=0']
-        end
-        
-        # Remove from OTHER_CFLAGS and OTHER_CPLUSPLUSFLAGS
-        ['OTHER_CFLAGS', 'OTHER_CPLUSPLUSFLAGS'].each do |flag|
-          if config.build_settings[flag]
-            config.build_settings[flag] = config.build_settings[flag].gsub(/-DRCT_NEW_ARCH_ENABLED[= ]?[01]?/, '').strip
-            config.build_settings[flag] = config.build_settings[flag] + ' -DRCT_NEW_ARCH_ENABLED=0'
+
+          # Also remove from OTHER_CFLAGS and OTHER_CPLUSPLUSFLAGS
+          ['OTHER_CFLAGS', 'OTHER_CPLUSPLUSFLAGS'].each do |flag_key|
+            if config.build_settings[flag_key]
+              val = config.build_settings[flag_key]
+              if val.is_a?(String)
+                config.build_settings[flag_key] = val.gsub(/-DRCT_NEW_ARCH_ENABLED\S*/, '').strip
+              elsif val.is_a?(Array)
+                config.build_settings[flag_key] = val.reject { |v| v.to_s.include?('RCT_NEW_ARCH_ENABLED') }
+              end
+            end
           end
         end
       end
     end
+    installer.pods_project.save
   end
 end
