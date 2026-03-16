@@ -35,8 +35,9 @@ const SplashScreen = ({navigation}) => {
   useEffect(() => {
     let timer;
     // Wait for BOTH the auth check AND the profile fetch to complete
+    /* 
+    // Auto-navigation commented out as per user request to see splash/auth first
     if (!authLoading && !profileLoading) {
-      // Small delay so the splash logo is visible
       timer = setTimeout(() => {
         if (isAuthenticated) {
           const nextScreen = getNextOnboardingScreen();
@@ -49,18 +50,19 @@ const SplashScreen = ({navigation}) => {
             routes: [{name: nextScreen}],
           });
         }
-      }, 800); // Shorter delay since we now wait for profile to fully load
+      }, 800);
     }
+    */
     return () => {
       if (timer) clearTimeout(timer);
     };
   }, [authLoading, profileLoading, isAuthenticated, getNextOnboardingScreen, navigation]);
 
-  const handleCreateAccount = () => {
+  const handleLogin = () => {
     navigation?.navigate(AppRoute.SignIn);
   };
 
-  const handleSignIn = () => {
+  const handleSignUp = () => {
     navigation?.navigate(AppRoute.SignUp);
   };
 
@@ -159,13 +161,13 @@ const SplashScreen = ({navigation}) => {
               </Text>
             </View>
           </Pressable>
-          <Pressable onPress={handleCreateAccount} className="w-full">
+          <Pressable onPress={handleLogin} className="w-full">
             <Text className="text-white font-semibold bg-primary px-6 py-3 mb-8 rounded-full text-lg text-center">
               Log In
             </Text>
           </Pressable>
 
-          <Pressable onPress={handleSignIn}>
+          <Pressable onPress={handleSignUp}>
             <Text className="text-black text-lg font-medium text-center mt-6">
               Don't have an account?{' '}
               <Text className="text-primary font-bold">Sign Up</Text>

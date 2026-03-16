@@ -10,7 +10,7 @@ import SplashScreen from '../features/onboarding/screens/SplashScreen.jsx';
 import SignUpScreen from '../features/auth/screens/SignUpScreen.jsx';
 import SignInScreen from '../features/auth/screens/SignInScreen.jsx';
 import ForgotPasswordScreen from '../features/auth/screens/ForgotPasswordScreen.jsx';
-import ResetPasswordScreen from '../features/onboarding/screens/ResetPasswordScreen.jsx';
+import ResetPasswordScreen from '../features/auth/screens/ResetPasswordScreen.jsx';
 import TermsScreen from '../features/onboarding/screens/static/TermsScreen.js';
 import PrivacyScreen from '../features/onboarding/screens/static/PrivacyScreen.js';
 import PhoneInputScreen from '../features/onboarding/screens/PhoneInputScreen.jsx';

@@ -66,7 +66,7 @@ const SignInScreen = () => {
       // getNextOnboardingScreen() now has the profile in context (set by login)
       // and will correctly route to HomeTabs or the right onboarding step
       const nextScreen = hasProfile
-        ? getNextOnboardingScreen()
+        ? AppRoute.HomeTabs
         : AppRoute.Welcome;
       navigation.reset({
         index: 0,
