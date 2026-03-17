@@ -16,6 +16,7 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
 import {signIn} from '../../../services/auth';
+import {enableNotifications} from '../../../services/notifications';
 import {useLoading} from '../../../context/LoadingContext';
 import {useAuth} from '../../../context/AuthContext';
 
@@ -63,6 +64,13 @@ const SignInScreen = () => {
       if (data?.user) {
         // login() awaits loadProfile internally and returns true if profile exists
         hasProfile = await login(data.user);
+        
+        // Register for notifications on sign-in (handles re-installs)
+        try {
+          await enableNotifications(data.user.id);
+        } catch (nErr) {
+          console.log('[SignIn] Notification registration skipped:', nErr.message);
+        }
       }
       // getNextOnboardingScreen() now has the profile in context (set by login)
       // and will correctly route to HomeTabs or the right onboarding step

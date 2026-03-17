@@ -43,7 +43,7 @@ import AdvancedFiltersScreen from '../features/settings/screens/AdvancedFiltersS
 import CategoryHelpScreen from '../features/settings/screens/CategoryHelpScreen.jsx';
 import UserProfileViewScreen from '../features/profile/screens/UserProfileViewScreen.jsx';
 import {colors, typography} from '../theme';
-import {setupNotificationHandlers} from '../services/notifications/notificationService';
+import {setupNotificationHandlers, setupTokenRefreshListener, enableNotifications} from '../services/notifications/notificationService';
 import {useEffect} from 'react';
 import {SocketProvider} from '../context/SocketContext';
 import GlobalNotification from '../components/layout/GlobalNotification';
@@ -65,9 +65,12 @@ const AppNavigator = () => {
   useEffect(() => {
     // Wait for navigation to be ready
     if (navigationRef.isReady()) {
-      const unsubscribe = setupNotificationHandlers(navigationRef);
+      const unsubscribeHandlers = setupNotificationHandlers(navigationRef);
+      const unsubscribeRefresh = setupTokenRefreshListener();
+
       return () => {
-        if (unsubscribe) unsubscribe();
+        if (unsubscribeHandlers) unsubscribeHandlers();
+        if (unsubscribeRefresh) unsubscribeRefresh();
       };
     }
   }, [navigationRef]);

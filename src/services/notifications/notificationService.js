@@ -44,8 +44,8 @@ export async function requestNotificationPermission() {
 
     const authStatus = await getMessaging().requestPermission();
     const enabled =
-      authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-      authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+      authStatus === AuthorizationStatus.AUTHORIZED ||
+      authStatus === AuthorizationStatus.PROVISIONAL;
 
     await AsyncStorage.setItem(
       NOTIFICATION_PERMISSION_KEY,
@@ -74,8 +74,8 @@ export async function checkNotificationPermission() {
 
     const authStatus = await getMessaging().hasPermission();
     return (
-      authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-      authStatus === messaging.AuthorizationStatus.PROVISIONAL
+      authStatus === AuthorizationStatus.AUTHORIZED ||
+      authStatus === AuthorizationStatus.PROVISIONAL
     );
   } catch (error) {
     console.error('Error checking notification permission:', error);
@@ -84,23 +84,24 @@ export async function checkNotificationPermission() {
 }
 
 // Get FCM token
-export async function getFCMToken() {
+export async function getFCMToken(forceRefresh = false) {
   try {
-    // Check if we already have a token stored
-    const storedToken = await AsyncStorage.getItem(NOTIFICATION_TOKEN_KEY);
-    if (storedToken) {
-      return storedToken;
+    if (!forceRefresh) {
+      // Check if we already have a token stored
+      const storedToken = await AsyncStorage.getItem(NOTIFICATION_TOKEN_KEY);
+      if (storedToken) {
+        return storedToken;
+      }
     }
 
     // Request permission first
     const hasPermission = await requestNotificationPermission();
     if (!hasPermission) {
-      // Don't throw, just return null if permission denied
       console.log('Notification permission not granted, skipping token fetch');
       return null;
     }
 
-    // Get FCM token
+    // Get FCM token directly from Firebase
     try {
       const token = await getMessaging().getToken();
       if (token) {
@@ -109,7 +110,6 @@ export async function getFCMToken() {
       }
     } catch (tokenError) {
       console.warn('Failed to fetch FCM token:', tokenError);
-      // Suppress error to avoid crashing app on simulators without Play Services
       return null;
     }
 
@@ -139,15 +139,12 @@ export function setupNotificationHandlers(navigation) {
   const unsubscribeForeground = getMessaging().onMessage(
     async remoteMessage => {
       console.log('Foreground notification received:', remoteMessage);
-      // NOTE: We rely on the Socket.IO receiveMessage event for real-time foreground updates
-      // as it's faster and contains more structured data for the GlobalNotification banner.
     },
   );
 
   // Handle background/quit state notifications
   getMessaging().onNotificationOpenedApp(remoteMessage => {
     console.log('Notification opened app:', remoteMessage);
-
     // Navigate to relevant screen
     if (remoteMessage.data?.type === 'message') {
       navigation?.navigate('Messages');
@@ -162,7 +159,6 @@ export function setupNotificationHandlers(navigation) {
     .then(remoteMessage => {
       if (remoteMessage) {
         console.log('App opened from notification:', remoteMessage);
-        // Handle navigation
         if (remoteMessage.data?.type === 'message') {
           navigation?.navigate('Messages');
         } else if (remoteMessage.data?.type === 'match') {
@@ -172,6 +168,29 @@ export function setupNotificationHandlers(navigation) {
     });
 
   return unsubscribeForeground;
+}
+
+// Setup token refresh listener
+export function setupTokenRefreshListener() {
+  const unsubscribe = getMessaging().onTokenRefresh(async token => {
+    try {
+      await AsyncStorage.setItem(NOTIFICATION_TOKEN_KEY, token);
+      
+      const userId = await getUserId();
+      if (userId) {
+        console.log('FCM Token refreshed for user:', userId);
+        await apiClient.post('/notifications/register', {
+          userId,
+          token,
+          platform: Platform.OS,
+        });
+      }
+    } catch (error) {
+      console.warn('Failed to handle token refresh:', error);
+    }
+  });
+
+  return unsubscribe;
 }
 
 // Get userId from storage (if available)
@@ -194,18 +213,16 @@ export async function enableNotifications(userId = null) {
     const hasPermission = await requestNotificationPermission();
 
     if (!hasPermission) {
-      throw new Error(
-        'Notification permission denied. Please enable in device settings.',
-      );
+      return {success: false, reason: 'permission_denied'};
     }
 
-    const token = await getFCMToken();
+    // Always try to get a fresh token from Firebase to handle re-installs
+    const token = await getFCMToken(true); 
 
     if (!token) {
       console.warn(
         'Failed to get notification token - notifications may not work',
       );
-      // Return success: false but don't throw, so UI doesn't show error
       return {success: false, reason: 'no_token'};
     }
 

@@ -78,7 +78,15 @@ const PhoneInputScreen = () => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.container}>
           <View style={styles.header}>
-            <Text style={styles.title}>What's your phone number?</Text>
+            <View style={styles.headerTop}>
+              <Text style={styles.title}>What's your phone number?</Text>
+              <Pressable 
+                onPress={() => navigation.navigate(AppRoute.Welcome)}
+                style={styles.skipButton}
+              >
+                <Text style={styles.skipText}>Skip</Text>
+              </Pressable>
+            </View>
             <Text style={styles.subtitle}>
               We'll use this to help you connect with others.
             </Text>
@@ -128,11 +136,26 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xxl,
   },
   header: {marginBottom: spacing.xxl},
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
   title: {
     fontFamily: typography.fontFamilyBold,
     fontSize: typography.headings.h2,
     color: colors.textPrimary,
-    marginBottom: spacing.sm,
+    flex: 1,
+  },
+  skipButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  skipText: {
+    fontFamily: typography.fontFamilyBold,
+    fontSize: typography.body.medium,
+    color: colors.primary,
   },
   subtitle: {
     fontFamily: typography.fontFamilyRegular,

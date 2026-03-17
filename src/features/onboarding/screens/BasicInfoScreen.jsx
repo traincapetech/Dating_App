@@ -925,15 +925,25 @@ const BasicInfoScreen = () => {
   const content = (
     <>
       <View style={styles.header}>
-        <Text style={styles.title}>
-          {step === 1 && "What's your name?"}
-          {step === 2 && 'Provide Your Email'}
-          {step === 3 && 'Notifications'}
-          {step === 4 && 'Location'}
-          {step === 5 && 'Gender'}
+        <View style={styles.headerTop}>
+          <Text style={styles.title}>
+            {step === 1 && "What's your name?"}
+            {step === 2 && 'Provide Your Email'}
+            {step === 3 && 'Notifications'}
+            {step === 4 && 'Location'}
+            {step === 5 && 'Gender'}
+          </Text>
+          <Pressable 
+            onPress={() => navigation.navigate(AppRoute.DatingPreferences)}
+            style={styles.skipButton}
+          >
+            <Text style={styles.skipText}>Skip</Text>
+          </Pressable>
+        </View>
+        <Text style={styles.subtitle}>
+          Step {step} of 5: {step === 1 ? 'Personal details' : step === 2 ? 'Verify email' : step === 3 ? 'Notifications' : step === 4 ? 'Location' : 'Gender'}
         </Text>
       </View>
-
       {renderStepContent()}
 
       <Pressable
@@ -999,18 +1009,36 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xxl,
   },
   header: {
-    marginBottom: spacing.xl,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.xxl,
+    paddingBottom: spacing.md,
+    backgroundColor: colors.background,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
   },
   title: {
     fontFamily: typography.fontFamilyBold,
     fontSize: typography.headings.h2,
     color: colors.textPrimary,
+    flex: 1,
+  },
+  skipButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  skipText: {
+    fontFamily: typography.fontFamilyBold,
+    fontSize: typography.body.medium,
+    color: colors.primary,
   },
   subtitle: {
-    fontFamily: typography.fontFamilyRegular,
+    fontFamily: typography.fontFamilyMedium,
     fontSize: typography.body.medium,
     color: colors.textSecondary,
-    marginBottom: spacing.lg,
   },
   label: {
     fontFamily: typography.fontFamilyMedium,

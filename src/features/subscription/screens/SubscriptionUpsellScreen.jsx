@@ -304,11 +304,19 @@ const SubscriptionUpsellScreenContent = () => {
           start={{x: 0, y: 0}}
           end={{x: 1, y: 1}}
           style={styles.heroHeader}>
-          <Pressable
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}>
-            <Text style={styles.backButtonText}>✕</Text>
-          </Pressable>
+          <View style={styles.headerTop}>
+            <Pressable
+              onPress={() => navigation.goBack()}
+              style={styles.backButton}>
+              <Text style={styles.backButtonText}>✕</Text>
+            </Pressable>
+            <Pressable 
+              onPress={() => navigation.navigate(AppRoute.HomeTabs)}
+              style={styles.skipButtonHero}
+            >
+              <Text style={styles.skipTextHero}>Skip</Text>
+            </Pressable>
+          </View>
           <Text style={styles.heroEmoji}>💎</Text>
           <Text style={styles.heroTitle}>Upgrade to Pryvo Premium</Text>
           <Text style={styles.heroSubtitle}>
@@ -469,15 +477,33 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 40,
   },
   backButton: {
-    position: 'absolute',
-    top: spacing.xl + 20,
-    left: spacing.xl,
     width: 40,
     height: 40,
     borderRadius: 20,
     backgroundColor: 'rgba(0,0,0,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    paddingHorizontal: spacing.sm,
+    position: 'absolute',
+    top: spacing.xl + 20,
+    zIndex: 10,
+  },
+  skipButtonHero: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 20,
+  },
+  skipTextHero: {
+    fontFamily: typography.fontFamilyBold,
+    fontSize: typography.body.medium,
+    color: '#fff',
   },
   backButtonText: {
     color: '#fff',

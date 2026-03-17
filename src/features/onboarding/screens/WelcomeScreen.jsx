@@ -23,6 +23,14 @@ const WelcomeScreen = () => {
     <ScrollView
       contentContainerStyle={styles.container}
       showsVerticalScrollIndicator={false}>
+      <View style={styles.header}>
+        <Pressable 
+          onPress={() => navigation.navigate(AppRoute.BasicInfo)}
+          style={styles.skipButton}
+        >
+          <Text style={styles.skipText}>Skip</Text>
+        </Pressable>
+      </View>
       <View style={styles.content}>
         <Text style={styles.title}>You are one of a kind</Text>
         <Text style={styles.subtitle}>
@@ -51,6 +59,20 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xxl,
     backgroundColor: colors.background,
     justifyContent: 'center',
+  },
+  header: {
+    position: 'absolute',
+    top: spacing.xl,
+    right: spacing.xl,
+    zIndex: 10,
+  },
+  skipButton: {
+    padding: spacing.sm,
+  },
+  skipText: {
+    fontFamily: typography.fontFamilyBold,
+    fontSize: typography.body.medium,
+    color: colors.primary,
   },
   content: {
     flex: 1,

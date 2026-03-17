@@ -203,7 +203,15 @@ const ProfilePromptsScreen = () => {
       contentContainerStyle={styles.container}
       showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
-        <Text style={styles.title}>Write your profile answers</Text>
+        <View style={styles.headerTop}>
+          <Text style={styles.title}>Write your profile answers</Text>
+          <Pressable 
+            onPress={() => navigation.navigate(AppRoute.MediaUpload)}
+            style={styles.skipButton}
+          >
+            <Text style={styles.skipText}>Skip</Text>
+          </Pressable>
+        </View>
         <Text style={styles.subtitle}>
           There are three prompts and when tapped on them will get many prompts.
         </Text>
@@ -296,11 +304,26 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: spacing.xl,
   },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
   title: {
     fontFamily: typography.fontFamilyBold,
     fontSize: typography.headings.h2,
     color: colors.textPrimary,
-    marginBottom: spacing.sm,
+    flex: 1,
+  },
+  skipButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  skipText: {
+    fontFamily: typography.fontFamilyBold,
+    fontSize: typography.body.medium,
+    color: colors.primary,
   },
   subtitle: {
     fontFamily: typography.fontFamilyRegular,

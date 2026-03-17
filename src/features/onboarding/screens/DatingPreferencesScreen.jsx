@@ -120,7 +120,15 @@ const DatingPreferencesScreen = () => {
       contentContainerStyle={styles.container}
       showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
-        <Text style={styles.title}>Who would you like to date?</Text>
+        <View style={styles.headerTop}>
+          <Text style={styles.title}>Who would you like to date?</Text>
+          <Pressable 
+            onPress={() => navigation.navigate(AppRoute.PersonalDetails)}
+            style={styles.skipButton}
+          >
+            <Text style={styles.skipText}>Skip</Text>
+          </Pressable>
+        </View>
         <Text style={styles.subtitle}>Select who you're open to meeting.</Text>
       </View>
 
@@ -258,11 +266,26 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: spacing.xl,
   },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
   title: {
     fontFamily: typography.fontFamilyBold,
     fontSize: typography.headings.h2,
     color: colors.textPrimary,
-    marginBottom: spacing.sm,
+    flex: 1,
+  },
+  skipButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  skipText: {
+    fontFamily: typography.fontFamilyBold,
+    fontSize: typography.body.medium,
+    color: colors.primary,
   },
   subtitle: {
     fontFamily: typography.fontFamilyRegular,
