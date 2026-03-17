@@ -1,5 +1,5 @@
 // CRITICAL: Import ErrorUtils polyfill FIRST before anything else
-import './errorutils-polyfill';
+import './errorutils-polyfill.js';
 
 // IMPORTANT: react-native-gesture-handler must be imported AFTER polyfill
 import 'react-native-gesture-handler';

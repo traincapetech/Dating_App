@@ -26,6 +26,8 @@ import bcrypt from 'bcryptjs';
 import {storage} from '../storage/index.js';
 import {randomUUID} from 'crypto';
 import {config} from '../config/env.js';
+import Like from '../models/Like.js';
+import ProfileComment from '../models/ProfileComment.js';
 
 export const saveBasicInfoController = asyncHandler(async (req, res) => {
   const userId = req.user?.id || req.body.userId;
@@ -473,4 +475,98 @@ export const deleteProfileController = asyncHandler(async (req, res) => {
     success: true,
     message: 'Profile deleted successfully',
   });
+});
+
+export const getProfileInteractionsController = asyncHandler(async (req, res) => {
+  const viewerId = req.user?.id;
+  const targetUserId = req.params.userId;
+
+  if (!targetUserId) {
+    return res.status(400).json({error: 'Target User ID is required'});
+  }
+
+  // Security check: Only the owner of the profile can view their interactions
+  if (viewerId !== targetUserId) {
+    return res.status(403).json({
+      error: 'Forbidden',
+      message: 'You can only view interactions for your own profile.',
+    });
+  }
+
+  try {
+    // Note: We only get interactions where the current user is the "receiver"
+    // Fetch total likes
+    const allLikes = await Like.find({ receiverId: targetUserId }).lean();
+    const totalLikes = allLikes.length;
+    
+    // FETCH ALL LIKES and STRICTLY SEPARATE THEM
+    // Rule: photoLikes ONLY contain likes with a specific photoUrl. profileLikes contain the rest.
+    const photoLikes = allLikes.filter(l => l.likedContent?.photoUrl);
+    const profileLikes = allLikes.filter(l => !l.likedContent?.photoUrl);
+
+    // Fetch received comments (icebreakers/profile comments)
+    // We populate basic sender info if possible, but at least return the comments
+    const commentsList = await ProfileComment.find({ receiverId: targetUserId })
+      .sort({ createdAt: -1 }) // Newest first
+      .limit(50) // Reasonable limit to prevent massive payloads
+      .lean();
+
+    // If we wanted to get sender names/photos, we'd need to manually lookup or populate, 
+    // but returning the comments directly works for now if we just want to display the text.
+    // To keep it simple, we will return the senderId so the frontend could theoretically link them,
+    // or we can aggregate. Let's send them as-is to start.
+    
+    // We will extract unique sender IDs to populate their basic profile info
+    const senderIds = [
+      ...photoLikes.map(l => l.senderId),
+      ...profileLikes.map(l => l.senderId),
+      ...commentsList.map(c => c.senderId)
+    ];
+    const uniqueSenderIds = [...new Set(senderIds)];
+
+    let populatedSenders = {};
+    if (uniqueSenderIds.length > 0) {
+      const senderProfiles = await Profile.find(
+        { userId: { $in: uniqueSenderIds } },
+        { userId: 1, 'basicInfo.firstName': 1, 'basicInfo.name': 1, name: 1, photos: 1, media: 1 }
+      ).lean();
+
+      senderProfiles.forEach(p => {
+        populatedSenders[p.userId] = {
+          userId: p.userId,
+          name: p.basicInfo?.firstName || p.basicInfo?.name || p.name || 'User',
+          avatar: p.photos?.[0] || (p.media?.media?.[0]?.url) || null
+        };
+      });
+    }
+
+    // Attach sender info
+    const enrichedPhotoLikes = photoLikes.map(l => ({
+      ...l,
+      sender: populatedSenders[l.senderId] || null
+    }));
+
+    const enrichedProfileLikes = profileLikes.map(l => ({
+      ...l,
+      sender: populatedSenders[l.senderId] || null
+    }));
+
+    const enrichedComments = commentsList.map(c => ({
+      ...c,
+      sender: populatedSenders[c.senderId] || null
+    }));
+
+    res.status(200).json({
+      success: true,
+      interactions: {
+        totalLikes,
+        photoLikes: enrichedPhotoLikes,
+        profileLikes: enrichedProfileLikes,
+        comments: enrichedComments,
+      },
+    });
+  } catch (error) {
+    console.error('[getProfileInteractionsController] Error:', error);
+    res.status(500).json({ error: 'Failed to fetch profile interactions' });
+  }
 });

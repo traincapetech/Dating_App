@@ -211,3 +211,8 @@ export async function updateOnlineStatus(showOnlineStatus) {
     headers,
   );
 }
+
+export async function getProfileInteractions(userId) {
+  const headers = await getAuthHeaders();
+  return apiClient.get(`/profile/${userId}/interactions`, headers);
+}
