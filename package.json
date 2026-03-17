@@ -1,5 +1,5 @@
 {
-  "name": "Pryvo",
+  "name": "pryvo",
   "version": "0.0.1",
   "private": true,
   "scripts": {
@@ -57,7 +57,7 @@
     "@babel/core": "^7.25.2",
     "@babel/preset-env": "^7.25.3",
     "@babel/preset-flow": "^7.27.1",
-    "@babel/runtime": "^7.25.0",
+    "@babel/runtime": "^7.29.2",
     "@react-native-community/cli": "^20.0.2",
     "@react-native-community/cli-platform-android": "^20.0.2",
     "@react-native-community/cli-platform-ios": "^20.1.2",
