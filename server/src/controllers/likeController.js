@@ -445,6 +445,7 @@ export const getDailyLikeInfo = async (req, res) => {
 
 // Check if a viewer has liked a target user
 export const getLikedStatus = async (req, res) => {
+  console.log(`[LikeController] getLikedStatus - viewerId: ${req.params.viewerId}, targetId: ${req.params.targetId}`);
   try {
     const { viewerId, targetId } = req.params;
 

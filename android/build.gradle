@@ -1,10 +1,10 @@
 buildscript {
     ext {
-        buildToolsVersion = "36.0.0"
+        buildToolsVersion = "35.0.0"
         minSdkVersion = 24
-        compileSdkVersion = 36
-        targetSdkVersion = 36
-        ndkVersion = "27.1.12297006"
+        compileSdkVersion = 35
+        targetSdkVersion = 35
+        ndkVersion = "26.3.11579264"
         kotlinVersion = "2.0.21"
     }
     repositories {
@@ -12,15 +12,10 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath("com.android.tools.build:gradle:8.9.1")
+        classpath("com.android.tools.build:gradle:8.7.2")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
         classpath("com.google.gms:google-services:4.4.2")
-        classpath fileTree(dir: "../node_modules/@react-native/gradle-plugin/react-native-gradle-plugin/build/libs", include: ["*.jar"])
-        classpath fileTree(dir: "../node_modules/@react-native/gradle-plugin/settings-plugin/build/libs", include: ["*.jar"])
-        classpath fileTree(dir: "../node_modules/@react-native/gradle-plugin/shared/build/libs", include: ["*.jar"])
     }
-    
-
 }
 
 allprojects {
