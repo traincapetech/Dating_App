@@ -250,7 +250,7 @@ const LikesScreen = ({navigation}) => {
       <FlatList
         data={likes}
         keyExtractor={(item, index) =>
-          item.senderId || item._id || index.toString()
+          item._id ? item._id.toString() : item.senderId || index.toString()
         }
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}

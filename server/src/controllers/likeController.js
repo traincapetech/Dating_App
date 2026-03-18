@@ -305,8 +305,14 @@ export const getLikesReceived = async (req, res) => {
     // Check premium status from subscription model
     const isPremium = (await isUserPremium(userId)) || LIKES_VISIBLE_FREE;
 
-    // Get all likes where this user is the receiver
-    const likes = await Like.find({receiverId: userId}).sort({createdAt: -1});
+    // Get all likes where this user is the receiver AND it is a profile right-swipe (not a photo like)
+    const likes = await Like.find({
+      receiverId: userId,
+      $or: [
+        { likedContent: { $exists: false } },
+        { 'likedContent.type': 'profile' }
+      ]
+    }).sort({createdAt: -1});
 
     // Check which ones are already matched
     const matches = await Match.find({users: userId});
@@ -335,6 +341,7 @@ export const getLikesReceived = async (req, res) => {
     const likesWithProfiles = pendingLikes.map(like => {
       const profile = profiles.find(p => p.userId === like.senderId);
       return {
+        _id: like._id,
         senderId: like.senderId,
         likedAt: like.createdAt,
         userId: like.senderId,
@@ -372,8 +379,14 @@ export const getLikesCount = async (req, res) => {
         .json({success: false, message: 'userId is required'});
     }
 
-    // Get all likes where this user is the receiver
-    const likes = await Like.find({receiverId: userId});
+    // Get all profile right-swipes where this user is the receiver
+    const likes = await Like.find({
+      receiverId: userId,
+      $or: [
+        { likedContent: { $exists: false } },
+        { 'likedContent.type': 'profile' }
+      ]
+    });
 
     // Check which ones are already matched
     let pendingCount = 0;

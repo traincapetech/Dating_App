@@ -18,7 +18,6 @@ import OTPVerificationScreen from '../features/onboarding/screens/OTPVerificatio
 import WelcomeScreen from '../features/onboarding/screens/WelcomeScreen.jsx';
 import BasicInfoScreen from '../features/onboarding/screens/BasicInfoScreen.jsx';
 import DatingPreferencesScreen from '../features/onboarding/screens/DatingPreferencesScreen.jsx';
-import PersonalDetailsScreen from '../features/onboarding/screens/PersonalDetailsScreen.jsx';
 import LifestyleScreen from '../features/onboarding/screens/LifestyleScreen.jsx';
 import ProfilePromptsScreen from '../features/onboarding/screens/ProfilePromptsScreen.jsx';
 import MediaUploadScreen from '../features/onboarding/screens/MediaUploadScreen.jsx';
@@ -102,7 +101,7 @@ const AppNavigator = () => {
           />
           <Stack.Screen
             name="PersonalDetails"
-            component={PersonalDetailsScreen}
+            component={PlaceholderScreen}
           />
           <Stack.Screen name="Lifestyle" component={LifestyleScreen} />
           <Stack.Screen
