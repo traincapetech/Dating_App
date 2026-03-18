@@ -179,9 +179,9 @@ const ChatsScreen = ({navigation}) => {
 
   if (loading && !visited.chats) {
     return (
-      <FullScreenLoader 
-        visible={true} 
-        message="Love might be one message away…" 
+      <FullScreenLoader
+        visible={true}
+        message="Love might be one message away…"
       />
     );
   }

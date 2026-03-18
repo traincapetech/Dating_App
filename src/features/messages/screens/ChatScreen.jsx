@@ -94,7 +94,8 @@ const ChatScreen = ({route, navigation}) => {
   const [streak, setStreak] = useState(null);
   const [showStreakWarning, setShowStreakWarning] = useState(false);
   const [showGiftAnimation, setShowGiftAnimation] = useState(false);
-  const [receivedGiftForAnimation, setReceivedGiftForAnimation] = useState(null);
+  const [receivedGiftForAnimation, setReceivedGiftForAnimation] =
+    useState(null);
   const [isUserOnlineNow, setIsUserOnlineNow] = useState(false);
 
   const flatListRef = useRef(null);
@@ -168,21 +169,29 @@ const ChatScreen = ({route, navigation}) => {
 
         // Filter unseen messages for the current user
         const unseenMessages = (data || []).filter(
-          m => m.receiverId === user.id && m.status !== 'seen'
+          m => m.receiverId === user.id && m.status !== 'seen',
         );
 
         if (unseenMessages.length > 0) {
           const unseenIds = unseenMessages.map(m => m._id);
           await markMessagesAsSeen(matchId, user.id);
-          
+
           // Trigger Gift Animation for newly received (unseen) gifts
-          const unseenGifts = unseenMessages.filter(m => m.mediaType === 'gift');
+          const unseenGifts = unseenMessages.filter(
+            m => m.mediaType === 'gift',
+          );
           if (unseenGifts.length > 0) {
             // Show animation for the most recent gift in the batch
             const latestGift = unseenGifts[unseenGifts.length - 1];
             if (latestGift.giftMetadata) {
-              console.log('[ChatScreen] 🎁 Triggering animation for unseen gift:', latestGift.giftMetadata.slug);
-              setReceivedGiftForAnimation({...latestGift.giftMetadata, isSender: false});
+              console.log(
+                '[ChatScreen] 🎁 Triggering animation for unseen gift:',
+                latestGift.giftMetadata.slug,
+              );
+              setReceivedGiftForAnimation({
+                ...latestGift.giftMetadata,
+                isSender: false,
+              });
               setShowGiftAnimation(true);
             }
           }
@@ -234,8 +243,14 @@ const ChatScreen = ({route, navigation}) => {
             // Trigger Gift Animation only for the RECEIVER via socket
             // (Sender animation is triggered directly in handleSendGift after API response)
             if (msg.mediaType === 'gift' && msg.senderId !== user.id) {
-              console.log('[ChatScreen] 🎁 Receiver gift animation for:', msg.giftMetadata?.slug);
-              setReceivedGiftForAnimation({...msg.giftMetadata, isSender: false});
+              console.log(
+                '[ChatScreen] 🎁 Receiver gift animation for:',
+                msg.giftMetadata?.slug,
+              );
+              setReceivedGiftForAnimation({
+                ...msg.giftMetadata,
+                isSender: false,
+              });
               setShowGiftAnimation(true);
             }
 
@@ -360,7 +375,11 @@ const ChatScreen = ({route, navigation}) => {
         includeBase64: true,
       });
 
-      if (result.didCancel || !result.assets?.[0]?.uri || !result.assets?.[0]?.base64)
+      if (
+        result.didCancel ||
+        !result.assets?.[0]?.uri ||
+        !result.assets?.[0]?.base64
+      )
         return;
 
       setSelectedMedia({
@@ -468,13 +487,19 @@ const ChatScreen = ({route, navigation}) => {
         scrollToBottom();
         // Immediately show sender-side animation (don't wait for socket)
         if (res.message?.giftMetadata) {
-          setReceivedGiftForAnimation({...res.message.giftMetadata, isSender: true});
+          setReceivedGiftForAnimation({
+            ...res.message.giftMetadata,
+            isSender: true,
+          });
           setShowGiftAnimation(true);
         }
       }
     } catch (e) {
       console.log('Gift send error', e);
-      Alert.alert('Error', e.message || 'Failed to send gift. Please try again.');
+      Alert.alert(
+        'Error',
+        e.message || 'Failed to send gift. Please try again.',
+      );
     } finally {
       setSending(false);
     }
@@ -721,7 +746,9 @@ const ChatScreen = ({route, navigation}) => {
           )}
 
           <Pressable
-            onPress={() => item.mediaUrl ? handleOpenImage(item.mediaUrl) : null}
+            onPress={() =>
+              item.mediaUrl ? handleOpenImage(item.mediaUrl) : null
+            }
             onLongPress={() => (isMe ? handleDeleteMessage(item._id) : null)}
             delayLongPress={500}
             style={[
@@ -756,15 +783,24 @@ const ChatScreen = ({route, navigation}) => {
             style={styles.giftMessageImage}
             resizeMode="contain"
           />
-          <Text style={[styles.giftMessageText, !isMe && styles.giftMessageTextThem]}>
+          <Text
+            style={[
+              styles.giftMessageText,
+              !isMe && styles.giftMessageTextThem,
+            ]}>
             {(() => {
               const slug = item.giftMetadata.slug;
               if (isMe) return `You sent a ${item.giftMetadata.name}`;
-              if (slug === 'rose') return 'A beautiful rose has been sent to you 🌹';
-              if (slug === 'teddy-bear') return 'You received a cute teddy bear 🧸';
-              if (slug === 'ring') return 'A sparkling ring just arrived for you 💍';
-              if (slug === 'diamond') return 'You’ve been gifted a shining diamond 💎';
-              if (slug === 'crown') return 'You’ve been crowned with a royal gift 👑';
+              if (slug === 'rose')
+                return 'A beautiful rose has been sent to you 🌹';
+              if (slug === 'teddy-bear')
+                return 'You received a cute teddy bear 🧸';
+              if (slug === 'ring')
+                return 'A sparkling ring just arrived for you 💍';
+              if (slug === 'diamond')
+                return 'You’ve been gifted a shining diamond 💎';
+              if (slug === 'crown')
+                return 'You’ve been crowned with a royal gift 👑';
               return `You received a ${item.giftMetadata.name}`;
             })()}
           </Text>
@@ -823,7 +859,11 @@ const ChatScreen = ({route, navigation}) => {
   return (
     <>
       <SafeAreaView style={styles.safe} edges={['top']}>
-        <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
+        <StatusBar
+          translucent
+          backgroundColor="transparent"
+          barStyle="dark-content"
+        />
         <KeyboardAvoidingView
           style={styles.container}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -889,7 +929,11 @@ const ChatScreen = ({route, navigation}) => {
                     opacity: pressed ? 0.7 : 1,
                     marginRight: spacing.sm,
                   })}>
-                  <Icon name="calendar-outline" size={24} color={colors.primary} />
+                  <Icon
+                    name="calendar-outline"
+                    size={24}
+                    color={colors.primary}
+                  />
                 </Pressable>
                 <Pressable
                   onPress={() => setShowUnmatchModal(true)}
@@ -897,7 +941,11 @@ const ChatScreen = ({route, navigation}) => {
                     opacity: pressed ? 0.7 : 1,
                     marginRight: spacing.sm,
                   })}>
-                  <Icon name="heart-dislike-outline" size={24} color={colors.error} />
+                  <Icon
+                    name="heart-dislike-outline"
+                    size={24}
+                    color={colors.error}
+                  />
                 </Pressable>
                 <Pressable
                   onPress={() => setShowReportModal(true)}
@@ -917,7 +965,9 @@ const ChatScreen = ({route, navigation}) => {
           {/* Streak Warning Banner */}
           {showStreakWarning && streak && (
             <StreakWarningBanner
-              hoursRemaining={24 - (Date.now() - new Date(streak.lastActivityDate)) / 3600000}
+              hoursRemaining={
+                24 - (Date.now() - new Date(streak.lastActivityDate)) / 3600000
+              }
             />
           )}
 
@@ -951,18 +1001,30 @@ const ChatScreen = ({route, navigation}) => {
           )}
 
           {/* Input Area */}
-          <View style={[styles.inputContainer, {paddingBottom: insets.bottom || spacing.md}]}>
+          <View
+            style={[
+              styles.inputContainer,
+              {paddingBottom: insets.bottom || spacing.md},
+            ]}>
             <View style={styles.inputWrapper}>
               <Pressable
                 style={styles.iconButton}
                 onPress={() => setShowEmojiPicker(true)}>
-                <Icon name="happy-outline" size={24} color={colors.textSecondary} />
+                <Icon
+                  name="happy-outline"
+                  size={24}
+                  color={colors.textSecondary}
+                />
               </Pressable>
 
               <Pressable
                 style={styles.iconButton}
                 onPress={() => setShowGifPicker(true)}>
-                <Icon name="images-outline" size={24} color={colors.textSecondary} />
+                <Icon
+                  name="images-outline"
+                  size={24}
+                  color={colors.textSecondary}
+                />
               </Pressable>
 
               <Pressable
@@ -1065,8 +1127,8 @@ const ChatScreen = ({route, navigation}) => {
               onPress={e => e.stopPropagation()}>
               <Text style={styles.modalTitle}>Unmatch</Text>
               <Text style={styles.modalSubtitle}>
-                Are you sure you want to unmatch with {theirName || 'this user'}?
-                This will remove your conversation and you won't be able to
+                Are you sure you want to unmatch with {theirName || 'this user'}
+                ? This will remove your conversation and you won't be able to
                 message each other anymore.
               </Text>
               <View style={styles.modalButtons}>
@@ -1207,7 +1269,12 @@ const ChatScreen = ({route, navigation}) => {
                   end={{x: 1, y: 1}}
                   style={styles.previewSendGradient}>
                   <Text style={styles.previewSendText}>Send Image</Text>
-                  <Icon name="send" size={18} color="#fff" style={{marginLeft: 8}} />
+                  <Icon
+                    name="send"
+                    size={18}
+                    color="#fff"
+                    style={{marginLeft: 8}}
+                  />
                 </LinearGradient>
               </TouchableOpacity>
             </View>

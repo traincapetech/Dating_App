@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback, useRef} from 'react';
 import {
   View,
   Text,
@@ -12,9 +12,16 @@ import {
   Platform,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {useNavigation, useRoute} from '@react-navigation/native';
+import {
+  useNavigation,
+  useRoute,
+  useFocusEffect,
+} from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {colors, typography, spacing} from '../../../theme';
 import {getProfile} from '../../../services/profile/profileService';
+import streakService from '../../../services/streakService';
+import {initSocket} from '../../../services/socket';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -32,29 +39,111 @@ const UserProfileViewScreen = () => {
   const {userId, theirName, theirPhoto, theirAge} = route.params || {};
 
   const [profile, setProfile] = useState(null);
+  const [streak, setStreak] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('gallery');
+  const socketRef = useRef(null);
 
+  // Setup sockets and basic user info once
   useEffect(() => {
-    if (userId) {
-      loadProfile();
-    }
+    let socket;
+    const setup = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('@pryvo_user');
+        if (userData && userData !== 'undefined') {
+          const user = JSON.parse(userData);
+          const myId = user.id || user._id;
+          setCurrentUserId(myId);
+
+          socket = initSocket(myId);
+          socketRef.current = socket;
+
+          socket.on('streak:update', data => {
+            const ids = [myId, userId].sort();
+            const pairId = `${ids[0]}_${ids[1]}`;
+            if (data.userPairId === pairId) {
+              setStreak(prev => ({
+                ...(prev || {}),
+                streakCount: data.streakCount || data.count,
+              }));
+            }
+          });
+        }
+      } catch (e) {
+        console.error('[UserProfileViewScreen] Setup error:', e);
+      }
+    };
+
+    setup();
+
+    return () => {
+      if (socket) socket.off('streak:update');
+    };
   }, [userId]);
 
-  const loadProfile = async () => {
+  // Refresh data on screen focus
+  useFocusEffect(
+    useCallback(() => {
+      if (userId) {
+        loadData();
+      }
+    }, [userId]),
+  );
+
+  const loadData = async () => {
     try {
-      setLoading(true);
-      const response = await getProfile(userId);
-      const profileData = response?.profile || response;
+      if (!profile) setLoading(true);
+
+      // Ensure we have currentUserId for streak fetch
+      let myId = currentUserId;
+      if (!myId) {
+        const userData = await AsyncStorage.getItem('@pryvo_user');
+        if (userData && userData !== 'undefined') {
+          const user = JSON.parse(userData);
+          myId = user.id || user._id;
+          setCurrentUserId(myId);
+        }
+      }
+
+      console.log(
+        `[UserProfileViewScreen] Fetching for myId: ${myId}, theirId: ${userId}`,
+      );
+
+      const [profileRes, streakRes] = await Promise.all([
+        getProfile(userId),
+        myId
+          ? streakService.getStreakForPair(myId, userId)
+          : Promise.resolve(null),
+      ]);
+
+      const profileData = profileRes?.profile || profileRes;
+      console.log(
+        '[UserProfileViewScreen] Profile matchScore:',
+        profileData?.matchScore,
+      );
+      console.log('[UserProfileViewScreen] Streak data:', streakRes);
+
       setProfile(profileData);
+      setStreak(streakRes);
     } catch (error) {
-      console.error('[UserProfileViewScreen] Error loading profile:', error);
+      console.error('[UserProfileViewScreen] Error loading data:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  // ── Derived data (same field access pattern as ProfileScreen) ────────────────
+  // ── Derived data ─────────────────────────────────────────────────────────────
+
+  const formatJoinedDate = (dateString) => {
+    if (!dateString) return '--';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return '--';
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return `${months[date.getMonth()]} ${date.getFullYear()}`;
+  };
+
+  const joinedDate = formatJoinedDate(profile?.createdAt || profile?.joinedAt);
 
   const photos =
     profile?.photos ||
@@ -81,20 +170,25 @@ const UserProfileViewScreen = () => {
     theirAge ||
     null;
 
-  const bio =
-    profile?.bio ||
-    profile?.profilePrompts?.aboutMe?.answer ||
-    null;
+  const bio = profile?.bio || profile?.profilePrompts?.aboutMe?.answer || null;
 
   const jobTitle = profile?.personalDetails?.jobTitle || null;
   const school = profile?.personalDetails?.school || null;
 
   const getZodiacIcon = sign => {
     const map = {
-      aries: 'zodiac-aries', taurus: 'zodiac-taurus', gemini: 'zodiac-gemini',
-      cancer: 'zodiac-cancer', leo: 'zodiac-leo', virgo: 'zodiac-virgo',
-      libra: 'zodiac-libra', scorpio: 'zodiac-scorpio', sagittarius: 'zodiac-sagittarius',
-      capricorn: 'zodiac-capricorn', aquarius: 'zodiac-aquarius', pisces: 'zodiac-pisces',
+      aries: 'zodiac-aries',
+      taurus: 'zodiac-taurus',
+      gemini: 'zodiac-gemini',
+      cancer: 'zodiac-cancer',
+      leo: 'zodiac-leo',
+      virgo: 'zodiac-virgo',
+      libra: 'zodiac-libra',
+      scorpio: 'zodiac-scorpio',
+      sagittarius: 'zodiac-sagittarius',
+      capricorn: 'zodiac-capricorn',
+      aquarius: 'zodiac-aquarius',
+      pisces: 'zodiac-pisces',
     };
     return map[sign?.toLowerCase()] || 'star-face';
   };
@@ -102,26 +196,32 @@ const UserProfileViewScreen = () => {
   // Only show basics that exist
   const basicsItems = [
     profile?.personalDetails?.height && {
-      label: `${profile.personalDetails.height} cm`, icon: 'arrow-up-down',
+      label: `${profile.personalDetails.height} cm`,
+      icon: 'arrow-up-down',
     },
     profile?.personalDetails?.starSign && {
       label: profile.personalDetails.starSign,
       icon: getZodiacIcon(profile.personalDetails.starSign),
     },
     profile?.personalDetails?.educationLevel && {
-      label: profile.personalDetails.educationLevel, icon: 'school-outline',
+      label: profile.personalDetails.educationLevel,
+      icon: 'school-outline',
     },
     profile?.lifestyle?.religiousBeliefs && {
-      label: profile.lifestyle.religiousBeliefs, icon: 'hands-pray',
+      label: profile.lifestyle.religiousBeliefs,
+      icon: 'hands-pray',
     },
     profile?.lifestyle?.politicalBeliefs && {
-      label: profile.lifestyle.politicalBeliefs, icon: 'scale-balance',
+      label: profile.lifestyle.politicalBeliefs,
+      icon: 'scale-balance',
     },
     profile?.lifestyle?.drink && {
-      label: profile.lifestyle.drink, icon: 'glass-wine',
+      label: profile.lifestyle.drink,
+      icon: 'glass-wine',
     },
     profile?.lifestyle?.smokeTobacco && {
-      label: profile.lifestyle.smokeTobacco, icon: 'smoking-off',
+      label: profile.lifestyle.smokeTobacco,
+      icon: 'smoking-off',
     },
   ].filter(Boolean);
 
@@ -166,7 +266,6 @@ const UserProfileViewScreen = () => {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}>
-
         {/* ── Profile Header Row (Avatar + Quick Stats) ── */}
         <View style={styles.profileHeaderRow}>
           {/* Avatar */}
@@ -190,16 +289,21 @@ const UserProfileViewScreen = () => {
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statValue}>
-                {profile?.stats?.likes ?? '—'}
+                {streak?.streakCount ||
+                  streak?.count ||
+                  profile?.streakCount ||
+                  0}
+                {'  '}
+                <Text style={styles.statEmoji}>🔥</Text>
               </Text>
-              <Text style={styles.statLabel}>Likes</Text>
+              <Text style={styles.statLabel}>Streak</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
-              <Text style={styles.statValue}>
-                {profile?.stats?.matches ?? '—'}
+              <Text style={styles.statValue} numberOfLines={1}>
+                {joinedDate}
               </Text>
-              <Text style={styles.statLabel}>Matches</Text>
+              <Text style={styles.statLabel}>Joined</Text>
             </View>
           </View>
         </View>
@@ -207,18 +311,17 @@ const UserProfileViewScreen = () => {
         {/* ── Name + Bio ── */}
         <View style={styles.bioSection}>
           <Text style={styles.nameText}>
-            {name}{age ? `, ${age}` : ''}
+            {name}
+            {age ? `, ${age}` : ''}
           </Text>
 
-          {(jobTitle || school) ? (
+          {jobTitle || school ? (
             <Text style={styles.occupationText}>
               {[jobTitle, school].filter(Boolean).join(' at ')}
             </Text>
           ) : null}
 
-          {bio ? (
-            <Text style={styles.bioText}>{bio}</Text>
-          ) : null}
+          {bio ? <Text style={styles.bioText}>{bio}</Text> : null}
         </View>
 
         {/* ── Dating Intention Badge ── */}
@@ -229,7 +332,12 @@ const UserProfileViewScreen = () => {
               start={{x: 0, y: 0}}
               end={{x: 1, y: 0}}
               style={styles.intentBadge}>
-              <Icon name="heart-flash" size={15} color="#FFF" style={{marginRight: 6}} />
+              <Icon
+                name="heart-flash"
+                size={15}
+                color="#FFF"
+                style={{marginRight: 6}}
+              />
               <Text style={styles.intentBadgeText}>
                 Looking for {datingIntention}
               </Text>
@@ -241,7 +349,10 @@ const UserProfileViewScreen = () => {
         <View style={styles.tabsWrapper}>
           <Pressable
             onPress={() => setActiveTab('gallery')}
-            style={[styles.tabBtn, activeTab === 'gallery' && styles.activeTabBtn]}>
+            style={[
+              styles.tabBtn,
+              activeTab === 'gallery' && styles.activeTabBtn,
+            ]}>
             <Icon
               name="grid"
               size={22}
@@ -250,7 +361,10 @@ const UserProfileViewScreen = () => {
           </Pressable>
           <Pressable
             onPress={() => setActiveTab('details')}
-            style={[styles.tabBtn, activeTab === 'details' && styles.activeTabBtn]}>
+            style={[
+              styles.tabBtn,
+              activeTab === 'details' && styles.activeTabBtn,
+            ]}>
             <Icon
               name="account-details-outline"
               size={22}
@@ -265,7 +379,11 @@ const UserProfileViewScreen = () => {
             <View style={styles.photoGrid}>
               {photos.map((uri, idx) => (
                 <View key={idx} style={styles.photoCell}>
-                  <Image source={{uri}} style={styles.gridPhoto} resizeMode="cover" />
+                  <Image
+                    source={{uri}}
+                    style={styles.gridPhoto}
+                    resizeMode="cover"
+                  />
                 </View>
               ))}
             </View>
@@ -278,20 +396,29 @@ const UserProfileViewScreen = () => {
         ) : (
           /* ── Details Tab ── */
           <View style={styles.detailsSection}>
-
             {/* Work & Education card */}
-            {(jobTitle || school) ? (
+            {jobTitle || school ? (
               <View style={styles.detailCard}>
                 <Text style={styles.detailCardTitle}>Work & Education</Text>
                 {jobTitle ? (
                   <View style={styles.detailRow}>
-                    <Icon name="briefcase-outline" size={18} color={colors.primary} style={styles.detailIcon} />
+                    <Icon
+                      name="briefcase-outline"
+                      size={18}
+                      color={colors.primary}
+                      style={styles.detailIcon}
+                    />
                     <Text style={styles.detailText}>{jobTitle}</Text>
                   </View>
                 ) : null}
                 {school ? (
                   <View style={styles.detailRow}>
-                    <Icon name="school-outline" size={18} color={colors.primary} style={styles.detailIcon} />
+                    <Icon
+                      name="school-outline"
+                      size={18}
+                      color={colors.primary}
+                      style={styles.detailIcon}
+                    />
                     <Text style={styles.detailText}>{school}</Text>
                   </View>
                 ) : null}
@@ -317,13 +444,13 @@ const UserProfileViewScreen = () => {
             {!jobTitle && !school && basicsItems.length === 0 ? (
               <View style={styles.emptyState}>
                 <Icon name="information-outline" size={48} color="#DDD" />
-                <Text style={styles.emptyStateText}>No additional details available</Text>
+                <Text style={styles.emptyStateText}>
+                  No additional details available
+                </Text>
               </View>
             ) : null}
-
           </View>
         )}
-
       </ScrollView>
     </SafeAreaView>
   );
@@ -427,7 +554,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statValue: {
-    fontSize: 18,
+    fontSize: 16,
     fontFamily: typography.fontFamilyBold,
     color: '#000',
   },
@@ -436,6 +563,9 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamilyRegular,
     color: '#8E8E8E',
     marginTop: 2,
+  },
+  statEmoji: {
+    fontSize: 13,
   },
   statDivider: {
     width: 0.5,
@@ -481,7 +611,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignSelf: 'flex-start',
     ...Platform.select({
-      ios: {shadowColor: '#8E2DE2', shadowOffset: {width: 0, height: 3}, shadowOpacity: 0.25, shadowRadius: 6},
+      ios: {
+        shadowColor: '#8E2DE2',
+        shadowOffset: {width: 0, height: 3},
+        shadowOpacity: 0.25,
+        shadowRadius: 6,
+      },
       android: {elevation: 4},
     }),
   },
@@ -539,7 +674,12 @@ const styles = StyleSheet.create({
     borderWidth: 0.5,
     borderColor: '#EFEFEF',
     ...Platform.select({
-      ios: {shadowColor: '#000', shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.04, shadowRadius: 6},
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: {width: 0, height: 2},
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+      },
       android: {elevation: 1},
     }),
   },
