@@ -16,6 +16,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {colors, typography, spacing} from '../../../theme';
 import {getProfile} from '../../../services/profile/profileService';
 import {useLoading} from '../../../context/LoadingContext';
+import {useInitialLoad} from '../../../context/InitialLoadContext';
+import FullScreenLoader from '../../../components/layout/FullScreenLoader';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -30,6 +32,7 @@ const ProfileScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState(null);
   const [activeTab, setActiveTab] = useState('gallery'); // gallery or insights
+  const {visited, markVisited} = useInitialLoad();
 
   useFocusEffect(
     useCallback(() => {
@@ -79,6 +82,9 @@ const ProfileScreen = () => {
     } finally {
       setLoading(false);
       setRefreshing(false);
+      if (!visited.profile) {
+        markVisited('profile');
+      }
     }
   };
 
@@ -202,6 +208,15 @@ const ProfileScreen = () => {
       visible: !!profile?.lifestyle?.smokeTobacco,
     },
   ].filter(b => b.visible);
+
+  if (loading && !visited.profile) {
+    return (
+      <FullScreenLoader 
+        visible={true} 
+        message="Setting up your space…" 
+      />
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>

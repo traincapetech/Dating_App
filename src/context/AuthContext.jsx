@@ -9,6 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {getAccessToken, clearTokens} from '../services/storage/tokenStorage';
 import {getProfile} from '../services/profile/profileService';
 import {AppRoute} from '../constants/routes';
+import {useInitialLoad} from './InitialLoadContext';
 
 const AuthContext = createContext({});
 
@@ -17,6 +18,7 @@ export const AuthProvider = ({children}) => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
+  const {resetVisited} = useInitialLoad();
 
   const logout = useCallback(async () => {
     console.log('[AuthContext] Logging out');
@@ -24,7 +26,8 @@ export const AuthProvider = ({children}) => {
     await AsyncStorage.removeItem('@pryvo_user');
     setUser(null);
     setProfile(null);
-  }, []);
+    resetVisited();
+  }, [resetVisited]);
 
   const loadProfile = useCallback(
     async userId => {

@@ -10,6 +10,8 @@ import ProfileScreen from '../features/profile/screens/ProfileScreen';
 import SettingsScreen from '../features/settings/screens/SettingsScreen';
 import {colors, typography} from '../theme';
 import {getLikesCount} from '../services/swipeActions';
+import {getUnreadConversationsCount} from '../services/chatService';
+import {initSocket} from '../services/socket';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {useAuth} from '../context/AuthContext';
 import {enableNotifications} from '../services/notifications';
@@ -19,13 +21,18 @@ const Tab = createBottomTabNavigator();
 const TabNavigator = () => {
   const {profile, user} = useAuth();
   const [likesCount, setLikesCount] = useState(0);
+  const [unreadChatsCount, setUnreadChatsCount] = useState(0);
   const [userName, setUserName] = useState('User');
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
     loadLikesCount();
-    // Refresh count every 30 seconds
-    const interval = setInterval(loadLikesCount, 30000);
+    loadUnreadChatsCount();
+    // Refresh counts every 30 seconds
+    const interval = setInterval(() => {
+      loadLikesCount();
+      loadUnreadChatsCount();
+    }, 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -46,20 +53,41 @@ const TabNavigator = () => {
     setUserName(nameToSet);
   }, [profile, user]);
 
-  // Register for push notifications on mount
+  // Register for push notifications and real-time badge updates on mount
   useEffect(() => {
+    let boundSocket = null;
+
+    // Defined outside initializeUser so the cleanup return can reference it
+    const handleNewMessage = () => {
+      // A message arrived — immediately refresh the unread conversations badge
+      loadUnreadChatsCount();
+    };
+
     const initializeUser = async () => {
       try {
         const userData = await AsyncStorage.getItem('@pryvo_user');
         if (userData && userData !== 'undefined') {
           const user = JSON.parse(userData);
           await enableNotifications(user.id);
+
+          // Attach to the app-wide singleton socket
+          const socket = initSocket(user.id);
+          socket.on('receiveMessage', handleNewMessage);
+          boundSocket = socket;
         }
       } catch (error) {
         console.log('Failed to initialize user on TabNavigator:', error);
       }
     };
     initializeUser();
+
+    return () => {
+      // Pass the handler reference so we only remove OUR listener,
+      // leaving ChatsScreen's receiveMessage listener untouched.
+      if (boundSocket) {
+        boundSocket.off('receiveMessage', handleNewMessage);
+      }
+    };
   }, []);
 
   const loadLikesCount = async () => {
@@ -80,6 +108,24 @@ const TabNavigator = () => {
       }
     } catch (error) {
       console.log('Error loading likes count:', error);
+    }
+  };
+
+  const loadUnreadChatsCount = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('@pryvo_user');
+      if (userData && userData !== 'undefined') {
+        let user;
+        try {
+          user = JSON.parse(userData);
+        } catch (e) {
+          return;
+        }
+        const count = await getUnreadConversationsCount(user.id);
+        setUnreadChatsCount(count || 0);
+      }
+    } catch (error) {
+      console.log('Error loading unread chats count:', error);
     }
   };
 
@@ -144,14 +190,26 @@ const TabNavigator = () => {
       <Tab.Screen
         name="Chats"
         component={ChatsScreen}
+        listeners={{
+          tabPress: () => loadUnreadChatsCount(),
+        }}
         options={{
           tabBarIcon: ({color, size}) => (
-            <MaterialCommunityIcons
-              name="chat"
-              size={25}
-              color={color}
-              style={styles.inputIcon}
-            />
+            <View>
+              <MaterialCommunityIcons
+                name="chat"
+                size={25}
+                color={color}
+                style={styles.inputIcon}
+              />
+              {unreadChatsCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>
+                    {unreadChatsCount > 9 ? '9+' : unreadChatsCount}
+                  </Text>
+                </View>
+              )}
+            </View>
           ),
         }}
       />

@@ -1,67 +1,81 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="com.pryvo">
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Android 13+ -->
+    <!-- Android 13+ Media Permissions -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
 
-    <!-- For older Android versions -->
+    <!-- Older Android Storage Permissions -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29"
+        tools:replace="android:maxSdkVersion" />
 
     <!-- Camera -->
     <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Voice Notes -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!-- Internet -->
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!-- Notifications -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-    
+
     <!-- Location -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-    
+
+    <!-- Camera Features -->
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 
     <application
-      android:name=".MainApplication"
-      android:label="@string/app_name"
-      android:icon="@mipmap/ic_launcher"
-      android:roundIcon="@mipmap/ic_launcher_round"
-      android:allowBackup="true"
-      android:dataExtractionRules="@xml/data_extraction_rules"
-      android:fullBackupContent="@xml/backup_rules"
-      android:theme="@style/AppTheme"
-      android:supportsRtl="true"
-      android:usesCleartextTraffic="true"
-      android:networkSecurityConfig="@xml/network_security_config"
-      tools:replace="android:usesCleartextTraffic,android:networkSecurityConfig">
-      <activity
-        android:name=".MainActivity"
+        android:name=".MainApplication"
         android:label="@string/app_name"
-        android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
-        android:launchMode="singleTask"
-        android:windowSoftInputMode="adjustResize"
-        android:exported="true">
-        <intent-filter>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent-filter>
-      </activity>
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:theme="@style/AppTheme"
+        android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
+        android:networkSecurityConfig="@xml/network_security_config"
+        tools:replace="android:usesCleartextTraffic,android:networkSecurityConfig">
 
-      <!-- FileProvider for Image Picker (Camera) -->
-      <provider
-        android:name="androidx.core.content.FileProvider"
-        android:authorities="${applicationId}.fileprovider"
-        android:exported="false"
-        android:grantUriPermissions="true">
-        <meta-data
-          android:name="android.support.FILE_PROVIDER_PATHS"
-          android:resource="@xml/provider_paths" />
-      </provider>
+        <activity
+            android:name=".MainActivity"
+            android:label="@string/app_name"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+        </activity>
+
+        <!-- FileProvider for Image Picker / Camera -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider_paths" />
+
+        </provider>
+
     </application>
+
 </manifest>

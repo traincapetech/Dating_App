@@ -82,6 +82,10 @@ const ChatScreen = ({route, navigation}) => {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showGifPicker, setShowGifPicker] = useState(false);
   const [showGiftModal, setShowGiftModal] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState(null);
+  const [showFullScreenImage, setShowFullScreenImage] = useState(false);
+  const [fullScreenImageUrl, setFullScreenImageUrl] = useState(null);
 
   // Date or Dissolve State
   const [matchDetails, setMatchDetails] = useState(null);
@@ -356,15 +360,31 @@ const ChatScreen = ({route, navigation}) => {
         includeBase64: true,
       });
 
-      if (result.didCancel || !result.assets?.[0]?.base64) return;
+      if (result.didCancel || !result.assets?.[0]?.uri || !result.assets?.[0]?.base64)
+        return;
 
+      setSelectedMedia({
+        uri: result.assets[0].uri,
+        base64: result.assets[0].base64,
+        type: 'image',
+      });
+      setShowPreviewModal(true);
+    } catch (e) {
+      console.log('Image picker error', e);
+      Alert.alert('Error', 'Failed to select image');
+    }
+  };
+
+  const confirmSendMedia = async () => {
+    if (!selectedMedia || uploadingMedia) return;
+
+    try {
       setUploadingMedia(true);
-
-      const imageBase64 = result.assets[0].base64;
+      setShowPreviewModal(false);
 
       // Upload image
       const uploadResult = await uploadChatMedia(
-        imageBase64,
+        selectedMedia.base64,
         currentUserId,
         matchId,
       );
@@ -377,16 +397,21 @@ const ChatScreen = ({route, navigation}) => {
           receiverId: theirId,
           text: null,
           mediaUrl: uploadResult.mediaUrl,
-          mediaType: 'image',
+          mediaType: selectedMedia.type,
         });
 
-        setMessages(prev => [...prev, saved]);
+        setMessages(prev => {
+          // Avoid duplicates (if already received via socket)
+          if (prev.some(m => m._id === saved._id)) return prev;
+          return [...prev, saved];
+        });
         scrollToBottom();
+        setSelectedMedia(null);
       } else {
         throw new Error('Failed to upload image');
       }
     } catch (e) {
-      console.log('Image upload error', e);
+      console.log('Media send error', e);
       Alert.alert('Error', 'Failed to send image. Please try again.');
     } finally {
       setUploadingMedia(false);
@@ -408,7 +433,11 @@ const ChatScreen = ({route, navigation}) => {
         mediaType: 'gif',
       });
 
-      setMessages(prev => [...prev, saved]);
+      setMessages(prev => {
+        // Avoid adding if already received via socket
+        if (prev.some(m => m._id === saved._id)) return prev;
+        return [...prev, saved];
+      });
       scrollToBottom();
       setShowGifPicker(false);
     } catch (e) {
@@ -561,6 +590,16 @@ const ChatScreen = ({route, navigation}) => {
     [matchId, currentUserId],
   );
 
+  const handleViewProfile = () => {
+    if (!theirId) return;
+    navigation.navigate('UserProfileView', {
+      userId: theirId,
+      theirName,
+      theirPhoto,
+      theirAge,
+    });
+  };
+
   const handleScheduleDate = async date => {
     if (!currentUserId || !matchId) return;
 
@@ -601,6 +640,12 @@ const ChatScreen = ({route, navigation}) => {
     } finally {
       setScheduling(false);
     }
+  };
+
+  const handleOpenImage = url => {
+    if (!url) return;
+    setFullScreenImageUrl(url);
+    setShowFullScreenImage(true);
   };
 
   const getStatusIcon = status => {
@@ -676,6 +721,7 @@ const ChatScreen = ({route, navigation}) => {
           )}
 
           <Pressable
+            onPress={() => item.mediaUrl ? handleOpenImage(item.mediaUrl) : null}
             onLongPress={() => (isMe ? handleDeleteMessage(item._id) : null)}
             delayLongPress={500}
             style={[
@@ -798,37 +844,42 @@ const ChatScreen = ({route, navigation}) => {
                 <Icon name="chevron-back" size={28} color="#1a1a1a" />
               </Pressable>
 
+              {/* Header title: plain View owns flex:1 layout, Pressable inside */}
               <View style={styles.headerTitleContainer}>
-                <View style={styles.headerAvatar}>
-                  {theirPhoto ? (
-                    <Image
-                      source={{uri: theirPhoto}}
-                      style={{width: 40, height: 40, borderRadius: 20}}
-                    />
-                  ) : (
-                    <Text style={styles.headerAvatarText}>
-                      {theirName?.[0] || '?'}
-                    </Text>
-                  )}
-                </View>
-                <View style={styles.headerInfo}>
-                  <Text style={styles.headerTitle} numberOfLines={1}>
-                    {theirName || 'Chat'}
-                  </Text>
-                  <View style={styles.headerSubRow}>
-                    {isUserOnlineNow ? (
-                      <View style={styles.onlineBadgeContainer}>
-                        <View style={styles.onlineBadge} />
-                        <Text style={styles.onlineText}>Online</Text>
-                      </View>
+                <Pressable
+                  onPress={handleViewProfile}
+                  style={styles.headerTitlePressable}>
+                  <View style={styles.headerAvatar}>
+                    {theirPhoto ? (
+                      <Image
+                        source={{uri: theirPhoto}}
+                        style={{width: 40, height: 40, borderRadius: 20}}
+                      />
                     ) : (
-                      <Text style={styles.offlineText}>Offline</Text>
-                    )}
-                    {streak && (
-                      <StreakBadge count={streak.count} size="small" />
+                      <Text style={styles.headerAvatarText}>
+                        {theirName?.[0] || '?'}
+                      </Text>
                     )}
                   </View>
-                </View>
+                  <View style={styles.headerInfo}>
+                    <Text style={styles.headerTitle} numberOfLines={1}>
+                      {theirName || 'Chat'}
+                    </Text>
+                    <View style={styles.headerSubRow}>
+                      {isUserOnlineNow ? (
+                        <View style={styles.onlineBadgeContainer}>
+                          <View style={styles.onlineBadge} />
+                          <Text style={styles.onlineText}>Online</Text>
+                        </View>
+                      ) : (
+                        <Text style={styles.offlineText}>Offline</Text>
+                      )}
+                      {streak && (
+                        <StreakBadge count={streak.count} size="small" />
+                      )}
+                    </View>
+                  </View>
+                </Pressable>
               </View>
 
               <View style={styles.headerActions}>
@@ -1112,6 +1163,83 @@ const ChatScreen = ({route, navigation}) => {
             </Pressable>
           </Pressable>
         </Modal>
+
+        {/* Media Preview Modal */}
+        <Modal
+          visible={showPreviewModal}
+          transparent
+          animationType="slide"
+          statusBarTranslucent
+          onRequestClose={() => setShowPreviewModal(false)}>
+          <View style={styles.previewOverlay}>
+            <View style={styles.previewHeader}>
+              <Pressable
+                onPress={() => setShowPreviewModal(false)}
+                style={styles.previewCloseButton}>
+                <Icon name="close" size={28} color="#fff" />
+              </Pressable>
+              <Text style={styles.previewTitleText}>Preview Image</Text>
+              <View style={{width: 40}} />
+            </View>
+
+            <View style={styles.previewImageContainer}>
+              {selectedMedia?.uri && (
+                <Image
+                  source={{uri: selectedMedia.uri}}
+                  style={styles.fullPreviewImage}
+                  resizeMode="contain"
+                />
+              )}
+            </View>
+
+            <View style={styles.previewFooter}>
+              <TouchableOpacity
+                style={styles.previewCancelButton}
+                onPress={() => setShowPreviewModal(false)}>
+                <Text style={styles.previewCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.previewSendButton}
+                onPress={confirmSendMedia}>
+                <LinearGradient
+                  colors={[colors.primary, '#FF6B6B']}
+                  start={{x: 0, y: 0}}
+                  end={{x: 1, y: 1}}
+                  style={styles.previewSendGradient}>
+                  <Text style={styles.previewSendText}>Send Image</Text>
+                  <Icon name="send" size={18} color="#fff" style={{marginLeft: 8}} />
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* Full Screen Image Viewer Modal */}
+        <Modal
+          visible={showFullScreenImage}
+          transparent
+          animationType="fade"
+          statusBarTranslucent
+          onRequestClose={() => setShowFullScreenImage(false)}>
+          <View style={styles.fullImageOverlay}>
+            <SafeAreaView style={styles.fullImageHeader}>
+              <Pressable
+                onPress={() => setShowFullScreenImage(false)}
+                style={styles.fullImageCloseButton}>
+                <Icon name="close" size={30} color="#fff" />
+              </Pressable>
+            </SafeAreaView>
+            <View style={styles.fullImageContainer}>
+              {fullScreenImageUrl && (
+                <Image
+                  source={{uri: fullScreenImageUrl}}
+                  style={styles.fullImage}
+                  resizeMode="contain"
+                />
+              )}
+            </View>
+          </View>
+        </Modal>
       </SafeAreaView>
 
       {/* Gift Receiver Animation - rendered OUTSIDE SafeAreaView so it
@@ -1166,6 +1294,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginLeft: spacing.sm,
+  },
+  headerTitlePressable: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   headerInfo: {
     flex: 1,
@@ -1555,6 +1688,106 @@ const styles = StyleSheet.create({
   },
   giftMessageTextThem: {
     color: colors.primary,
+  },
+
+  // Media Preview Modal Styles
+  previewOverlay: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  previewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: 20,
+  },
+  previewCloseButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewTitleText: {
+    color: '#fff',
+    fontSize: 18,
+    fontFamily: typography.fontFamilyBold,
+  },
+  previewImageContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullPreviewImage: {
+    width: Dimensions.get('window').width,
+    height: '100%',
+  },
+  previewFooter: {
+    flexDirection: 'row',
+    padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 50 : 30,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    gap: 16,
+  },
+  previewCancelButton: {
+    flex: 1,
+    height: 54,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 27,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+  },
+  previewCancelText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: typography.fontFamilyBold,
+  },
+  previewSendButton: {
+    flex: 2,
+    height: 54,
+    borderRadius: 27,
+    overflow: 'hidden',
+  },
+  previewSendGradient: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  previewSendText: {
+    color: '#fff',
+    fontSize: 16,
+    fontFamily: typography.fontFamilyBold,
+  },
+
+  // Full Screen Image Styles
+  fullImageOverlay: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  fullImageHeader: {
+    zIndex: 10,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    padding: 20,
+  },
+  fullImageCloseButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImageContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fullImage: {
+    width: Dimensions.get('window').width,
+    height: '100%',
   },
 });
 

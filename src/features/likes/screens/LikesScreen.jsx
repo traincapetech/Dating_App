@@ -17,6 +17,8 @@ import {colors, typography, spacing} from '../../../theme';
 import {getLikesReceived, likeUser} from '../../../services/swipeActions';
 import {fetchMatches} from '../../../services/chatService';
 import {useLoading} from '../../../context/LoadingContext';
+import {useInitialLoad} from '../../../context/InitialLoadContext';
+import FullScreenLoader from '../../../components/layout/FullScreenLoader';
 
 const LikesScreen = ({navigation}) => {
   const {setLoading: setGlobalLoading} = useLoading();
@@ -27,6 +29,7 @@ const LikesScreen = ({navigation}) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isPremiumRequired, setIsPremiumRequired] = useState(false);
+  const {visited, markVisited} = useInitialLoad();
 
   useFocusEffect(
     useCallback(() => {
@@ -79,6 +82,9 @@ const LikesScreen = ({navigation}) => {
     } finally {
       setLoading(false);
       setRefreshing(false);
+      if (!visited.matches) {
+        markVisited('matches');
+      }
     }
   };
 
@@ -118,6 +124,15 @@ const LikesScreen = ({navigation}) => {
       Alert.alert('Error', 'Failed to like back. Please try again.');
     }
   };
+
+  if (loading && !visited.matches) {
+    return (
+      <FullScreenLoader 
+        visible={true} 
+        message="Your admirers are waiting…" 
+      />
+    );
+  }
 
   // Removed blank loading screen
   if (isPremiumRequired) {

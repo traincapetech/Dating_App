@@ -42,6 +42,7 @@ import SubscriptionManagementScreen from '../features/settings/screens/Subscript
 import BoostProfileScreen from '../features/settings/screens/BoostProfileScreen.jsx';
 import AdvancedFiltersScreen from '../features/settings/screens/AdvancedFiltersScreen.jsx';
 import CategoryHelpScreen from '../features/settings/screens/CategoryHelpScreen.jsx';
+import UserProfileViewScreen from '../features/profile/screens/UserProfileViewScreen.jsx';
 import {colors, typography} from '../theme';
 import {setupNotificationHandlers} from '../services/notifications/notificationService';
 import {useEffect} from 'react';
@@ -153,6 +154,7 @@ const AppNavigator = () => {
           <Stack.Screen name="HelpCentre" component={HelpCentreScreen} />
           <Stack.Screen name="CategoryHelp" component={CategoryHelpScreen} />
           <Stack.Screen name="ReportProblem" component={ReportProblemScreen} />
+          <Stack.Screen name="UserProfileView" component={UserProfileViewScreen} />
         </Stack.Navigator>
         {/* Modern, non-intrusive global notification banner */}
         <GlobalNotification navigationRef={navigationRef} />

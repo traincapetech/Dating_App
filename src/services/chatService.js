@@ -100,6 +100,23 @@ export const fetchLastMessages = async (matchIds, userId) => {
 };
 
 /**
+ * Get the number of conversations that have unread messages (used for Chat tab badge).
+ * Counts unique conversations, NOT individual messages.
+ * Example: 3 senders with 5+3+1 messages each → count = 3
+ * @param {string} userId - Current user ID
+ */
+export const getUnreadConversationsCount = async userId => {
+  if (!userId) return 0;
+  try {
+    const res = await apiClient.get(`/chat/unread-conversations/${userId}`);
+    return res?.count ?? 0;
+  } catch (err) {
+    console.log('❌ getUnreadConversationsCount error:', err?.message);
+    return 0;
+  }
+};
+
+/**
  * Upload media for chat
  * @param {string} imageBase64 - Base64 encoded image
  * @param {string} userId - User ID
@@ -245,4 +262,5 @@ export default {
   checkIfBlocked,
   unmatchUser,
   deleteMessageApi,
+  getUnreadConversationsCount,
 };

@@ -1,4 +1,4 @@
-import React, {useState, useRef, useEffect, useCallback} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
   Alert,
   ScrollView,
   Modal,
+  FlatList,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -21,11 +22,10 @@ import Animated, {
   interpolate,
 } from 'react-native-reanimated';
 import {Gesture, GestureDetector} from 'react-native-gesture-handler';
-import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
 import {colors, typography, spacing} from '../../../theme';
 import LinearGradient from 'react-native-linear-gradient';
-import MaskedView from '@react-native-masked-view/masked-view';
 import {getDiscoverProfiles} from '../../../services/profile/profileService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MatchPopup from '../../../components/profile/MatchPopup.js';
@@ -42,19 +42,21 @@ import {
 } from '../../../services/location/locationService';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {useLoading} from '../../../context/LoadingContext';
+import {useInitialLoad} from '../../../context/InitialLoadContext';
+import FullScreenLoader from '../../../components/layout/FullScreenLoader';
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - spacing.xl * 2;
 const CARD_HEIGHT = SCREEN_HEIGHT * 0.76;
 const SWIPE_THRESHOLD = 120;
 
+// ─── Utility ──────────────────────────────────────────────────────────────────
+
 const calculateDistance = (lat1, lon1, lat2, lon2) => {
-  // Check for invalid or 0 coordinates (often default values)
   if (!lat1 || !lon1 || !lat2 || !lon2) return null;
   if (Math.abs(lat1) < 0.0001 && Math.abs(lon1) < 0.0001) return null;
   if (Math.abs(lat2) < 0.0001 && Math.abs(lon2) < 0.0001) return null;
-
-  const R = 6371; // Radius of the earth in km
+  const R = 6371;
   const dLat = deg2rad(lat2 - lat1);
   const dLon = deg2rad(lon2 - lon1);
   const a =
@@ -64,18 +66,298 @@ const calculateDistance = (lat1, lon1, lat2, lon2) => {
       Math.sin(dLon / 2) *
       Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  const d = R * c; // Distance in km
-  return Math.round(d);
+  return Math.round(R * c);
 };
 
-const deg2rad = deg => {
-  return deg * (Math.PI / 180);
+const deg2rad = deg => deg * (Math.PI / 180);
+
+// Easing worklets for react-native-reanimated withTiming
+const easeOut = t => {
+  'worklet';
+  return 1 - (1 - t) * (1 - t);
 };
+const easeIn = t => {
+  'worklet';
+  return t * t;
+};
+
+// ─── ProfileModal ──────────────────────────────────────────────────────────────
+
+const ProfileModal = ({visible, profile, onClose, currentLocation}) => {
+  // Animation values
+  const translateY = useSharedValue(SCREEN_HEIGHT);
+  const backdropOpacity = useSharedValue(0);
+
+  useEffect(() => {
+    if (visible) {
+      backdropOpacity.value = withTiming(1, {duration: 300, easing: easeOut});
+      translateY.value = withSpring(0, {damping: 22, stiffness: 200, mass: 0.8});
+    } else {
+      backdropOpacity.value = withTiming(0, {duration: 250});
+      translateY.value = withTiming(SCREEN_HEIGHT, {duration: 300, easing: easeIn});
+    }
+  }, [visible]);
+
+  const modalAnimStyle = useAnimatedStyle(() => ({
+    transform: [{translateY: translateY.value}],
+  }));
+
+  const backdropAnimStyle = useAnimatedStyle(() => ({
+    opacity: backdropOpacity.value,
+  }));
+
+  if (!profile) return null;
+
+  // Distance display logic
+  const getDistanceLabel = () => {
+    let dist = profile.distance ? parseFloat(profile.distance) : null;
+    if (dist === null && currentLocation && !isNaN(profile.latitude) && !isNaN(profile.longitude)) {
+      dist = calculateDistance(
+        currentLocation.latitude,
+        currentLocation.longitude,
+        profile.latitude,
+        profile.longitude,
+      );
+    }
+    if (dist !== null && dist > 0) {
+      return dist > 1000 ? 'Far away' : `${dist} km away`;
+    }
+    return null;
+  };
+
+  const locationStr = profile.city || profile.location || '';
+  const isCoordinates = /^\s*[-+]?\d+(\.\d+)?\s*,\s*[-+]?\d+(\.\d+)?\s*$/.test(locationStr);
+  const displayLocation = isCoordinates ? (profile.city || '') : locationStr;
+  const distanceLabel = getDistanceLabel();
+  let finalLocation = '';
+  if (displayLocation) {
+    finalLocation = displayLocation;
+    if (distanceLabel) finalLocation += ` • ${distanceLabel}`;
+  } else if (distanceLabel) {
+    finalLocation = distanceLabel;
+  }
+
+  const allPhotos = profile.photos || [];
+
+  const PhotoItem = ({photoUri, index}) => {
+    const animatedStyle = useAnimatedStyle(() => {
+      const inputOffset = index * SCREEN_HEIGHT * 0.62;
+      const scale = interpolate(
+        scrollY.value,
+        [inputOffset - SCREEN_HEIGHT * 0.5, inputOffset, inputOffset + SCREEN_HEIGHT * 0.5],
+        [0.95, 1, 0.95],
+        'clamp'
+      );
+      return { transform: [{ scale }] };
+    });
+
+    return (
+      <Animated.View style={[modalStyles.photoCard, animatedStyle]}>
+        <Image source={{uri: photoUri}} style={modalStyles.modalPhoto} resizeMode="cover" />
+      </Animated.View>
+    );
+  };
+
+  const InfoChip = ({icon, label}) =>
+    label ? (
+      <View style={modalStyles.chip}>
+        <Text style={modalStyles.chipText}>{icon} {label}</Text>
+      </View>
+    ) : null;
+
+  const scrollY = useSharedValue(0);
+  const onScroll = (event) => {
+    scrollY.value = event.nativeEvent.contentOffset.y;
+  };
+
+  const headerStyle = useAnimatedStyle(() => {
+    const opacity = interpolate(
+      scrollY.value,
+      [0, SCREEN_HEIGHT * 0.4, SCREEN_HEIGHT * 0.5],
+      [0, 0, 1]
+    );
+    return { opacity };
+  });
+
+  const photoSnapOffsets = allPhotos.map((_, i) => i * SCREEN_HEIGHT * 0.58);
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={onClose}>
+      {/* Backdrop */}
+      <Animated.View style={[modalStyles.backdrop, backdropAnimStyle]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+      </Animated.View>
+
+      {/* Sheet */}
+      <Animated.View style={[modalStyles.sheet, modalAnimStyle]}>
+        {/* Sticky Header Overlay */}
+        <Animated.View style={[modalStyles.stickyHeader, headerStyle]}>
+          <Text style={modalStyles.stickyHeaderText}>
+            {profile.name}{profile.age ? `, ${profile.age}` : ''}
+          </Text>
+        </Animated.View>
+
+        {/* Close pill */}
+        <View style={modalStyles.pillWrapper}>
+          <View style={modalStyles.pill} />
+        </View>
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+          snapToOffsets={photoSnapOffsets}
+          decelerationRate="fast"
+          overScrollMode="always"
+          contentContainerStyle={modalStyles.scrollContent}>
+
+          {/* ── Images ── */}
+          <View style={modalStyles.imagesContainer}>
+            <FlatList
+              data={allPhotos}
+              keyExtractor={(_, i) => `photo-${i}`}
+              renderItem={({item, index}) => <PhotoItem photoUri={item} index={index} />}
+              scrollEnabled={false}
+              pagingEnabled={false}
+              ItemSeparatorComponent={() => <View style={{height: 12}} />}
+            />
+            {/* Overlay for first image info - now moved below or adjusted to fit card layout */}
+            <View style={modalStyles.headerInfoCard}>
+              <View style={modalStyles.headerInfoContent}>
+                {profile.isMostCompatible && (
+                  <View style={modalStyles.compatibleBadge}>
+                    <MaterialCommunityIcons name="star" size={12} color="#FFF" />
+                    <Text style={modalStyles.compatibleText}>MOST COMPATIBLE</Text>
+                  </View>
+                )}
+                <View style={modalStyles.nameRow}>
+                  <Text style={modalStyles.modalName}>
+                    {profile.name}{profile.age ? `, ${profile.age}` : ''}
+                  </Text>
+                  {profile.matchPercentage ? (
+                    <LinearGradient
+                      colors={['#9411FA', '#E040C8']}
+                      start={{x: 0, y: 0}}
+                      end={{x: 1, y: 0}}
+                      style={modalStyles.matchPercentageBadge}>
+                      <Text style={modalStyles.matchPercentageText}>
+                        {profile.matchPercentage}%
+                      </Text>
+                    </LinearGradient>
+                  ) : null}
+                </View>
+                {profile.jobTitle ? (
+                  <Text style={modalStyles.modalJobTitle}>💼 {profile.jobTitle}</Text>
+                ) : null}
+                {finalLocation ? (
+                  <Text style={modalStyles.modalLocation}>📍 {finalLocation}</Text>
+                ) : null}
+              </View>
+            </View>
+          </View>
+
+          {/* ── Details Container ── */}
+          <View style={modalStyles.detailsContainer}>
+
+            {/* About me chips - Personalized Details */}
+            {(profile.height || profile.gender || profile.drink || profile.religion || profile.politics) ? (
+              <View style={modalStyles.profileSectionCard}>
+                <Text style={modalStyles.sectionLabel}>Personal Info</Text>
+                <View style={modalStyles.chipsRow}>
+                  <InfoChip icon="📏" label={profile.height ? `${profile.height}${profile.height.includes('cm') ? '' : ' cm'}` : null} />
+                  <InfoChip icon="👤" label={profile.gender} />
+                  <InfoChip icon="🍷" label={profile.drink && profile.drink !== 'No' ? profile.drink : null} />
+                  <InfoChip icon="⛪" label={profile.religion} />
+                  <InfoChip icon="⚖️" label={profile.politics} />
+                </View>
+              </View>
+            ) : null}
+
+            {/* Bio */}
+            {profile.bio ? (
+              <View style={modalStyles.profileSectionCard}>
+                <Text style={modalStyles.sectionLabel}>About</Text>
+                <Text style={modalStyles.bioText}>{profile.bio}</Text>
+              </View>
+            ) : null}
+
+            {/* I'm looking for */}
+            {(profile.datingIntention || profile.relationshipType) ? (
+              <View style={modalStyles.profileSectionCard}>
+                <Text style={modalStyles.sectionLabel}>Looking For</Text>
+                <View style={modalStyles.intentionChip}>
+                  <Text style={modalStyles.intentionText}>
+                    {profile.datingIntention || profile.relationshipType}
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+
+            {/* Interests */}
+            {profile.interests && profile.interests.length > 0 ? (
+              <View style={modalStyles.profileSectionCard}>
+                <Text style={modalStyles.sectionLabel}>Interests</Text>
+                <View style={modalStyles.tagsRow}>
+                  {profile.interests.map((interest, i) => (
+                    <View key={i} style={modalStyles.interestTag}>
+                      <Text style={modalStyles.interestTagText}>{interest}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ) : null}
+
+            {/* Prompts */}
+            {profile.prompts && profile.prompts.length > 0 &&
+              profile.prompts.map((prompt, i) =>
+                prompt && prompt.answer ? (
+                  <View key={i} style={modalStyles.profileSectionCard}>
+                    <Text style={modalStyles.sectionLabel}>{prompt.prompt || 'My thoughts'}</Text>
+                    <Text style={modalStyles.promptAnswer}>{prompt.answer}</Text>
+                  </View>
+                ) : null,
+              )}
+
+            {/* Work & Education */}
+            {(profile.jobTitle || profile.school) ? (
+              <View style={modalStyles.profileSectionCard}>
+                <Text style={modalStyles.sectionLabel}>Work & Education</Text>
+                <View style={modalStyles.workEduContent}>
+                  {profile.jobTitle ? (
+                    <Text style={modalStyles.workText}>💼 {profile.jobTitle}</Text>
+                  ) : null}
+                  {profile.school ? (
+                    <Text style={modalStyles.workText}>🎓 {profile.school}</Text>
+                  ) : null}
+                </View>
+              </View>
+            ) : null}
+
+            {/* Bottom close button */}
+            <View style={modalStyles.closeButtonWrapper}>
+              <Pressable style={modalStyles.closeIconButton} onPress={onClose}>
+                <MaterialCommunityIcons name="close" size={24} color="#555" />
+              </Pressable>
+            </View>
+
+          </View>
+        </ScrollView>
+      </Animated.View>
+    </Modal>
+  );
+};
+
+// ─── HomeScreen ────────────────────────────────────────────────────────────────
 
 const HomeScreen = ({navigation}) => {
   const {setLoading: setGlobalLoading} = useLoading();
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [photoIndex, setPhotoIndex] = useState({});
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoadingLocal] = useState(true);
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -88,22 +370,41 @@ const HomeScreen = ({navigation}) => {
   });
   const [swipeCount, setSwipeCount] = useState(0);
   const [showLikePopup, setShowLikePopup] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [isProfileFocused, setIsProfileFocused] = useState(false);
+  const {visited, markVisited} = useInitialLoad();
+
+  // Auto-hide focus after inactivity
+  useEffect(() => {
+    let timeout;
+    if (isProfileFocused) {
+      timeout = setTimeout(() => {
+        setIsProfileFocused(false);
+      }, 3000);
+    }
+    return () => clearTimeout(timeout);
+  }, [isProfileFocused]);
+
   const distancePresets = [
     {label: '1 - 10 km', value: 10},
     {label: '1 - 25 km', value: 25},
     {label: '1 - 50 km', value: 50},
     {label: '1 - 100 km', value: 100},
   ];
-  const [maxDistance, setMaxDistance] = useState(distancePresets[2].value); // default 50 km
-  const [selectedPreset, setSelectedPreset] = useState(
-    distancePresets[2].value,
-  );
+  const [maxDistance, setMaxDistance] = useState(distancePresets[2].value);
+  const [selectedPreset, setSelectedPreset] = useState(distancePresets[2].value);
   const [useDistanceFilter, setUseDistanceFilter] = useState(true);
   const DISTANCE_PREF_KEY = '@pryvo_distance_preferences';
 
+  // ── Swipe animation values ──────────────────────────────────────────────────
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
   const opacity = useSharedValue(1);
+  const focusValue = useSharedValue(0);
+
+  useEffect(() => {
+    focusValue.value = withTiming(isProfileFocused ? 1 : 0, {duration: 250});
+  }, [isProfileFocused]);
 
   const [matchPopup, setMatchPopup] = useState({
     visible: false,
@@ -111,24 +412,20 @@ const HomeScreen = ({navigation}) => {
     theirPhoto: null,
     matchId: null,
   });
-  const insets = useSafeAreaInsets();
 
+
+  // ── Initialization ──────────────────────────────────────────────────────────
   useEffect(() => {
     const init = async () => {
       let loc = null;
-      // Try to get current location first
       try {
         loc = await getCurrentLocation();
-        if (loc) {
-          setCurrentLocation(loc);
-        }
+        if (loc) setCurrentLocation(loc);
       } catch (e) {
         console.log('Error getting initial location:', e);
       }
 
-      const needsReset = await AsyncStorage.getItem(
-        '@pryvo_needs_profile_reset',
-      );
+      const needsReset = await AsyncStorage.getItem('@pryvo_needs_profile_reset');
       if (needsReset === 'true') {
         const userData = await AsyncStorage.getItem('@pryvo_user');
         if (userData && userData !== 'undefined') {
@@ -143,81 +440,44 @@ const HomeScreen = ({navigation}) => {
       }
 
       const prefs = await loadDistancePrefs();
-      await loadProfiles(
-        prefs?.distance,
-        prefs?.enabled ?? useDistanceFilter,
-        loc,
-      );
+      await loadProfiles(prefs?.distance, prefs?.enabled ?? useDistanceFilter, loc);
       await loadDailyLikeInfo();
     };
     init();
 
-    // Watch for location changes and refresh profiles
     const locationWatcher = watchLocation(
       async location => {
-        console.log('Location changed, refreshing profiles...', location);
         setCurrentLocation(location);
-
-        // Reload profiles with current distance preferences
         const prefs = await loadDistancePrefs();
-        await loadProfiles(
-          prefs?.distance,
-          prefs?.enabled ?? useDistanceFilter,
-          location,
-          true, // silent update for location changes
-        );
+        await loadProfiles(prefs?.distance, prefs?.enabled ?? useDistanceFilter, location, true);
       },
-      {
-        distanceFilter: 1000, // 1km minimum change
-        enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 10000,
-      },
+      {distanceFilter: 1000, enableHighAccuracy: true, timeout: 15000, maximumAge: 10000},
     );
 
-    // Cleanup on unmount
     return () => {
       locationWatcher.stop();
     };
   }, []);
 
+  // ── Geocoding ───────────────────────────────────────────────────────────────
   const geocodeProfile = useCallback(
     async index => {
       const profile = profiles[index];
       if (!profile || profile.cityGeocoded) return;
-
       const lat = profile.latitude;
       const lng = profile.longitude;
-
       if (lat && lng) {
-        // Check if current display location is coordinates or empty
         const isCoordinates =
-          /^\s*[-+]?\d+(\.\d+)?\s*,\s*[-+]?\d+(\.\d+)?\s*$/.test(
-            profile.location || '',
-          );
+          /^\s*[-+]?\d+(\.\d+)?\s*,\s*[-+]?\d+(\.\d+)?\s*$/.test(profile.location || '');
         if (isCoordinates || !profile.city || profile.city === '') {
           const city = await reverseGeocode(lat, lng);
-          if (city) {
-            setProfiles(prev => {
-              const next = [...prev];
-              // Safety check in case profiles changed while geocoding
-              if (next[index] && next[index].id === profile.id) {
-                next[index] = {
-                  ...next[index],
-                  city: city,
-                  cityGeocoded: true,
-                };
-              }
-              return next;
-            });
-          } else {
-            // Mark as geocoded even if it fails to avoid constant retries
-            setProfiles(prev => {
-              const next = [...prev];
-              if (next[index]) next[index].cityGeocoded = true;
-              return next;
-            });
-          }
+          setProfiles(prev => {
+            const next = [...prev];
+            if (next[index] && next[index].id === profile.id) {
+              next[index] = {...next[index], city: city || '', cityGeocoded: true};
+            }
+            return next;
+          });
         } else {
           setProfiles(prev => {
             const next = [...prev];
@@ -232,19 +492,16 @@ const HomeScreen = ({navigation}) => {
 
   useEffect(() => {
     if (profiles.length > 0) {
-      // Geocode current and next 2 for smoothness
       [currentIndex, currentIndex + 1, currentIndex + 2].forEach(idx => {
-        if (profiles[idx]) {
-          geocodeProfile(idx);
-        }
+        if (profiles[idx]) geocodeProfile(idx);
       });
     }
   }, [currentIndex, profiles.length, geocodeProfile]);
 
+  // ── Daily Like Info ─────────────────────────────────────────────────────────
   const loadDailyLikeInfo = useCallback(async () => {
     try {
       const userData = await AsyncStorage.getItem('@pryvo_user');
-      let userId = null;
       if (userData && userData !== 'undefined') {
         try {
           const user = JSON.parse(userData);
@@ -266,6 +523,7 @@ const HomeScreen = ({navigation}) => {
     }
   }, []);
 
+  // ── Load Profiles ───────────────────────────────────────────────────────────
   const loadProfiles = useCallback(
     async (
       distanceOverride = null,
@@ -275,8 +533,6 @@ const HomeScreen = ({navigation}) => {
     ) => {
       try {
         setLoadingLocal(silent ? false : true);
-
-        // Get current user ID
         const userData = await AsyncStorage.getItem('@pryvo_user');
         let excludeUserId = null;
         if (userData && userData !== 'undefined') {
@@ -285,44 +541,27 @@ const HomeScreen = ({navigation}) => {
             excludeUserId = user.id;
             setCurrentUserId(user.id);
           } catch (e) {
-            console.error(
-              'Failed to parse user data in HomeScreen loadProfiles:',
-              e,
-            );
+            console.error('Failed to parse user data in HomeScreen loadProfiles:', e);
           }
         }
 
-        // Load advanced filters if available
         let advancedFilters = null;
         try {
-          const savedFilters = await AsyncStorage.getItem(
-            '@pryvo_advanced_filters',
-          );
+          const savedFilters = await AsyncStorage.getItem('@pryvo_advanced_filters');
           if (savedFilters && savedFilters !== 'undefined') {
-            try {
-              const parsed = JSON.parse(savedFilters);
-              // Only include filters that have values
-              const activeFilters = {};
-              Object.keys(parsed).forEach(key => {
-                if (parsed[key] !== null && parsed[key] !== undefined) {
-                  activeFilters[key] = parsed[key];
-                }
-              });
-              if (Object.keys(activeFilters).length > 0) {
-                advancedFilters = activeFilters;
+            const parsed = JSON.parse(savedFilters);
+            const activeFilters = {};
+            Object.keys(parsed).forEach(key => {
+              if (parsed[key] !== null && parsed[key] !== undefined) {
+                activeFilters[key] = parsed[key];
               }
-            } catch (e) {
-              console.error(
-                'Failed to parse advanced filters in HomeScreen:',
-                e,
-              );
-            }
+            });
+            if (Object.keys(activeFilters).length > 0) advancedFilters = activeFilters;
           }
         } catch (error) {
           console.error('Error loading advanced filters:', error);
         }
 
-        // Fetch profiles from backend
         const response = await getDiscoverProfiles(excludeUserId, {
           useMatching: true,
           sortBy: 'score',
@@ -334,21 +573,12 @@ const HomeScreen = ({navigation}) => {
           filters: advancedFilters,
         });
 
-        console.log(
-          '[HomeScreen] API Response:',
-          JSON.stringify(response, null, 2),
-        );
-
         const userLoc = userLocationOverride || currentLocation;
 
         if (response?.profiles) {
           const transformedProfiles = response.profiles
             .map(profile => {
-              // Priority 1: Recalculate if we have both locations (client side trust)
-              // Priority 2: Use backend distance (handle potential meters vs km)
               let distance = null;
-
-              // Check for coordinates to recalculate
               const lat = parseFloat(
                 profile.latitude ||
                   profile.location?.coordinates?.[1] ||
@@ -359,24 +589,11 @@ const HomeScreen = ({navigation}) => {
                   profile.location?.coordinates?.[0] ||
                   profile.basicInfo?.locationDetails?.lng,
               );
-
               if (userLoc && !isNaN(lat) && !isNaN(lon)) {
-                distance = calculateDistance(
-                  userLoc.latitude,
-                  userLoc.longitude,
-                  lat,
-                  lon,
-                );
-              } else if (
-                profile.distance !== undefined &&
-                profile.distance !== null
-              ) {
-                // Fallback to backend distance
+                distance = calculateDistance(userLoc.latitude, userLoc.longitude, lat, lon);
+              } else if (profile.distance !== undefined && profile.distance !== null) {
                 let d = parseFloat(profile.distance);
-                // Heuristic: if distance > 500, assume meters and convert to km
-                if (d > 500) {
-                  d = d / 1000;
-                }
+                if (d > 500) d = d / 1000;
                 distance = Math.round(d);
               }
 
@@ -395,9 +612,8 @@ const HomeScreen = ({navigation}) => {
                 photos: profile.photos || [],
                 matchPercentage: profile.matchScore
                   ? Math.round(profile.matchScore)
-                  : null,
+                  : profile.matchPercentage || null,
                 matchScore: profile.matchScore || null,
-                // Add extra fields for detailed view
                 jobTitle: profile.personalDetails?.jobTitle || '',
                 school: profile.personalDetails?.school || '',
                 location: profile.basicInfo?.location || '',
@@ -409,10 +625,8 @@ const HomeScreen = ({navigation}) => {
                 smokeWeed: profile.lifestyle?.smokeWeed || '',
                 religion: profile.lifestyle?.religiousBeliefs || '',
                 politics: profile.lifestyle?.politicalBeliefs || '',
-                datingIntention:
-                  profile.datingPreferences?.datingIntention || '',
-                relationshipType:
-                  profile.datingPreferences?.relationshipType || '',
+                datingIntention: profile.datingPreferences?.datingIntention || '',
+                relationshipType: profile.datingPreferences?.relationshipType || '',
                 latitude: parseFloat(
                   profile.latitude ||
                     profile.location?.coordinates?.[1] ||
@@ -423,24 +637,19 @@ const HomeScreen = ({navigation}) => {
                     profile.location?.coordinates?.[0] ||
                     profile.basicInfo?.locationDetails?.lng,
                 ),
-                // Add profile prompts
                 prompts: [
                   profile.profilePrompts?.aboutMe,
                   profile.profilePrompts?.selfCare,
                   profile.profilePrompts?.gettingPersonal,
                 ].filter(p => p && p.answer),
                 isMostCompatible: profile.isMostCompatible || false,
-                matchPercentage: profile.matchPercentage || null,
               };
             })
             .filter(profile => profile.photos && profile.photos.length > 0);
 
-          console.log('RAW API COUNT:', response?.profiles?.length);
-          console.log('AFTER TRANSFORM COUNT:', transformedProfiles.length);
           setProfiles(transformedProfiles);
           setCurrentIndex(0);
         } else {
-          console.warn('[HomeScreen] No profiles in response:', response);
           setProfiles([]);
           setCurrentIndex(0);
         }
@@ -449,11 +658,15 @@ const HomeScreen = ({navigation}) => {
         Alert.alert('Error', 'Failed to load profiles. Please try again.');
       } finally {
         setLoadingLocal(false);
+        if (!visited.home) {
+          markVisited('home');
+        }
       }
     },
     [maxDistance, useDistanceFilter, currentLocation],
   );
 
+  // ── Distance Prefs ──────────────────────────────────────────────────────────
   const loadDistancePrefs = async () => {
     try {
       const raw = await AsyncStorage.getItem(DISTANCE_PREF_KEY);
@@ -471,10 +684,7 @@ const HomeScreen = ({navigation}) => {
           setSelectedPreset(presetValue);
           return {distance, enabled};
         } catch (e) {
-          console.error(
-            'Failed to parse distance preferences in HomeScreen:',
-            e,
-          );
+          console.error('Failed to parse distance preferences in HomeScreen:', e);
         }
       }
       return null;
@@ -501,6 +711,7 @@ const HomeScreen = ({navigation}) => {
 
   const clampDistance = value => Math.max(1, Math.min(100, value));
 
+  // ─ Unused distance handlers kept for compatibility ─
   const handleAdjustDistance = delta => {
     setMaxDistance(prev => {
       const next = clampDistance(prev + delta);
@@ -530,6 +741,7 @@ const HomeScreen = ({navigation}) => {
   const currentProfile =
     currentIndex < profiles.length ? profiles[currentIndex] : null;
 
+  // ── Swipe logic (unchanged) ─────────────────────────────────────────────────
   const resetCardPosition = () => {
     translateX.value = withSpring(0);
     translateY.value = withSpring(0);
@@ -541,12 +753,12 @@ const HomeScreen = ({navigation}) => {
     translateX.value = 0;
     translateY.value = 0;
     opacity.value = 1;
+    runOnJS(setIsProfileFocused)(false);
   };
 
   const processSwipe = direction => {
     if (!currentProfile || !currentUserId) return;
 
-    // Check daily like limit before allowing like
     if (direction === 'right' && dailyLikeInfo.remaining <= 0) {
       Alert.alert(
         'Daily Like Limit Reached',
@@ -560,22 +772,15 @@ const HomeScreen = ({navigation}) => {
     const myPhoto = profiles[currentIndex]?.photos?.[0];
     const theirPhoto = currentProfile.photos?.[0];
 
-    // Only track likes (right swipes) for the popup
     if (direction === 'right') {
-      // Increment swipe count only for likes
       const newSwipeCount = swipeCount + 1;
       setSwipeCount(newSwipeCount);
-
-      // Show popup every 10 likes
       if (newSwipeCount % 10 === 0) {
         setShowLikePopup(true);
-        setTimeout(() => {
-          setShowLikePopup(false);
-        }, 2000); // Show for 2 seconds
+        setTimeout(() => setShowLikePopup(false), 2000);
       }
     }
 
-    // Animate card off screen IMMEDIATELY (don't wait for API)
     translateX.value = withTiming(
       direction === 'right' ? SCREEN_WIDTH * 1.5 : -SCREEN_WIDTH * 1.5,
       {duration: 250},
@@ -584,17 +789,14 @@ const HomeScreen = ({navigation}) => {
       runOnJS(goToNextProfile)();
     });
 
-    // Fire API call in background (don't block animation)
     if (direction === 'right') {
       likeUser(currentUserId, likedUserId, dailyLikeInfo.isPremium)
         .then(result => {
-          // Update daily like info if returned
           let updatedInfo;
           if (result?.dailyLikeInfo) {
             updatedInfo = result.dailyLikeInfo;
             setDailyLikeInfo(updatedInfo);
           } else {
-            // Fallback: decrement remaining
             updatedInfo = {
               ...dailyLikeInfo,
               count: dailyLikeInfo.count + 1,
@@ -602,12 +804,6 @@ const HomeScreen = ({navigation}) => {
             };
             setDailyLikeInfo(updatedInfo);
           }
-
-          // Update popup text if it's showing
-          if (showLikePopup) {
-            // The popup will show the updated count from state
-          }
-
           if (result?.isMatch && result?.match) {
             setMatchPopup({
               visible: true,
@@ -622,11 +818,9 @@ const HomeScreen = ({navigation}) => {
           if (err?.response?.status === 429 || err?.limitReached) {
             Alert.alert(
               'Daily Like Limit Reached',
-              err?.message ||
-                "You've reached your daily like limit. Come back tomorrow!",
+              err?.message || "You've reached your daily like limit. Come back tomorrow!",
               [{text: 'OK'}],
             );
-            // Reload daily like info
             loadDailyLikeInfo();
           }
         });
@@ -642,9 +836,10 @@ const HomeScreen = ({navigation}) => {
     translateX.value = 0;
     translateY.value = 0;
     opacity.value = 1;
+    runOnJS(setIsProfileFocused)(false);
   };
 
-  const gesture = Gesture.Pan()
+  const panGesture = Gesture.Pan()
     .activeOffsetX([-10, 10])
     .onUpdate(event => {
       translateX.value = event.translationX;
@@ -653,10 +848,7 @@ const HomeScreen = ({navigation}) => {
     .onEnd(event => {
       if (event.translationX > SWIPE_THRESHOLD || event.velocityX > 500) {
         runOnJS(processSwipe)('right');
-      } else if (
-        event.translationX < -SWIPE_THRESHOLD ||
-        event.velocityX < -500
-      ) {
+      } else if (event.translationX < -SWIPE_THRESHOLD || event.velocityX < -500) {
         runOnJS(processSwipe)('left');
       } else {
         translateX.value = withSpring(0);
@@ -664,148 +856,94 @@ const HomeScreen = ({navigation}) => {
       }
     });
 
+  // Tap gesture: opens profile modal — composed with pan so they don't conflict
+  const tapGesture = Gesture.Tap()
+    .maxDuration(300)
+    .onEnd(() => {
+      runOnJS(setIsProfileFocused)(!isProfileFocused);
+    });
+
+  // Pan has priority; tap only fires when no pan movement detected
+  const gesture = Gesture.Exclusive(panGesture, tapGesture);
+
   const animatedStyle = useAnimatedStyle(() => {
     const rotate =
-      interpolate(
-        translateX.value,
-        [-SCREEN_WIDTH, 0, SCREEN_WIDTH],
-        [-15, 0, 15],
-      ) + 'deg';
-
+      interpolate(translateX.value, [-SCREEN_WIDTH, 0, SCREEN_WIDTH], [-15, 0, 15]) + 'deg';
     return {
-      transform: [
-        {translateX: translateX.value},
-        {translateY: translateY.value},
-        {rotate: rotate},
-      ],
+      transform: [{translateX: translateX.value}, {translateY: translateY.value}, {rotate}],
       opacity: opacity.value,
     };
   });
 
+  const focusOverlayStyle = useAnimatedStyle(() => ({
+    opacity: focusValue.value,
+    transform: [{scale: interpolate(focusValue.value, [0, 1], [0.9, 1])}],
+  }));
+
   useFocusEffect(
     useCallback(() => {
-      // Just update daily like info on focus, don't reload profiles
-      // to avoid resetting currentIndex (fixes Rewind button disable issue)
       loadDailyLikeInfo();
     }, [loadDailyLikeInfo]),
   );
 
-  // Show loading spinner while profiles are being fetched for the first time
+  // ── Shared header ───────────────────────────────────────────────────────────
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <Pressable onPress={() => navigation.navigate('Matches')} style={styles.headerIconButton}>
+        <MaterialCommunityIcons name="heart" size={24} color={colors.primary} />
+      </Pressable>
+      <Text className="text-4xl font-mona-sans-semibold tracking-[2px] text-black">Pryvo</Text>
+      <View style={styles.headerRight}>
+        <Pressable onPress={() => navigation.navigate('Chats')} style={styles.headerIconButton}>
+          <MaterialCommunityIcons name="chat" size={24} color={colors.textPrimary} />
+        </Pressable>
+        <Pressable
+          onPress={() => navigation.navigate('AdvancedFilters')}
+          style={styles.headerIconButton}>
+          <MaterialCommunityIcons name="filter-variant" size={24} color={colors.textPrimary} />
+        </Pressable>
+      </View>
+    </View>
+  );
+
   if (loading) {
+    if (!visited.home) {
+      return (
+        <FullScreenLoader 
+          visible={true} 
+          message="Matching vibes, not just faces…" 
+        />
+      );
+    }
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-        <StatusBar
-          barStyle="dark-content"
-          backgroundColor={colors.background}
-        />
-        <View style={styles.header}>
-          <Pressable
-            onPress={() => navigation.navigate('Matches')}
-            style={styles.headerIconButton}>
-            <MaterialCommunityIcons
-              name="heart"
-              size={24}
-              color={colors.primary}
-            />
-          </Pressable>
-          <Text className="text-4xl font-mona-sans-semibold tracking-[2px] text-black">
-            Pryvo
-          </Text>
-          <View style={styles.headerRight}>
-            <Pressable
-              onPress={() => navigation.navigate('Chats')}
-              style={styles.headerIconButton}>
-              <MaterialCommunityIcons
-                name="chat"
-                size={24}
-                color={colors.textPrimary}
-              />
-            </Pressable>
-            <Pressable
-              onPress={() => navigation.navigate('AdvancedFilters')}
-              style={styles.headerIconButton}>
-              <MaterialCommunityIcons
-                name="filter-variant"
-                size={24}
-                color={colors.textPrimary}
-              />
-            </Pressable>
-          </View>
-        </View>
+        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+        {renderHeader()}
         <View style={styles.emptyContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.emptySubtitle, {marginTop: 16}]}>
-            Finding profiles for you...
-          </Text>
+          <Text style={[styles.emptySubtitle, {marginTop: 16}]}>Finding profiles for you...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  // Show empty state only once loading is done with no results
+  // ── Empty state ─────────────────────────────────────────────────────────────
   if (!currentProfile) {
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-        <StatusBar
-          barStyle="dark-content"
-          backgroundColor={colors.background}
-        />
-        <View style={styles.header}>
-          <Pressable
-            onPress={() => navigation.navigate('Matches')}
-            style={styles.headerIconButton}>
-            <MaterialCommunityIcons
-              name="heart"
-              size={24}
-              color={colors.primary}
-            />
-          </Pressable>
-          <Text className="text-4xl font-mona-sans-semibold tracking-[2px] text-black">
-            Pryvo
-          </Text>
-          <View style={styles.headerRight}>
-            <Pressable
-              onPress={() => navigation.navigate('Chats')}
-              style={styles.headerIconButton}>
-              <MaterialCommunityIcons
-                name="chat"
-                size={24}
-                color={colors.textPrimary}
-              />
-            </Pressable>
-            <Pressable
-              onPress={() => navigation.navigate('AdvancedFilters')}
-              style={styles.headerIconButton}>
-              <MaterialCommunityIcons
-                name="filter-variant"
-                size={24}
-                color={colors.textPrimary}
-              />
-            </Pressable>
-          </View>
-        </View>
-
+        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+        {renderHeader()}
         <View style={styles.emptyContainer}>
           <View style={{marginBottom: 20}}>
-            <MaterialCommunityIcons
-              name="account-search"
-              size={80}
-              color={colors.primary}
-            />
+            <MaterialCommunityIcons name="account-search" size={80} color={colors.primary} />
           </View>
           <Text style={styles.emptyTitle}>No more profiles</Text>
           <Text style={styles.emptySubtitle}>
-            We've run out of people nearby. Try adjusting your distance or age
-            filters to see more people.
+            We've run out of people nearby. Try adjusting your distance or age filters to see more
+            people.
           </Text>
           <Pressable
-            style={{
-              marginTop: 30,
-              backgroundColor: colors.primary,
-              paddingHorizontal: 24,
-              paddingVertical: 12,
-              borderRadius: 24,
-            }}
+            style={styles.refreshButton}
             onPress={async () => {
               setProfiles([]);
               setCurrentIndex(0);
@@ -821,66 +959,63 @@ const HomeScreen = ({navigation}) => {
               }
               await loadProfiles();
             }}>
-            <Text
-              style={{
-                color: 'white',
-                fontFamily: typography.fontFamilyBold,
-                fontSize: 16,
-              }}>
-              Refresh Profiles
-            </Text>
+            <LinearGradient
+              colors={['#9411FA', '#E040C8', '#FF6B35']}
+              start={{x: 0, y: 0}}
+              end={{x: 1, y: 0}}
+              style={styles.refreshButtonGradient}>
+              <Text style={styles.refreshButtonText}>Refresh Profiles</Text>
+            </LinearGradient>
           </Pressable>
         </View>
       </SafeAreaView>
     );
   }
 
+  // ── Distance label for card ─────────────────────────────────────────────────
+  const getCardDistanceLabel = () => {
+    let dist = currentProfile.distance ? parseFloat(currentProfile.distance) : null;
+    if (
+      dist === null &&
+      currentLocation &&
+      !isNaN(currentProfile.latitude) &&
+      !isNaN(currentProfile.longitude)
+    ) {
+      dist = calculateDistance(
+        currentLocation.latitude,
+        currentLocation.longitude,
+        currentProfile.latitude,
+        currentProfile.longitude,
+      );
+    }
+    const locationStr = currentProfile.city || currentProfile.location || '';
+    const isCoordinates =
+      /^\s*[-+]?\d+(\.\d+)?\s*,\s*[-+]?\d+(\.\d+)?\s*$/.test(locationStr);
+    const displayLocation = isCoordinates ? (currentProfile.city || '') : locationStr;
+    const distLabel =
+      dist !== null && dist > 0 ? (dist > 1000 ? 'Far away' : `${dist} km away`) : null;
+    let final = '';
+    if (displayLocation) {
+      final = displayLocation;
+      if (distLabel) final += ` • ${distLabel}`;
+    } else if (distLabel) {
+      final = distLabel;
+    }
+    return final;
+  };
+
+  const cardLocationLabel = getCardDistanceLabel();
+
+  // ── Main render ─────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView
-      className=""
-      style={styles.safe}
-      edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
-      {/* Header with Filter Icon */}
-      <View className="" style={styles.header}>
-        <Pressable
-          onPress={() => navigation.navigate('Matches')}
-          style={styles.headerIconButton}>
-          <MaterialCommunityIcons
-            name="heart"
-            size={24}
-            color={colors.primary}
-          />
-        </Pressable>
-        <Text className="text-4xl font-mona-sans-semibold tracking-[2px] text-black">
-          Pryvo
-        </Text>
-        <View style={styles.headerRight}>
-          <Pressable
-            onPress={() => navigation.navigate('Chats')}
-            style={styles.headerIconButton}>
-            <MaterialCommunityIcons
-              name="chat"
-              size={24}
-              color={colors.textPrimary}
-            />
-          </Pressable>
-          <Pressable
-            onPress={() => navigation.navigate('AdvancedFilters')}
-            style={styles.headerIconButton}>
-            <MaterialCommunityIcons
-              name="filter-variant"
-              size={24}
-              color={colors.textPrimary}
-            />
-          </Pressable>
-        </View>
-      </View>
+      {renderHeader()}
 
       {/* Card Stack */}
       <View style={styles.cardContainer}>
-        {/* Next card (background) */}
+        {/* Next card (background preview) */}
         {currentIndex < profiles.length - 1 && (
           <View style={styles.nextCardPlaceholder}>
             <Image
@@ -892,293 +1027,70 @@ const HomeScreen = ({navigation}) => {
           </View>
         )}
 
-        {/* Current card (swipeable) */}
+        {/* Current swipeable card — tap opens modal, swipe triggers like/dislike */}
         <GestureDetector gesture={gesture}>
           <Animated.View style={[styles.card, animatedStyle]}>
-            <ScrollView
-              style={{flex: 1}}
-              contentContainerStyle={styles.scrollContent}
-              showsVerticalScrollIndicator={false}
-              scrollEventThrottle={16}>
-              {/* 1. Main Photo with Name Overlay */}
-              <View style={styles.mainPhotoContainer}>
-                {currentProfile.photos && currentProfile.photos.length > 0 && (
-                  <Image
-                    source={{uri: currentProfile.photos[0]}}
-                    style={styles.mainPhoto}
-                    resizeMode="cover"
-                  />
-                )}
 
-                {/* Most Compatible Badge (Hinge Style) */}
-                {currentProfile.isMostCompatible && (
-                  <View style={styles.mostCompatibleBadge}>
-                    <MaterialCommunityIcons
-                      name="star"
-                      size={14}
-                      color="#FFF"
-                    />
-                    <Text style={styles.mostCompatibleText}>
-                      MOST COMPATIBLE
-                    </Text>
-                  </View>
-                )}
+            {/* Full-bleed first photo only */}
+            <Image
+              source={{uri: currentProfile.photos[0]}}
+              style={styles.cardPhoto}
+              resizeMode="cover"
+            />
 
-                {/* Match Score (Bumble/Tinder Style) */}
-                {currentProfile.matchPercentage && (
-                  <View style={styles.matchScoreBadge}>
-                    <Text style={styles.matchScoreText}>
-                      {currentProfile.matchPercentage}% Match
-                    </Text>
-                  </View>
-                )}
-
-                <LinearGradient
-                  colors={[
-                    'transparent',
-                    'rgba(0,0,0,0.4)',
-                    'rgba(0,0,0,0.8)',
-                    '#000000',
-                  ]}
-                  locations={[0, 0.5, 0.8, 1]}
-                  style={styles.mainPhotoGradient}>
-                  <View style={styles.mainPhotoInfo}>
-                    <Text className="text-3xl font-mona-sans-regular  text-white">
-                      {currentProfile.name}
-                      {currentProfile.age ? `, (${currentProfile.age})` : ''}
-                    </Text>
-                    {currentProfile.isActiveToday && (
-                      <View style={styles.activeTodayContainer}>
-                        <View style={styles.activeTodayDot} />
-                        <Text style={styles.activeTodayText}>Active today</Text>
-                      </View>
-                    )}
-                    {(() => {
-                      let dist = currentProfile.distance
-                        ? parseFloat(currentProfile.distance)
-                        : null;
-
-                      // Recalculate distance if missing but we have coordinates
-                      if (
-                        dist === null &&
-                        currentLocation &&
-                        !isNaN(currentProfile.latitude) &&
-                        !isNaN(currentProfile.longitude)
-                      ) {
-                        dist = calculateDistance(
-                          currentLocation.latitude,
-                          currentLocation.longitude,
-                          currentProfile.latitude,
-                          currentProfile.longitude,
-                        );
-                      }
-
-                      const locationStr =
-                        currentProfile.city || currentProfile.location || '';
-
-                      // Improved coordinate detection: check for numeric format like "28.6074, 77.0819"
-                      const isCoordinates =
-                        /^\s*[-+]?\d+(\.\d+)?\s*,\s*[-+]?\d+(\.\d+)?\s*$/.test(
-                          locationStr,
-                        );
-
-                      const displayLocation = isCoordinates
-                        ? currentProfile.city || ''
-                        : locationStr;
-
-                      // Determine distance label
-                      const distanceLabel =
-                        dist !== null && dist > 0
-                          ? dist > 1000
-                            ? 'Far away'
-                            : `${dist} km away`
-                          : null;
-
-                      // Construct the final string mutually exclusively
-                      let finalString = '';
-                      if (displayLocation) {
-                        finalString = displayLocation;
-                        if (distanceLabel) finalString += ` • ${distanceLabel}`;
-                      } else if (distanceLabel) {
-                        finalString = distanceLabel;
-                      }
-
-                      if (!finalString) return null;
-
-                      return (
-                        <Text style={styles.locationBadgeText}>
-                          📍 {finalString}
-                        </Text>
-                      );
-                    })()}
-                  </View>
-                </LinearGradient>
+            {/* Badges */}
+            {currentProfile.isMostCompatible && (
+              <View style={styles.mostCompatibleBadge}>
+                <MaterialCommunityIcons name="star" size={13} color="#FFF" />
+                <Text style={styles.mostCompatibleText}>MOST COMPATIBLE</Text>
               </View>
-
-              {/* 2. My Bio Card */}
-              {(currentProfile.bio || currentProfile.datingIntention) && (
-                <View style={styles.detailsSection}>
-                  <Text style={styles.sectionHeader}>My bio</Text>
-                  <Text style={styles.bioText}>
-                    {currentProfile.bio ||
-                      `Looking for ${
-                        currentProfile.datingIntention || 'something special'
-                      }!`}
-                  </Text>
-                </View>
-              )}
-
-              {/* 3. About Me Badges */}
-              <View style={styles.detailsSection}>
-                <Text style={styles.sectionHeader}>About me</Text>
-                <View style={styles.badgeGrid}>
-                  {currentProfile.height && (
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>
-                        📏 {currentProfile.height}
-                        {currentProfile.height.includes('cm') ? '' : ' cm'}
-                      </Text>
-                    </View>
-                  )}
-                  {currentProfile.gender && (
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>
-                        👤 {currentProfile.gender}
-                      </Text>
-                    </View>
-                  )}
-                  {currentProfile.drink && currentProfile.drink !== 'No' && (
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>
-                        🍷 {currentProfile.drink}
-                      </Text>
-                    </View>
-                  )}
-                  {currentProfile.religion && (
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>
-                        ⛪ {currentProfile.religion}
-                      </Text>
-                    </View>
-                  )}
-                  {currentProfile.politics && (
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>
-                        ⚖️ {currentProfile.politics}
-                      </Text>
-                    </View>
-                  )}
-                </View>
+            )}
+            {currentProfile.matchPercentage && (
+              <View style={styles.matchScoreBadge}>
+                <Text style={styles.matchScoreText}>{currentProfile.matchPercentage}% Match</Text>
               </View>
+            )}
 
-              {/* 4. Second Photo (if available) */}
-              {currentProfile.photos.length > 1 && (
-                <View style={styles.secondaryPhotoContainer}>
-                  <Image
-                    source={{uri: currentProfile.photos[1]}}
-                    style={styles.secondaryPhoto}
-                    resizeMode="cover"
-                  />
-                </View>
-              )}
+            {/* Tap-to-reveal focal button overlay */}
+            <Animated.View 
+              style={[styles.focusOverlay, focusOverlayStyle]}
+              pointerEvents={isProfileFocused ? 'auto' : 'none'}>
+              <Pressable 
+                style={styles.viewProfileButton}
+                onPress={() => {
+                  setModalVisible(true);
+                  setIsProfileFocused(false);
+                }}>
+                <Text style={styles.viewProfileButtonText}>View Profile</Text>
+              </Pressable>
+            </Animated.View>
 
-              {/* 5. Prompt 1 (if available) */}
-              {currentProfile.prompts && currentProfile.prompts[0] && (
-                <View style={styles.promptSection}>
-                  <Text style={styles.promptQuestion}>
-                    {currentProfile.prompts[0].prompt || 'My bio'}
+            {/* Gradient info overlay */}
+            <LinearGradient
+              colors={['transparent', 'rgba(0,0,0,0.35)', 'rgba(0,0,0,0.85)']}
+              locations={[0.45, 0.72, 1]}
+              style={styles.cardGradient}>
+              <View style={styles.cardInfo}>
+                {/* Name + age */}
+                <Text style={styles.cardName}>
+                  {currentProfile.name}
+                  {currentProfile.age ? `, ${currentProfile.age}` : ''}
+                </Text>
+
+                {/* Short bio — 1 line */}
+                {currentProfile.bio ? (
+                  <Text style={styles.cardBio} numberOfLines={1} ellipsizeMode="tail">
+                    {currentProfile.bio}
                   </Text>
-                  <Text style={styles.promptAnswer}>
-                    {currentProfile.prompts[0].answer}
-                  </Text>
-                </View>
-              )}
+                ) : null}
 
-              {/* 6. I'm looking for */}
-              {(currentProfile.datingIntention ||
-                currentProfile.relationshipType) && (
-                <View style={styles.detailsSection}>
-                  <Text style={styles.sectionHeader}>I'm looking for</Text>
-                  <View style={[styles.badge, styles.intentionBadge]}>
-                    <Text style={styles.intentionText}>
-                      🔍{' '}
-                      {currentProfile.datingIntention ||
-                        currentProfile.relationshipType}
-                    </Text>
-                  </View>
-                </View>
-              )}
+                {/* Location */}
+                {cardLocationLabel ? (
+                  <Text style={styles.cardLocation}>📍 {cardLocationLabel}</Text>
+                ) : null}
+              </View>
+            </LinearGradient>
 
-              {/* 7. My interests */}
-              {currentProfile.interests &&
-                currentProfile.interests.length > 0 && (
-                  <View style={styles.detailsSection}>
-                    <Text style={styles.sectionHeader}>My interests</Text>
-                    <View style={styles.interestsContainer}>
-                      {currentProfile.interests.map((interest, index) => (
-                        <View key={index} style={styles.interestTag}>
-                          <Text style={styles.interestText}>{interest}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-
-              {/* 8. Prompt 2 (if available) */}
-              {currentProfile.prompts && currentProfile.prompts[1] && (
-                <View style={styles.promptSection}>
-                  <Text style={styles.promptQuestion}>
-                    {currentProfile.prompts[1].prompt ||
-                      'Things we can talk about'}
-                  </Text>
-                  <Text style={styles.promptAnswer}>
-                    {currentProfile.prompts[1].answer}
-                  </Text>
-                </View>
-              )}
-
-              {/* 9. Work & Education */}
-              {(currentProfile.jobTitle || currentProfile.school) && (
-                <View style={styles.detailsSection}>
-                  <Text style={styles.sectionHeader}>Work & Education</Text>
-                  <View style={styles.workRow}>
-                    {currentProfile.jobTitle && (
-                      <Text style={styles.workText}>
-                        💼 {currentProfile.jobTitle}
-                      </Text>
-                    )}
-                    {currentProfile.school && (
-                      <Text style={styles.workText}>
-                        🎓 {currentProfile.school}
-                      </Text>
-                    )}
-                  </View>
-                </View>
-              )}
-
-              {/* 10. Third Photo (if available) */}
-              {currentProfile.photos.length > 2 && (
-                <View style={styles.secondaryPhotoContainer}>
-                  <Image
-                    source={{uri: currentProfile.photos[2]}}
-                    style={styles.secondaryPhoto}
-                    resizeMode="cover"
-                  />
-                </View>
-              )}
-
-              {/* 11. Remaining Photos (if available) */}
-              {currentProfile.photos.length > 3 &&
-                currentProfile.photos.slice(3).map((photo, idx) => (
-                  <View key={idx} style={styles.secondaryPhotoContainer}>
-                    <Image
-                      source={{uri: photo}}
-                      style={styles.secondaryPhoto}
-                      resizeMode="cover"
-                    />
-                  </View>
-                ))}
-            </ScrollView>
           </Animated.View>
         </GestureDetector>
       </View>
@@ -1186,11 +1098,13 @@ const HomeScreen = ({navigation}) => {
       {/* Like Remaining Popup */}
       {showLikePopup && (
         <View style={styles.likePopupContainer}>
-          <View style={styles.likePopup}>
-            <Text style={styles.likePopupText}>
-              {dailyLikeInfo.remaining} likes left
-            </Text>
-          </View>
+          <LinearGradient
+            colors={['#9411FA', '#E040C8']}
+            start={{x: 0, y: 0}}
+            end={{x: 1, y: 0}}
+            style={styles.likePopup}>
+            <Text style={styles.likePopupText}>{dailyLikeInfo.remaining} likes left</Text>
+          </LinearGradient>
         </View>
       )}
 
@@ -1207,48 +1121,37 @@ const HomeScreen = ({navigation}) => {
         />
       </Pressable>
 
-      {/* Tinder-style Match Popup */}
+      {/* Match Popup */}
       <MatchPopup
         visible={matchPopup.visible}
         profileA={matchPopup.myPhoto}
         profileB={matchPopup.theirPhoto}
-        onContinue={() =>
-          setMatchPopup(prev => ({
-            ...prev,
-            visible: false,
-          }))
-        }
+        onContinue={() => setMatchPopup(prev => ({...prev, visible: false}))}
         onMessage={() => {
           const matchId = matchPopup.matchId;
           const theirId = currentProfile?.userId;
-          setMatchPopup(prev => ({
-            ...prev,
-            visible: false,
-          }));
-          if (matchId && theirId) {
-            navigation.navigate('ChatScreen', {matchId, theirId});
-          }
+          setMatchPopup(prev => ({...prev, visible: false}));
+          if (matchId && theirId) navigation.navigate('ChatScreen', {matchId, theirId});
         }}
+      />
+
+      {/* Full-Screen Profile Modal */}
+      <ProfileModal
+        visible={modalVisible}
+        profile={currentProfile}
+        onClose={() => setModalVisible(false)}
+        currentLocation={currentLocation}
       />
     </SafeAreaView>
   );
 };
 
+// ─── Styles ────────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,
-  },
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cardContainer: {
-    flex: 1,
-    paddingVertical: spacing.md, // Clean vertical margins since buttons are gone
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -1273,159 +1176,126 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#F3F4F6',
   },
+  cardContainer: {
+    flex: 1,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // ── Card ──────────────────────────────────────────────────────────────────
   card: {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
     borderRadius: 24,
-    backgroundColor: '#ffffff',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 12},
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    elevation: 8,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.04)',
+    backgroundColor: '#111',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 14},
+    shadowOpacity: 0.18,
+    shadowRadius: 28,
+    elevation: 12,
   },
-  mainPhotoContainer: {
-    width: '100%',
-    height: CARD_HEIGHT * 0.9,
-    position: 'relative',
+  cardPhoto: {
+    ...StyleSheet.absoluteFillObject,
   },
-  scrollContent: {
-    paddingBottom: spacing.xxxl * 2,
-    backgroundColor: '#FAFAFB',
-  },
-  mainPhoto: {
-    width: '100%',
-    height: '100%',
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-  },
-  mainPhotoGradient: {
+  cardGradient: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: '60%',
-    justifyContent: 'flex-end',
-    padding: spacing.xl,
+    paddingTop: 80,
+    paddingBottom: spacing.xl,
+    paddingHorizontal: spacing.xl,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
-  mainPhotoInfo: {
+  cardInfo: {
     gap: 4,
   },
-  locationBadgeText: {
+  cardName: {
+    fontSize: 30,
+    fontFamily: typography.fontFamilyBold,
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0,0,0,0.4)',
+    textShadowOffset: {width: 0, height: 1},
+    textShadowRadius: 4,
+  },
+  cardBio: {
     fontSize: 15,
-    fontFamily: typography.fontFamilyMedium,
-    color: 'rgba(255,255,255,0.95)',
-    marginTop: 4,
+    fontFamily: typography.fontFamilyRegular,
+    color: 'rgba(255,255,255,0.88)',
+    marginTop: 2,
     textShadowColor: 'rgba(0,0,0,0.3)',
     textShadowOffset: {width: 0, height: 1},
     textShadowRadius: 3,
   },
-  activeTodayContainer: {
+  cardLocation: {
+    fontSize: 13,
+    fontFamily: typography.fontFamilyMedium,
+    color: 'rgba(255,255,255,0.75)',
+    marginTop: 2,
+  },
+  mostCompatibleBadge: {
+    position: 'absolute',
+    top: 18,
+    left: 18,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(76, 175, 80, 0.4)', // modern translucent green backdrop
-    paddingHorizontal: 8,
+    backgroundColor: '#6366F1',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 100,
+    zIndex: 10,
+    gap: 4,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  mostCompatibleText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontFamily: typography.fontFamilyBold,
+    letterSpacing: 0.5,
+  },
+  matchScoreBadge: {
+    position: 'absolute',
+    top: 18,
+    right: 18,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    alignSelf: 'flex-start',
-    marginTop: 4,
-  },
-  activeTodayDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#4ade80', // bright modern green
-    marginRight: 6,
-    shadowColor: '#4ade80',
-    shadowOffset: {width: 0, height: 0},
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  activeTodayText: {
-    color: '#ffffff',
-    fontSize: 13,
-    fontFamily: typography.fontFamilyBold,
-  },
-  detailsSection: {
-    marginHorizontal: spacing.md,
-    marginTop: spacing.md,
-    padding: spacing.xl,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+    zIndex: 10,
   },
-  sectionHeader: {
-    fontSize: 13,
+  matchScoreText: {
+    color: '#FFF',
+    fontSize: 12,
     fontFamily: typography.fontFamilyBold,
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: spacing.md,
   },
-  bioText: {
-    fontSize: 20,
-    fontFamily: typography.fontFamilyMedium,
-    color: '#111827',
-    lineHeight: 28,
-  },
-  badgeGrid: {
+  expandHint: {
+    position: 'absolute',
+    bottom: 80,
+    alignSelf: 'center',
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  badge: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-    borderRadius: 100,
-    backgroundColor: '#F9FAFB',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderColor: 'rgba(255,255,255,0.25)',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  badgeText: {
-    fontSize: 14,
-    fontFamily: typography.fontFamilyMedium,
-    color: '#374151',
-  },
-  secondaryPhotoContainer: {
-    width: '100%',
-    height: CARD_HEIGHT * 0.8,
-    paddingHorizontal: spacing.md,
-    marginTop: spacing.md,
-  },
-  secondaryPhoto: {
-    width: '100%',
-    height: '100%',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
     borderRadius: 20,
+    zIndex: 10,
   },
-  intentionBadge: {
-    backgroundColor: colors.primary + '10', // 10% opacity primary
-    borderColor: colors.primary + '30',
-    alignSelf: 'flex-start',
-  },
-  intentionText: {
-    fontSize: 15,
-    fontFamily: typography.fontFamilyBold,
-    color: colors.primary,
-  },
-  workRow: {
-    gap: spacing.sm,
-  },
-  workText: {
-    fontSize: 15,
+  expandHintText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 12,
     fontFamily: typography.fontFamilyMedium,
-    color: '#555',
   },
   nextCardPlaceholder: {
     position: 'absolute',
@@ -1433,72 +1303,19 @@ const styles = StyleSheet.create({
     height: CARD_HEIGHT,
     borderRadius: 24,
     overflow: 'hidden',
-    transform: [{scale: 0.92}, {translateY: 0}],
+    transform: [{scale: 0.92}],
     opacity: 0.6,
+  },
+  mainPhoto: {
+    width: '100%',
+    height: '100%',
   },
   nextCardOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.2)',
   },
-  interestsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-  },
-  interestTag: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6', // Lighter background for interest tags
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-  },
-  interestText: {
-    fontSize: 13,
-    fontFamily: typography.fontFamilyMedium,
-    color: '#374151', // Darker text for readability
-  },
-  mostCompatibleBadge: {
-    position: 'absolute',
-    top: 20,
-    left: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#6366F1', // Indigo color like Hinge
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 100,
-    zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-    gap: 4,
-  },
-  mostCompatibleText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontFamily: typography.fontFamilyBold,
-    letterSpacing: 0.5,
-  },
-  matchScoreBadge: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    zIndex: 10,
-  },
-  matchScoreText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontFamily: typography.fontFamilyBold,
-  },
+
+  // ── Empty / Loading ───────────────────────────────────────────────────────
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -1517,61 +1334,39 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
   },
-  promptSection: {
-    marginHorizontal: spacing.md,
-    marginVertical: spacing.md,
-    padding: spacing.xl,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
+  refreshButton: {
+    marginTop: 30,
+    borderRadius: 28,
+    overflow: 'hidden',
   },
-  promptQuestion: {
-    fontSize: 13,
+  refreshButtonGradient: {
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 28,
+  },
+  refreshButtonText: {
+    color: '#FFF',
     fontFamily: typography.fontFamilyBold,
-    color: colors.primary,
-    marginBottom: spacing.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    fontSize: 16,
   },
-  promptAnswer: {
-    fontSize: 24,
-    fontFamily: typography.fontFamilyRegular,
-    color: '#111827',
-    lineHeight: 32,
-  },
+
+  // ── Floating ──────────────────────────────────────────────────────────────
   floatingRewindButton: {
     position: 'absolute',
     bottom: spacing.xxxl,
     right: spacing.xl,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#ffffff',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FFF',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.2,
     shadowRadius: 12,
     elevation: 8,
     zIndex: 1000,
-  },
-  passIcon: {
-    fontSize: 24,
-    color: 'red',
-    fontWeight: 'bold',
-  },
-  likeIcon: {
-    fontSize: 28,
-  },
-  likeButtonDisabled: {
-    // Moved opacity to icons so the white background stays solid
   },
   likePopupContainer: {
     position: 'absolute',
@@ -1582,16 +1377,290 @@ const styles = StyleSheet.create({
     zIndex: 1000,
   },
   likePopup: {
-    backgroundColor: '#ca88fd',
     borderRadius: 20,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.md,
     alignItems: 'center',
   },
   likePopupText: {
-    color: colors.surface,
+    color: '#FFF',
     fontFamily: typography.fontFamilyBold,
     fontSize: typography.body.large,
+  },
+  focusOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  viewProfileButton: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 22,
+    paddingVertical: 11,
+    borderRadius: 100,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  viewProfileButtonText: {
+    fontSize: 15,
+    fontFamily: typography.fontFamilyBold,
+    color: '#111',
+  },
+});
+
+// ─── Modal Styles ──────────────────────────────────────────────────────────────
+
+const modalStyles = StyleSheet.create({
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  sheet: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: SCREEN_HEIGHT * 0.93,
+    backgroundColor: '#F8F9FA',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    overflow: 'hidden',
+  },
+  stickyHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 60,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    zIndex: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F1F1',
+  },
+  stickyHeaderText: {
+    color: '#111',
+    fontSize: 16,
+    fontFamily: typography.fontFamilyBold,
+  },
+  pillWrapper: {
+    alignItems: 'center',
+    paddingTop: 12,
+    paddingBottom: 8,
+    zIndex: 10,
+    backgroundColor: '#F8F9FA',
+  },
+  pill: {
+    width: 36,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#E5E7EB',
+  },
+
+  // Images 
+  imagesContainer: {
+    paddingTop: 4,
+  },
+  photoCard: {
+    marginHorizontal: 16,
+    borderRadius: 20,
+    height: SCREEN_HEIGHT * 0.62,
+    backgroundColor: '#FFF',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  modalPhoto: {
+    width: '100%',
+    height: '100%',
+  },
+  
+  // Header Info Card (Floating over bottom of images)
+  headerInfoCard: {
+    marginTop: 16,
+    marginHorizontal: 16,
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  headerInfoContent: {
+    gap: 8,
+  },
+  compatibleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#6366F1',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 100,
+    gap: 4,
+    marginBottom: 4,
+  },
+  compatibleText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontFamily: typography.fontFamilyBold,
+    letterSpacing: 0.5,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  modalName: {
+    fontSize: 28,
+    fontFamily: typography.fontFamilyBold,
+    color: '#111',
+  },
+  matchPercentageBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 100,
+  },
+  matchPercentageText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontFamily: typography.fontFamilyBold,
+  },
+  modalJobTitle: {
+    fontSize: 16,
+    fontFamily: typography.fontFamilyMedium,
+    color: '#444',
+  },
+  modalLocation: {
+    fontSize: 14,
+    fontFamily: typography.fontFamilyRegular,
+    color: '#666',
+  },
+
+  // Details
+  scrollContent: {
+    paddingTop: 12,
+    paddingBottom: 40,
+  },
+  detailsContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 4, // Ensures the first card (with marginTop 20) has exactly 24px total clearance from the header
+    paddingBottom: 40,
+  },
+  profileSectionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 20,
+    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontFamily: typography.fontFamilyBold,
+    color: '#9CA3AF',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: 12,
+  },
+  bioText: {
+    fontSize: 16,
+    fontFamily: typography.fontFamilyRegular,
+    color: '#222',
+    lineHeight: 24,
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  interestTag: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+  },
+  interestTagText: {
+    fontSize: 14,
+    fontFamily: typography.fontFamilyMedium,
+    color: '#374151',
+  },
+  chipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  chip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 100,
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#F1F1F1',
+  },
+  chipText: {
+    fontSize: 14,
+    fontFamily: typography.fontFamilyMedium,
+    color: '#4B5563',
+  },
+  intentionChip: {
+    backgroundColor: '#FDF2F8',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 16,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: '#FCE7F3',
+  },
+  intentionText: {
+    fontSize: 15,
+    fontFamily: typography.fontFamilyBold,
+    color: '#DB2777',
+  },
+  promptAnswer: {
+    fontSize: 20,
+    fontFamily: typography.fontFamilyRegular,
+    color: '#111',
+    lineHeight: 28,
+  },
+  workEduContent: {
+    gap: 6,
+  },
+  workText: {
+    fontSize: 16,
+    fontFamily: typography.fontFamilyMedium,
+    color: '#333',
+  },
+  closeButtonWrapper: {
+    marginTop: 20,
+    marginBottom: 40,
+    alignItems: 'center',
+  },
+  closeIconButton: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#F1F1F1',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
   },
 });
 

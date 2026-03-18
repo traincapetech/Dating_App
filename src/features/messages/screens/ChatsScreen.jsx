@@ -21,6 +21,8 @@ import StreakBadge from '../../../components/common/StreakBadge';
 import {initSocket} from '../../../services/socket';
 
 import {useLoading} from '../../../context/LoadingContext';
+import {useInitialLoad} from '../../../context/InitialLoadContext';
+import FullScreenLoader from '../../../components/layout/FullScreenLoader';
 
 const ChatsScreen = ({navigation}) => {
   const {setLoading: setGlobalLoading} = useLoading();
@@ -31,6 +33,7 @@ const ChatsScreen = ({navigation}) => {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const {visited, markVisited} = useInitialLoad();
 
   // Load matches when screen comes into focus
   useFocusEffect(
@@ -139,6 +142,9 @@ const ChatsScreen = ({navigation}) => {
     } finally {
       setLoading(false);
       setRefreshing(false);
+      if (!visited.chats) {
+        markVisited('chats');
+      }
     }
   };
 
@@ -171,8 +177,17 @@ const ChatsScreen = ({navigation}) => {
     return message.text || 'Tap to start chatting';
   };
 
+  if (loading && !visited.chats) {
+    return (
+      <FullScreenLoader 
+        visible={true} 
+        message="Love might be one message away…" 
+      />
+    );
+  }
+
   // Removed blank loading screen
-  if (!matches.length) {
+  if (!matches.length && !loading) {
     return (
       <SafeAreaView style={styles.center} edges={['top', 'left', 'right']}>
         <Text style={styles.emptyEmoji}>💬</Text>
