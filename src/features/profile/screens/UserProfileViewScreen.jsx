@@ -22,6 +22,9 @@ import {colors, typography, spacing} from '../../../theme';
 import {getProfile} from '../../../services/profile/profileService';
 import streakService from '../../../services/streakService';
 import {initSocket} from '../../../services/socket';
+import { usePhotoSocial } from '../../../hooks/usePhotoSocial';
+import { photoSocialService } from '../../../services/photoSocialService';
+import PhotoInteractionViewer from '../../../components/profile/PhotoInteractionViewer';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
@@ -44,6 +47,11 @@ const UserProfileViewScreen = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('gallery');
   const socketRef = useRef(null);
+
+  // 📸 Social Interaction System
+  const { photosStats, handleLike, handleComment } = usePhotoSocial(userId);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [viewerVisible, setViewerVisible] = useState(false);
 
   // Setup sockets and basic user info once
   useEffect(() => {
@@ -377,15 +385,47 @@ const UserProfileViewScreen = () => {
           /* ── Photo Grid Tab ── */
           photos.length > 0 ? (
             <View style={styles.photoGrid}>
-              {photos.map((uri, idx) => (
-                <View key={idx} style={styles.photoCell}>
-                  <Image
-                    source={{uri}}
-                    style={styles.gridPhoto}
-                    resizeMode="cover"
-                  />
-                </View>
-              ))}
+              {photos.map((uri, idx) => {
+                const pId = photoSocialService.generatePhotoId(uri);
+                const photoStats = photosStats[pId] || { likes: 0, commentsCount: 0, isLiked: false };
+                const isOwner = currentUserId === userId;
+
+                console.log(`[UserProfileViewScreen] Grid Photo ${idx} stats:`, photoStats);
+
+                return (
+                  <Pressable 
+                    key={idx} 
+                    style={styles.photoCell}
+                    onPress={() => {
+                      setSelectedPhoto(uri);
+                      setViewerVisible(true);
+                    }}
+                  >
+                    <Image
+                      source={{uri}}
+                      style={styles.gridPhoto}
+                      resizeMode="cover"
+                    />
+                    {/* 📸 Social Interaction Indicator Badges (Mini) - ONLY visible to OWNER */}
+                    {isOwner && (photoStats.likes > 0 || photoStats.commentsCount > 0) && (
+                      <View style={styles.miniStatsOverlay}>
+                        {photoStats.likes > 0 && (
+                          <View style={styles.miniStat}>
+                            <Icon name="heart" size={12} color="#fff" />
+                            <Text style={styles.miniStatText}>{photoStats.likes}</Text>
+                          </View>
+                        )}
+                        {photoStats.commentsCount > 0 && (
+                          <View style={styles.miniStat}>
+                            <Icon name="comment" size={12} color="#fff" />
+                            <Text style={styles.miniStatText}>{photoStats.commentsCount}</Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
+                  </Pressable>
+                );
+              })}
             </View>
           ) : (
             <View style={styles.emptyState}>
@@ -452,6 +492,14 @@ const UserProfileViewScreen = () => {
           </View>
         )}
       </ScrollView>
+
+      <PhotoInteractionViewer
+        visible={viewerVisible}
+        onClose={() => setViewerVisible(false)}
+        photoUrl={selectedPhoto}
+        targetUserId={userId}
+        currentUserId={currentUserId}
+      />
     </SafeAreaView>
   );
 };
@@ -659,6 +707,27 @@ const styles = StyleSheet.create({
   gridPhoto: {
     width: '100%',
     height: '100%',
+  },
+  miniStatsOverlay: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    flexDirection: 'row',
+    gap: 4,
+  },
+  miniStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    gap: 2,
+  },
+  miniStatText: {
+    color: '#fff',
+    fontSize: 10,
+    fontFamily: typography.fontFamilyBold,
   },
 
   // ── Details Tab ──────────────────────────────────────────────────────────────

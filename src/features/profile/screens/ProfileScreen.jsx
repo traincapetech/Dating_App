@@ -18,6 +18,9 @@ import {getProfile} from '../../../services/profile/profileService';
 import {useLoading} from '../../../context/LoadingContext';
 import {useInitialLoad} from '../../../context/InitialLoadContext';
 import FullScreenLoader from '../../../components/layout/FullScreenLoader';
+import { usePhotoSocial } from '../../../hooks/usePhotoSocial';
+import { photoSocialService } from '../../../services/photoSocialService';
+import PhotoInteractionViewer from '../../../components/profile/PhotoInteractionViewer';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -32,6 +35,12 @@ const ProfileScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState(null);
   const [activeTab, setActiveTab] = useState('gallery'); // gallery or insights
+  
+  // 📸 Social Interaction Engagement
+  const { photosStats } = usePhotoSocial(userId);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [viewerVisible, setViewerVisible] = useState(false);
+  
   const {visited, markVisited} = useInitialLoad();
 
   useFocusEffect(
@@ -430,19 +439,38 @@ const ProfileScreen = () => {
           <View style={styles.gridContainer}>
             {photos.length > 0 ? (
               <View style={styles.photoGrid}>
-                {photos.map((photo, index) => (
-                  <Pressable
-                    key={index}
-                    style={styles.gridPhotoWrapper}
-                    onPress={() =>
-                      navigation.navigate('ProfileDetails', {
-                        userId,
-                        initialPhotoIndex: index,
-                      })
-                    }>
-                    <Image source={{uri: photo}} style={styles.gridPhoto} />
-                  </Pressable>
-                ))}
+                {photos.map((photo, index) => {
+                  const photoId = photoSocialService.generatePhotoId(photo);
+                  const stats = photosStats[photoId] || { likes: 0, commentsCount: 0 };
+                  return (
+                    <Pressable
+                      key={index}
+                      style={styles.gridPhotoWrapper}
+                      onPress={() => {
+                        setSelectedPhoto(photo);
+                        setViewerVisible(true);
+                      }}>
+                      <Image source={{uri: photo}} style={styles.gridPhoto} />
+                      {/* 📸 Social Notification Badges for Owner */}
+                      {(stats.likes > 0 || stats.commentsCount > 0) && (
+                        <View style={styles.miniStatsOverlay}>
+                          {stats.likes > 0 && (
+                            <View style={styles.miniStat}>
+                              <Icon name="heart" size={12} color="#fff" />
+                              <Text style={styles.miniStatText}>{stats.likes}</Text>
+                            </View>
+                          )}
+                          {stats.commentsCount > 0 && (
+                            <View style={styles.miniStat}>
+                              <Icon name="comment" size={12} color="#fff" />
+                              <Text style={styles.miniStatText}>{stats.commentsCount}</Text>
+                            </View>
+                          )}
+                        </View>
+                      )}
+                    </Pressable>
+                  );
+                })}
               </View>
             ) : (
               <Pressable
@@ -515,6 +543,14 @@ const ProfileScreen = () => {
           <Text style={styles.versionText}>Pryvo Version 1.0.0</Text>
         </View>
       </ScrollView>
+
+      <PhotoInteractionViewer
+        visible={viewerVisible}
+        onClose={() => setViewerVisible(false)}
+        photoUrl={selectedPhoto}
+        targetUserId={userId}
+        currentUserId={userId}
+      />
     </SafeAreaView>
   );
 };
@@ -914,9 +950,31 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   versionText: {
-    fontSize: 13,
-    fontFamily: typography.fontFamilyMedium,
-    color: '#9CA3AF',
+    paddingVertical: 20,
+    textAlign: 'center',
+    color: '#999',
+    fontSize: 12,
+  },
+  miniStatsOverlay: {
+    position: 'absolute',
+    bottom: 5,
+    right: 5,
+    flexDirection: 'row',
+    gap: 8,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  miniStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  miniStatText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontFamily: typography.fontFamilyBold,
   },
 });
 

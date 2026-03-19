@@ -16,6 +16,7 @@ import subscriptionRoutes from './routes/subscriptionRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import boostRoutes from './routes/boostRoutes.js';
 import commentRoutes from './routes/commentRoutes.js';
+import photoSocialRoutes from './routes/photoSocialRoutes.js';
 import newsletterRoutes from './routes/newsletterRoutes.js';
 import supportRoutes from './routes/supportRoutes.js';
 import streakRoutes from './modules/streak/streak.routes.js';
@@ -82,6 +83,7 @@ app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/boost', boostRoutes);
 app.use('/api/comments', commentRoutes);
+app.use('/api/photo-social', photoSocialRoutes);
 app.use('/api/newsletter', newsletterRoutes);
 app.use('/api/support', supportRoutes);
 

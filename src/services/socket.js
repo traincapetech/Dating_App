@@ -95,3 +95,16 @@ export const sendMessageViaSocket = messageData => {
     socket.emit('sendMessage', messageData);
   }
 };
+
+// ─── PHOTO SOCIAL ROOM HELPERS ───
+export const joinProfileSocial = targetUserId => {
+  if (socket) {
+    socket.emit('joinProfileSocial', {targetUserId});
+  }
+};
+
+export const leaveProfileSocial = targetUserId => {
+  if (socket) {
+    socket.emit('leaveProfileSocial', {targetUserId});
+  }
+};

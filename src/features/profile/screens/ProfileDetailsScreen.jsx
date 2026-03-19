@@ -23,6 +23,10 @@ import {
 import {launchImageLibrary} from 'react-native-image-picker';
 import {DraggableGrid} from 'react-native-draggable-grid';
 import {useAuth} from '../../../context/AuthContext';
+import { usePhotoSocial } from '../../../hooks/usePhotoSocial';
+import { photoSocialService } from '../../../services/photoSocialService';
+import PhotoInteractionViewer from '../../../components/profile/PhotoInteractionViewer';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 const PHOTO_SIZE = (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm * 2) / 3;
@@ -39,31 +43,44 @@ const ProfileDetailsScreen = () => {
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [scrollEnabled, setScrollEnabled] = useState(true);
 
-  const userId = route.params?.userId;
+  const userId = route.params?.userId || profile?.id || profile?._id;
+
+  // 📸 Social Interaction System
+  const { photosStats } = usePhotoSocial(userId);
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState(null);
 
   useEffect(() => {
     loadProfile();
-  }, [userId]);
+  }, [route.params?.userId]);
 
   const loadProfile = async () => {
     try {
       setLoading(true);
-      let currentUserId = userId;
+      let targetId = userId;
 
-      if (!currentUserId) {
+      if (!targetId) {
         const userData = await AsyncStorage.getItem('@pryvo_user');
         if (userData && userData !== 'undefined') {
           const user = JSON.parse(userData);
-          currentUserId = user.id;
+          targetId = user.id;
         }
       }
 
-      if (!currentUserId) {
+      // Also ensure our global currentUserId state is set for the social viewer
+      const myData = await AsyncStorage.getItem('@pryvo_user');
+      if (myData) {
+        const me = JSON.parse(myData);
+        setCurrentUserId(me.id || me._id);
+      }
+
+      if (!targetId) {
         Alert.alert('Error', 'User ID not found');
         return;
       }
 
-      const response = await getProfile(currentUserId);
+      const response = await getProfile(targetId);
       const profileData = response?.profile || response;
       setProfile(profileData);
 
@@ -471,38 +488,35 @@ const ProfileDetailsScreen = () => {
             <View style={{height: (PHOTO_SIZE * 1.3 + spacing.sm) * 2}}>
               <DraggableGrid
                 numColumns={3}
-                renderItem={(item, order) => {
-                  const index = order;
-                  return (
-                    <View style={styles.photoSlot}>
-                      {item.url ? (
-                        <>
-                          <Image
-                            source={{uri: item.url}}
-                            style={styles.photo}
-                          />
-                          <Pressable
-                            style={styles.deletePhotoButton}
-                            onPress={() => handleDeletePhoto(index)}>
-                            <Text style={styles.deletePhotoText}>✕</Text>
-                          </Pressable>
-                        </>
-                      ) : (
+                renderItem={(item, index) => (
+                  <View style={styles.photoSlot}>
+                    {item.url ? (
+                      <>
+                        <Image
+                          source={{uri: item.url}}
+                          style={styles.photo}
+                        />
                         <Pressable
-                          style={styles.emptyPhoto}
-                          onPress={() => handleAddPhoto(index)}>
-                          <Text style={styles.addPhotoIcon}>📷</Text>
-                          <Text style={styles.addPhotoText}>Add a photo</Text>
+                          style={styles.deletePhotoButton}
+                          onPress={() => handleDeletePhoto(index)}>
+                          <Text style={styles.deletePhotoText}>✕</Text>
                         </Pressable>
-                      )}
-                      {index === 0 && (
-                        <View style={styles.mainPhotoBadge}>
-                          <Text style={styles.mainPhotoBadgeText}>Main</Text>
-                        </View>
-                      )}
-                    </View>
-                  );
-                }}
+                      </>
+                    ) : (
+                      <Pressable
+                        style={styles.emptyPhoto}
+                        onPress={() => handleAddPhoto(index)}>
+                        <Text style={styles.addPhotoIcon}>📷</Text>
+                        <Text style={styles.addPhotoText}>Add a photo</Text>
+                      </Pressable>
+                    )}
+                    {index === 0 && (
+                      <View style={styles.mainPhotoBadge}>
+                        <Text style={styles.mainPhotoBadgeText}>Main</Text>
+                      </View>
+                    )}
+                  </View>
+                )}
                 data={editedProfile.photos || []}
                 onDragStart={() => setScrollEnabled(false)}
                 onDragRelease={data => {
@@ -516,18 +530,48 @@ const ProfileDetailsScreen = () => {
           ) : (
             <View style={styles.photosGrid}>
               {[0, 1, 2, 3, 4, 5].map(index => {
-                if (!isOwnProfile && !photos[index]) return null;
+                const photoUrl = photos[index];
+                if (!isOwnProfile && !photoUrl) return null;
+                const photoId = photoSocialService.generatePhotoId(photoUrl);
+                const photoStats = photosStats[photoId] || { likes: 0, commentsCount: 0 };
+
                 return (
                   <Pressable
                     key={index}
                     style={styles.photoSlot}
-                    onPress={() => isOwnProfile && handleAddPhoto(index)}
-                    disabled={!isOwnProfile}>
-                    {photos[index] ? (
-                      <Image
-                        source={{uri: photos[index]}}
-                        style={styles.photo}
-                      />
+                    onPress={() => {
+                      if (photoUrl) {
+                        setSelectedPhoto(photoUrl);
+                        setViewerVisible(true);
+                      } else if (isOwnProfile) {
+                        handleAddPhoto(index);
+                      }
+                    }}
+                  >
+                    {photoUrl ? (
+                      <>
+                        <Image
+                          source={{uri: photoUrl}}
+                          style={styles.photo}
+                        />
+                        {/* 📸 Social Notification Badges (Owner can see them) */}
+                        {(photoStats.likes > 0 || photoStats.commentsCount > 0) && (
+                          <View style={styles.miniStatsOverlay}>
+                            {photoStats.likes > 0 && (
+                              <View style={styles.miniStat}>
+                                <MaterialCommunityIcons name="heart" size={10} color="#fff" />
+                                <Text style={styles.miniStatText}>{photoStats.likes}</Text>
+                              </View>
+                            )}
+                            {photoStats.commentsCount > 0 && (
+                              <View style={styles.miniStat}>
+                                <MaterialCommunityIcons name="comment" size={10} color="#fff" />
+                                <Text style={styles.miniStatText}>{photoStats.commentsCount}</Text>
+                              </View>
+                            )}
+                          </View>
+                        )}
+                      </>
                     ) : (
                       <View style={styles.emptyPhoto}>
                         <Text style={styles.addPhotoIcon}>📷</Text>
@@ -834,6 +878,14 @@ const ProfileDetailsScreen = () => {
 
         <View style={{height: 100}} />
       </ScrollView>
+
+      <PhotoInteractionViewer
+        visible={viewerVisible}
+        onClose={() => setViewerVisible(false)}
+        photoUrl={selectedPhoto}
+        targetUserId={userId}
+        currentUserId={currentUserId}
+      />
     </View>
   );
 };
@@ -1005,6 +1057,27 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
     fontWeight: 'bold',
+  },
+  miniStatsOverlay: {
+    position: 'absolute',
+    bottom: 4,
+    left: 4,
+    flexDirection: 'row',
+    gap: 4,
+  },
+  miniStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 6,
+    gap: 2,
+  },
+  miniStatText: {
+    color: '#fff',
+    fontSize: 9,
+    fontFamily: typography.fontFamilyBold,
   },
   chipRow: {
     flexDirection: 'row',

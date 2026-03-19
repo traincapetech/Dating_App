@@ -86,6 +86,21 @@ export function initSocketServer(httpServer) {
       }
     });
 
+    // ─── PHOTO SOCIAL ROOMS ───
+    socket.on('joinProfileSocial', ({targetUserId}) => {
+      if (!targetUserId) return;
+      const room = `profile_social:${targetUserId}`;
+      socket.join(room);
+      console.log(`📸 Socket ${socket.id} joined social room ${room}`);
+    });
+
+    socket.on('leaveProfileSocial', ({targetUserId}) => {
+      if (!targetUserId) return;
+      const room = `profile_social:${targetUserId}`;
+      socket.leave(room);
+      console.log(`📸 Socket ${socket.id} left social room ${room}`);
+    });
+
     // Handle sending messages via socket
     socket.on('sendMessage', async messageData => {
       const {matchId, senderId, receiverId, text, mediaUrl, mediaType} =

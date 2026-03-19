@@ -44,6 +44,9 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import {useLoading} from '../../../context/LoadingContext';
 import {useInitialLoad} from '../../../context/InitialLoadContext';
 import FullScreenLoader from '../../../components/layout/FullScreenLoader';
+import { usePhotoSocial } from '../../../hooks/usePhotoSocial';
+import { photoSocialService } from '../../../services/photoSocialService';
+import PhotoInteractionViewer from '../../../components/profile/PhotoInteractionViewer';
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - spacing.xl * 2;
@@ -83,11 +86,15 @@ const easeIn = t => {
 
 // ─── ProfileModal ──────────────────────────────────────────────────────────────
 
-const ProfileModal = ({visible, profile, onClose, currentLocation}) => {
+const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId}) => {
   // Animation values
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const backdropOpacity = useSharedValue(0);
 
+  // 📸 Social Interaction Engagement for Modal
+  const [selectedPhoto, setSelectedPhoto] = useState(null);
+  const [viewerVisible, setViewerVisible] = useState(false);
+  
   useEffect(() => {
     if (visible) {
       backdropOpacity.value = withTiming(1, {duration: 300, easing: easeOut});
@@ -139,7 +146,14 @@ const ProfileModal = ({visible, profile, onClose, currentLocation}) => {
 
   const allPhotos = profile.photos || [];
 
+  // 📸 Integrated Social Engagement Hook for Home Modal
+  const { photosStats, handleLike } = usePhotoSocial(profile.id || profile._id);
+
   const PhotoItem = ({photoUri, index}) => {
+    const photoId = photoSocialService.generatePhotoId(photoUri);
+    const stats = photosStats[photoId] || { likes: 0, commentsCount: 0, isLiked: false };
+    const isOwner = currentUserId === (profile.id || profile._id);
+
     const animatedStyle = useAnimatedStyle(() => {
       const inputOffset = index * SCREEN_HEIGHT * 0.62;
       const scale = interpolate(
@@ -154,6 +168,29 @@ const ProfileModal = ({visible, profile, onClose, currentLocation}) => {
     return (
       <Animated.View style={[modalStyles.photoCard, animatedStyle]}>
         <Image source={{uri: photoUri}} style={modalStyles.modalPhoto} resizeMode="cover" />
+        
+        {/* 📸 Social Overlay Buttons */}
+        <View style={modalStyles.photoInteractionOverlay}>
+          <Pressable style={modalStyles.interactionBtn} onPress={() => handleLike(photoUri)}>
+            <MaterialCommunityIcons 
+              name={stats.isLiked ? "heart" : "heart-outline"} 
+              size={24} 
+              color={stats.isLiked ? "#FF2D55" : "#FFF"} 
+            />
+            {isOwner && stats.likes > 0 && <Text style={modalStyles.statText}>{stats.likes}</Text>}
+          </Pressable>
+
+          <Pressable 
+            style={modalStyles.interactionBtn}
+            onPress={() => {
+              setSelectedPhoto(photoUri);
+              setViewerVisible(true);
+            }}
+          >
+            <MaterialCommunityIcons name="chat-processing-outline" size={24} color="#FFF" />
+            {isOwner && stats.commentsCount > 0 && <Text style={modalStyles.statText}>{stats.commentsCount}</Text>}
+          </Pressable>
+        </View>
       </Animated.View>
     );
   };
@@ -348,6 +385,14 @@ const ProfileModal = ({visible, profile, onClose, currentLocation}) => {
 
           </View>
         </ScrollView>
+
+        <PhotoInteractionViewer
+          visible={viewerVisible}
+          onClose={() => setViewerVisible(false)}
+          photoUrl={selectedPhoto}
+          targetUserId={profile.id || profile._id}
+          currentUserId={currentUserId}
+        />
       </Animated.View>
     </Modal>
   );
@@ -1141,6 +1186,7 @@ const HomeScreen = ({navigation}) => {
         profile={currentProfile}
         onClose={() => setModalVisible(false)}
         currentLocation={currentLocation}
+        currentUserId={currentUserId}
       />
     </SafeAreaView>
   );
@@ -1481,6 +1527,28 @@ const modalStyles = StyleSheet.create({
   modalPhoto: {
     width: '100%',
     height: '100%',
+  },
+  photoInteractionOverlay: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    gap: 15,
+  },
+  interactionBtn: {
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  statText: {
+    color: '#FFF',
+    fontSize: 12,
+    marginTop: 2,
+    fontFamily: typography.fontFamilyBold,
   },
   
   // Header Info Card (Floating over bottom of images)
