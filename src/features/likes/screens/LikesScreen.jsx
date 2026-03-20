@@ -127,10 +127,7 @@ const LikesScreen = ({navigation}) => {
 
   if (loading && !visited.matches) {
     return (
-      <FullScreenLoader 
-        visible={true} 
-        message="Your admirers are waiting…" 
-      />
+      <FullScreenLoader visible={true} message="Your admirers are waiting…" />
     );
   }
 

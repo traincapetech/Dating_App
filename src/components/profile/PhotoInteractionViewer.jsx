@@ -16,11 +16,15 @@ import {
   TouchableOpacity,
   Animated
 } from 'react-native';
+import { Alert } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import { usePhotoSocial } from '../../hooks/usePhotoSocial';
 import { photoSocialService } from '../../services/photoSocialService';
 import { colors, typography, spacing } from '../../theme';
+import { isUserPremium } from '../../utils/premiumUtils';
+import { useAuth } from '../../context/AuthContext';
+import { AppRoute } from '../../constants/routes';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -36,11 +40,14 @@ const PhotoInteractionViewer = ({
   currentUserId,
   navigation // Passed from parent screens (REUSE ChatScreen Logic)
 }) => {
+  const { setPendingIntent } = useAuth();
   const [commentText, setCommentText] = useState('');
   const [comments, setComments] = useState([]);
   const [loadingComments, setLoadingComments] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [cursor, setCursor] = useState(null);
+  const [isPremium, setIsPremium] = useState(true); // Default to true to prevent flicker, fetch actual on mount
+  const [checkingPremium, setCheckingPremium] = useState(false);
 
   // Animation values
   const likeScale = useRef(new Animated.Value(1)).current;
@@ -103,12 +110,19 @@ const PhotoInteractionViewer = ({
   }, [photoUrl, visible, cursor]);
 
   useEffect(() => {
-    if (visible) {
-      loadComments(true);
-    } else {
-      setComments([]);
-      setCursor(null);
-    }
+    const initViewer = async () => {
+      if (visible) {
+        setCheckingPremium(true);
+        const premium = await isUserPremium();
+        setIsPremium(premium);
+        setCheckingPremium(false);
+        loadComments(true);
+      } else {
+        setComments([]);
+        setCursor(null);
+      }
+    };
+    initViewer();
   }, [visible, photoUrl, loadComments]);
 
   const onToggleLike = () => {
@@ -144,22 +158,46 @@ const PhotoInteractionViewer = ({
    * Robust ID retrieval to handle both populated and unpopulated cases.
    */
   const openUserProfile = (rawSender) => {
-    // Determine the ID: could be a string (unpopulated) or object (populated)
-    const userId = typeof rawSender === 'string' ? rawSender : (rawSender?._id || rawSender?.id || rawSender?.userId);
-    
-    console.log("[PhotoInteractionViewer] openUserProfile triggered for:", userId);
-    
-    if (!userId || !navigation) {
-      console.warn("[PhotoInteractionViewer] userId or navigation missing", { userId, nav: !!navigation });
-      return;
+    const senderId = typeof rawSender === 'string' ? rawSender : (rawSender?._id || rawSender?.id || rawSender?.userId);
+    const isMe = senderId === currentUserId;
+
+    // 🏆 PREMIUM GATE
+    if (!isPremium && !isMe) {
+        // 💾 Store intent for post-purchase redirect
+        setPendingIntent && setPendingIntent({ 
+            type: 'profile_view', 
+            userId: senderId 
+        });
+
+        Alert.alert(
+            'Premium Upgrade',
+            'To view profiles of users who commented, please upgrade to Premium. ✨',
+            [
+                { 
+                  text: 'Later', 
+                  style: 'cancel',
+                  onPress: () => setPendingIntent && setPendingIntent(null)
+                },
+                { 
+                    text: 'View Plans', 
+                    onPress: () => {
+                        onClose && onClose();
+                        setTimeout(() => {
+                            navigation.navigate('SubscriptionUpsell');
+                        }, 150);
+                    }
+                }
+            ]
+        );
+        return;
     }
 
-    // ❗ CRITICAL: Modals are top-level and cover navigation screens.
-    // Dismiss the viewer before pushing the profile screen.
+    if (!senderId || !navigation) return;
+
     if (onClose) onClose();
 
     setTimeout(() => {
-      navigation.navigate('UserProfileView', { userId });
+      navigation.navigate('UserProfileView', { userId: senderId });
     }, 150);
   };
 
@@ -170,16 +208,21 @@ const PhotoInteractionViewer = ({
     return (
       <View style={styles.commentItem}>
         <TouchableOpacity 
-          style={styles.avatarGlow}
+          style={[styles.avatarGlow, !isPremium && !isMe && styles.lockedAvatarGlow]}
           onPress={() => openUserProfile(sender)}
         >
           {sender?.photo ? (
-            <Image source={{ uri: sender.photo }} style={styles.commentAvatar} />
+            <Image source={{ uri: sender.photo }} style={[styles.commentAvatar, !isPremium && !isMe && styles.blurredAvatar]} />
           ) : (
             <View style={[styles.commentAvatar, styles.commentAvatarPlaceholder]}>
               <Text style={styles.avatarInitial}>
                 {isMe ? 'Y' : (sender?.name || 'S').charAt(0).toUpperCase()}
               </Text>
+            </View>
+          )}
+          {!isPremium && !isMe && (
+            <View style={styles.lockOverlay}>
+              <MaterialCommunityIcons name="lock" size={14} color="#FFF" />
             </View>
           )}
         </TouchableOpacity>
@@ -485,6 +528,26 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamilyRegular,
     textAlign: 'center',
     lineHeight: 22,
+  },
+  lockedAvatarGlow: {
+    borderColor: 'rgba(255,255,255,0.2)',
+    shadowOpacity: 0,
+  },
+  blurredAvatar: {
+    opacity: 0.6,
+  },
+  lockOverlay: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    width: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#1A1A2E',
   }
 });
 

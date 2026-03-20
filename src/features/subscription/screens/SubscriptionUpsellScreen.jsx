@@ -22,12 +22,14 @@ import {
   verifyPaymentAndCreateSubscription,
   getSubscriptionStatus,
 } from '../../../services/subscription/subscriptionService';
+import { useAuth } from '../../../context/AuthContext';
 
 const {width} = Dimensions.get('window');
 
 const SubscriptionUpsellScreenContent = () => {
   const navigation = useNavigation();
   const stripe = useStripe();
+  const { pendingIntent, setPendingIntent } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -198,6 +200,19 @@ const SubscriptionUpsellScreenContent = () => {
       );
 
       if (verifyResponse?.success) {
+        // 🎯 Post-Purchase Redirect Logic
+        const handlePostPurchaseNav = () => {
+            if (pendingIntent?.type === 'profile_view' && pendingIntent?.userId) {
+                const targetId = pendingIntent.userId;
+                setPendingIntent(null); // Clear first to avoid loops
+                navigation.replace('UserProfileView', { userId: targetId });
+                return;
+            }
+            // Standard fallback
+            setPendingIntent(null);
+            navigation.navigate(AppRoute.HomeTabs);
+        };
+
         Alert.alert(
           'Congratulations!',
           plan.isUpgrade
@@ -206,7 +221,7 @@ const SubscriptionUpsellScreenContent = () => {
           [
             {
               text: 'Great!',
-              onPress: () => navigation.navigate(AppRoute.HomeTabs),
+              onPress: handlePostPurchaseNav,
             },
           ],
         );

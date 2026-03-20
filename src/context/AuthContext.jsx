@@ -18,6 +18,7 @@ export const AuthProvider = ({children}) => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [profileLoading, setProfileLoading] = useState(false);
+  const [pendingIntent, setPendingIntent] = useState(null); // { type, userId, ... }
   const {resetVisited} = useInitialLoad();
 
   const logout = useCallback(async () => {
@@ -191,6 +192,8 @@ export const AuthProvider = ({children}) => {
         logout,
         setProfile,
         loadProfile,
+        pendingIntent,
+        setPendingIntent,
         getNextOnboardingScreen,
       }}>
       {children}
