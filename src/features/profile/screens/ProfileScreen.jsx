@@ -550,6 +550,7 @@ const ProfileScreen = () => {
         photoUrl={selectedPhoto}
         targetUserId={userId}
         currentUserId={userId}
+        navigation={navigation}
       />
     </SafeAreaView>
   );

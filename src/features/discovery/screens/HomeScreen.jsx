@@ -86,7 +86,7 @@ const easeIn = t => {
 
 // ─── ProfileModal ──────────────────────────────────────────────────────────────
 
-const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId}) => {
+const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId, navigation}) => {
   // Animation values
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const backdropOpacity = useSharedValue(0);
@@ -112,6 +112,24 @@ const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId
   const backdropAnimStyle = useAnimatedStyle(() => ({
     opacity: backdropOpacity.value,
   }));
+
+  // 📝 DRAG TO CLOSE LOGIC
+  const panGesture = Gesture.Pan()
+    .onUpdate((event) => {
+      // Only allow dragging down
+      if (event.translationY > 0) {
+        translateY.value = event.translationY;
+      }
+    })
+    .onEnd((event) => {
+      if (event.translationY > 150 || event.velocityY > 1000) {
+        // Dragged enough or flicked fast -> CLOSE
+        runOnJS(onClose)();
+      } else {
+        // Return to top
+        translateY.value = withSpring(0, { damping: 20, stiffness: 150 });
+      }
+    });
 
   if (!profile) return null;
 
@@ -229,20 +247,25 @@ const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId
       <Animated.View style={[modalStyles.backdrop, backdropAnimStyle]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
-
+ 
       {/* Sheet */}
       <Animated.View style={[modalStyles.sheet, modalAnimStyle]}>
-        {/* Sticky Header Overlay */}
-        <Animated.View style={[modalStyles.stickyHeader, headerStyle]}>
-          <Text style={modalStyles.stickyHeaderText}>
-            {profile.name}{profile.age ? `, ${profile.age}` : ''}
-          </Text>
-        </Animated.View>
+        {/* Drag handle area (replaces pill / header for swipe-down) */}
+        <GestureDetector gesture={panGesture}>
+          <View style={modalStyles.gestureArea}>
+            {/* Sticky Header Overlay */}
+            <Animated.View style={[modalStyles.stickyHeader, headerStyle]}>
+              <Text style={modalStyles.stickyHeaderText}>
+                {profile.name}{profile.age ? `, ${profile.age}` : ''}
+              </Text>
+            </Animated.View>
 
-        {/* Close pill */}
-        <View style={modalStyles.pillWrapper}>
-          <View style={modalStyles.pill} />
-        </View>
+            {/* Close pill */}
+            <View style={modalStyles.pillWrapper}>
+              <View style={modalStyles.pill} />
+            </View>
+          </View>
+        </GestureDetector>
 
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -253,137 +276,139 @@ const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId
           decelerationRate="fast"
           overScrollMode="always"
           contentContainerStyle={modalStyles.scrollContent}>
-
-          {/* ── Images ── */}
-          <View style={modalStyles.imagesContainer}>
-            <FlatList
-              data={allPhotos}
-              keyExtractor={(_, i) => `photo-${i}`}
-              renderItem={({item, index}) => <PhotoItem photoUri={item} index={index} />}
-              scrollEnabled={false}
-              pagingEnabled={false}
-              ItemSeparatorComponent={() => <View style={{height: 12}} />}
-            />
-            {/* Overlay for first image info - now moved below or adjusted to fit card layout */}
-            <View style={modalStyles.headerInfoCard}>
-              <View style={modalStyles.headerInfoContent}>
-                {profile.isMostCompatible && (
-                  <View style={modalStyles.compatibleBadge}>
-                    <MaterialCommunityIcons name="star" size={12} color="#FFF" />
-                    <Text style={modalStyles.compatibleText}>MOST COMPATIBLE</Text>
-                  </View>
-                )}
-                <View style={modalStyles.nameRow}>
-                  <Text style={modalStyles.modalName}>
-                    {profile.name}{profile.age ? `, ${profile.age}` : ''}
-                  </Text>
-                  {profile.matchPercentage ? (
-                    <LinearGradient
-                      colors={['#9411FA', '#E040C8']}
-                      start={{x: 0, y: 0}}
-                      end={{x: 1, y: 0}}
-                      style={modalStyles.matchPercentageBadge}>
-                      <Text style={modalStyles.matchPercentageText}>
-                        {profile.matchPercentage}%
-                      </Text>
-                    </LinearGradient>
-                  ) : null}
-                </View>
-                {profile.jobTitle ? (
-                  <Text style={modalStyles.modalJobTitle}>💼 {profile.jobTitle}</Text>
-                ) : null}
-                {finalLocation ? (
-                  <Text style={modalStyles.modalLocation}>📍 {finalLocation}</Text>
-                ) : null}
-              </View>
-            </View>
-          </View>
-
-          {/* ── Details Container ── */}
-          <View style={modalStyles.detailsContainer}>
-
-            {/* About me chips - Personalized Details */}
-            {(profile.height || profile.gender || profile.drink || profile.religion || profile.politics) ? (
-              <View style={modalStyles.profileSectionCard}>
-                <Text style={modalStyles.sectionLabel}>Personal Info</Text>
-                <View style={modalStyles.chipsRow}>
-                  <InfoChip icon="📏" label={profile.height ? `${profile.height}${profile.height.includes('cm') ? '' : ' cm'}` : null} />
-                  <InfoChip icon="👤" label={profile.gender} />
-                  <InfoChip icon="🍷" label={profile.drink && profile.drink !== 'No' ? profile.drink : null} />
-                  <InfoChip icon="⛪" label={profile.religion} />
-                  <InfoChip icon="⚖️" label={profile.politics} />
-                </View>
-              </View>
-            ) : null}
-
-            {/* Bio */}
-            {profile.bio ? (
-              <View style={modalStyles.profileSectionCard}>
-                <Text style={modalStyles.sectionLabel}>About</Text>
-                <Text style={modalStyles.bioText}>{profile.bio}</Text>
-              </View>
-            ) : null}
-
-            {/* I'm looking for */}
-            {(profile.datingIntention || profile.relationshipType) ? (
-              <View style={modalStyles.profileSectionCard}>
-                <Text style={modalStyles.sectionLabel}>Looking For</Text>
-                <View style={modalStyles.intentionChip}>
-                  <Text style={modalStyles.intentionText}>
-                    {profile.datingIntention || profile.relationshipType}
-                  </Text>
-                </View>
-              </View>
-            ) : null}
-
-            {/* Interests */}
-            {profile.interests && profile.interests.length > 0 ? (
-              <View style={modalStyles.profileSectionCard}>
-                <Text style={modalStyles.sectionLabel}>Interests</Text>
-                <View style={modalStyles.tagsRow}>
-                  {profile.interests.map((interest, i) => (
-                    <View key={i} style={modalStyles.interestTag}>
-                      <Text style={modalStyles.interestTagText}>{interest}</Text>
+          
+          <Pressable style={{flex: 1}}>
+            {/* ── Images ── */}
+            <View style={modalStyles.imagesContainer}>
+              <FlatList
+                data={allPhotos}
+                keyExtractor={(_, i) => `photo-${i}`}
+                renderItem={({item, index}) => <PhotoItem photoUri={item} index={index} />}
+                scrollEnabled={false}
+                pagingEnabled={false}
+                ItemSeparatorComponent={() => <View style={{height: 12}} />}
+              />
+              {/* Overlay for first image info */}
+              <View style={modalStyles.headerInfoCard}>
+                <View style={modalStyles.headerInfoContent}>
+                  {profile.isMostCompatible && (
+                    <View style={modalStyles.compatibleBadge}>
+                      <MaterialCommunityIcons name="star" size={12} color="#FFF" />
+                      <Text style={modalStyles.compatibleText}>MOST COMPATIBLE</Text>
                     </View>
-                  ))}
-                </View>
-              </View>
-            ) : null}
-
-            {/* Prompts */}
-            {profile.prompts && profile.prompts.length > 0 &&
-              profile.prompts.map((prompt, i) =>
-                prompt && prompt.answer ? (
-                  <View key={i} style={modalStyles.profileSectionCard}>
-                    <Text style={modalStyles.sectionLabel}>{prompt.prompt || 'My thoughts'}</Text>
-                    <Text style={modalStyles.promptAnswer}>{prompt.answer}</Text>
+                  )}
+                  <View style={modalStyles.nameRow}>
+                    <Text style={modalStyles.modalName}>
+                      {profile.name}{profile.age ? `, ${profile.age}` : ''}
+                    </Text>
+                    {profile.matchPercentage ? (
+                      <LinearGradient
+                        colors={['#9411FA', '#E040C8']}
+                        start={{x: 0, y: 0}}
+                        end={{x: 1, y: 0}}
+                        style={modalStyles.matchPercentageBadge}>
+                        <Text style={modalStyles.matchPercentageText}>
+                          {profile.matchPercentage}%
+                        </Text>
+                      </LinearGradient>
+                    ) : null}
                   </View>
-                ) : null,
-              )}
-
-            {/* Work & Education */}
-            {(profile.jobTitle || profile.school) ? (
-              <View style={modalStyles.profileSectionCard}>
-                <Text style={modalStyles.sectionLabel}>Work & Education</Text>
-                <View style={modalStyles.workEduContent}>
                   {profile.jobTitle ? (
-                    <Text style={modalStyles.workText}>💼 {profile.jobTitle}</Text>
+                    <Text style={modalStyles.modalJobTitle}>💼 {profile.jobTitle}</Text>
                   ) : null}
-                  {profile.school ? (
-                    <Text style={modalStyles.workText}>🎓 {profile.school}</Text>
+                  {finalLocation ? (
+                    <Text style={modalStyles.modalLocation}>📍 {finalLocation}</Text>
                   ) : null}
                 </View>
               </View>
-            ) : null}
-
-            {/* Bottom close button */}
-            <View style={modalStyles.closeButtonWrapper}>
-              <Pressable style={modalStyles.closeIconButton} onPress={onClose}>
-                <MaterialCommunityIcons name="close" size={24} color="#555" />
-              </Pressable>
             </View>
 
-          </View>
+            {/* ── Details Container ── */}
+            <View style={modalStyles.detailsContainer}>
+
+              {/* Personal Info */}
+              {(profile.height || profile.gender || profile.drink || profile.religion || profile.politics) ? (
+                <View style={modalStyles.profileSectionCard}>
+                  <Text style={modalStyles.sectionLabel}>Personal Info</Text>
+                  <View style={modalStyles.chipsRow}>
+                    <InfoChip icon="📏" label={profile.height ? `${profile.height}${profile.height.includes('cm') ? '' : ' cm'}` : null} />
+                    <InfoChip icon="👤" label={profile.gender} />
+                    <InfoChip icon="🍷" label={profile.drink && profile.drink !== 'No' ? profile.drink : null} />
+                    <InfoChip icon="⛪" label={profile.religion} />
+                    <InfoChip icon="⚖️" label={profile.politics} />
+                  </View>
+                </View>
+              ) : null}
+
+              {/* Bio */}
+              {profile.bio ? (
+                <View style={modalStyles.profileSectionCard}>
+                  <Text style={modalStyles.sectionLabel}>About</Text>
+                  <Text style={modalStyles.bioText}>{profile.bio}</Text>
+                </View>
+              ) : null}
+
+              {/* Looking For */}
+              {(profile.datingIntention || profile.relationshipType) ? (
+                <View style={modalStyles.profileSectionCard}>
+                  <Text style={modalStyles.sectionLabel}>Looking For</Text>
+                  <View style={modalStyles.intentionChip}>
+                    <Text style={modalStyles.intentionText}>
+                      {profile.datingIntention || profile.relationshipType}
+                    </Text>
+                  </View>
+                </View>
+              ) : null}
+
+              {/* Interests */}
+              {profile.interests && profile.interests.length > 0 ? (
+                <View style={modalStyles.profileSectionCard}>
+                  <Text style={modalStyles.sectionLabel}>Interests</Text>
+                  <View style={modalStyles.tagsRow}>
+                    {profile.interests.map((interest, i) => (
+                      <View key={i} style={modalStyles.interestTag}>
+                        <Text style={modalStyles.interestTagText}>{interest}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              ) : null}
+
+              {/* Prompts */}
+              {profile.prompts && profile.prompts.length > 0 &&
+                profile.prompts.map((prompt, i) =>
+                  prompt && prompt.answer ? (
+                    <View key={i} style={modalStyles.profileSectionCard}>
+                      <Text style={modalStyles.sectionLabel}>{prompt.prompt || 'My thoughts'}</Text>
+                      <Text style={modalStyles.promptAnswer}>{prompt.answer}</Text>
+                    </View>
+                  ) : null,
+                )}
+
+              {/* Work & Education */}
+              {(profile.jobTitle || profile.school) ? (
+                <View style={modalStyles.profileSectionCard}>
+                  <Text style={modalStyles.sectionLabel}>Work & Education</Text>
+                  <View style={modalStyles.workEduContent}>
+                    {profile.jobTitle ? (
+                      <Text style={modalStyles.workText}>💼 {profile.jobTitle}</Text>
+                    ) : null}
+                    {profile.school ? (
+                      <Text style={modalStyles.workText}>🎓 {profile.school}</Text>
+                    ) : null}
+                  </View>
+                </View>
+              ) : null}
+
+              {/* Bottom close button */}
+              <View style={modalStyles.closeButtonWrapper}>
+                <Pressable style={modalStyles.closeIconButton} onPress={onClose}>
+                  <MaterialCommunityIcons name="close" size={24} color="#555" />
+                </Pressable>
+              </View>
+
+            </View>
+          </Pressable>
         </ScrollView>
 
         <PhotoInteractionViewer
@@ -392,6 +417,7 @@ const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId
           photoUrl={selectedPhoto}
           targetUserId={profile.id || profile._id}
           currentUserId={currentUserId}
+          navigation={navigation}
         />
       </Animated.View>
     </Modal>
@@ -1187,6 +1213,7 @@ const HomeScreen = ({navigation}) => {
         onClose={() => setModalVisible(false)}
         currentLocation={currentLocation}
         currentUserId={currentUserId}
+        navigation={navigation}
       />
     </SafeAreaView>
   );
@@ -1499,6 +1526,14 @@ const modalStyles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 8,
     zIndex: 10,
+    backgroundColor: '#F8F9FA',
+  },
+  gestureArea: {
+    width: '100%',
+    paddingTop: 12,
+    paddingBottom: 20,
+    zIndex: 30,
+    alignItems: 'center',
     backgroundColor: '#F8F9FA',
   },
   pill: {
