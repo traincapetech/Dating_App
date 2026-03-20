@@ -20,7 +20,7 @@ const LOCAL_API_URL = 'http://192.168.1.65:3000/api';
 const LOCAL_SOCKET_URL = 'http://192.168.1.65:3000';
 
 // Set to true for production, false for local development
-const IS_PRODUCTION = false;
+const IS_PRODUCTION = true;
 
 // Logging moved below after variables are defined
 
