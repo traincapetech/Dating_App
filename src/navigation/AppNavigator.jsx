@@ -21,6 +21,7 @@ import DatingPreferencesScreen from '../features/onboarding/screens/DatingPrefer
 import LifestyleScreen from '../features/onboarding/screens/LifestyleScreen.jsx';
 import ProfilePromptsScreen from '../features/onboarding/screens/ProfilePromptsScreen.jsx';
 import MediaUploadScreen from '../features/onboarding/screens/MediaUploadScreen.jsx';
+import PersonalDetailsScreen from '../features/onboarding/screens/PersonalDetailsScreen.jsx';
 import SubscriptionUpsellScreen from '../features/subscription/screens/SubscriptionUpsellScreen.jsx';
 import HelpCentreScreen from '../features/settings/screens/HelpCentreScreen.jsx';
 import ReportProblemScreen from '../features/settings/screens/ReportProblemScreen.jsx';
@@ -104,7 +105,7 @@ const AppNavigator = () => {
           />
           <Stack.Screen
             name="PersonalDetails"
-            component={PlaceholderScreen}
+            component={PersonalDetailsScreen}
           />
           <Stack.Screen name="Lifestyle" component={LifestyleScreen} />
           <Stack.Screen
