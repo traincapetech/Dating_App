@@ -134,32 +134,67 @@ export async function deleteFCMToken() {
 }
 
 // Setup notification handlers
+import notifee, { EventType } from '@notifee/react-native';
+import { displayChatNotification, updateNotificationWithReply } from '../notificationHelper.js';
+import { sendSmartMessage } from '../chatSendService.js';
+
+// Setup notification handlers
 export function setupNotificationHandlers(navigation) {
-  // Handle foreground notifications
+  // Handle FCM foreground notifications (App is open)
   const unsubscribeForeground = getMessaging().onMessage(
     async remoteMessage => {
       console.log('Foreground notification received:', remoteMessage);
+      if (remoteMessage.data?.type === 'chat_message') {
+        // Only display if user is not actively chatting with them right now
+        // Typically you'd check active route, but for safety we draw it
+        await displayChatNotification(remoteMessage.data);
+      }
     },
   );
 
-  // Handle background/quit state notifications
+  // Handle Notifee Actions (Tap on notification or Reply button) while app is open
+  const unsubscribeNotifee = notifee.onForegroundEvent(async ({ type, detail }) => {
+    const { notification, pressAction, input } = detail;
+
+    // Handle Quick Reply while app is open
+    if (type === EventType.ACTION_PRESS && pressAction?.id === 'reply') {
+      const replyText = input?.trim();
+      if (!replyText || !notification?.data) return;
+      
+      const { chatId, senderId } = notification.data;
+      const myId = await getUserId();
+      
+      const result = await sendSmartMessage(replyText, chatId, senderId, myId);
+      if (result.success) {
+        await updateNotificationWithReply(notification, replyText);
+      }
+    }
+
+    // Handle standard tap on the whole notification
+    if (type === EventType.ACTION_PRESS && pressAction?.id === 'default') {
+      if (notification?.data?.type === 'chat_message') {
+        navigation?.navigate('Messages'); // Or direct to ChatScreen if you pass params
+      }
+    }
+  });
+
+  // Handle FCM OS-level notification clicks (if not data-only)
   getMessaging().onNotificationOpenedApp(remoteMessage => {
-    console.log('Notification opened app:', remoteMessage);
-    // Navigate to relevant screen
-    if (remoteMessage.data?.type === 'message') {
+    console.log('Notification opened app (FCM):', remoteMessage);
+    if (remoteMessage.data?.type === 'message' || remoteMessage.data?.type === 'chat_message') {
       navigation?.navigate('Messages');
     } else if (remoteMessage.data?.type === 'match') {
       navigation?.navigate('HomeTabs');
     }
   });
 
-  // Check if app was opened from a quit state via notification
+  // Handle initial boot from FCM notification
   getMessaging()
     .getInitialNotification()
     .then(remoteMessage => {
       if (remoteMessage) {
-        console.log('App opened from notification:', remoteMessage);
-        if (remoteMessage.data?.type === 'message') {
+        console.log('App opened from notification (FCM Init):', remoteMessage);
+        if (remoteMessage.data?.type === 'message' || remoteMessage.data?.type === 'chat_message') {
           navigation?.navigate('Messages');
         } else if (remoteMessage.data?.type === 'match') {
           navigation?.navigate('HomeTabs');
@@ -167,7 +202,20 @@ export function setupNotificationHandlers(navigation) {
       }
     });
 
-  return unsubscribeForeground;
+  // Wait, also check Notifee initial boot in case FCM didn't catch the data-only proxy
+  notifee.getInitialNotification().then(initialNotification => {
+    if (initialNotification) {
+      console.log('App opened from notification (Notifee Init):', initialNotification);
+      if (initialNotification.notification.data?.type === 'chat_message') {
+        setTimeout(() => navigation?.navigate('Messages'), 500); // Small delay to let Nav mount
+      }
+    }
+  });
+
+  return () => {
+    unsubscribeForeground();
+    unsubscribeNotifee();
+  };
 }
 
 // Setup token refresh listener

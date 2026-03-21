@@ -34,3 +34,37 @@ export const validateCoordinates = (latitude, longitude) => {
 
   return true;
 };
+
+/**
+ * Decode base64 string for React Native
+ * @param {string} input 
+ * @returns {string}
+ */
+const atob = (input) => {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+  let str = String(input).replace(/=+$/, '');
+  let output = '';
+  if (str.length % 4 === 1) throw new Error("'atob' failed: The string to be decoded is not correctly encoded.");
+  for (let bc = 0, bs, buffer, idx = 0; (buffer = str.charAt(idx++)); ~buffer && ((bs = bc % 4 ? bs * 64 + buffer : buffer), bc++ % 4) ? (output += String.fromCharCode(255 & (bs >> ((-2 * bc) & 6)))) : 0) {
+    buffer = chars.indexOf(buffer);
+  }
+  return output;
+};
+
+/**
+ * Decode JWT token payload
+ * @param {string} token - The JWT token
+ * @returns {any} - Decoded payload or null
+ */
+export const decodeJWT = (token) => {
+  if (!token) return null;
+  try {
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+    const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(base64));
+  } catch (error) {
+    console.warn('[SafeUtils] JWT decode error:', error.message);
+    return null;
+  }
+};

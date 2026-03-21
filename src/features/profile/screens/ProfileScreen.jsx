@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import {decodeJWT} from '../../../utils/safeUtils';
 import {useNavigation, useFocusEffect} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {colors, typography, spacing} from '../../../theme';
@@ -70,8 +71,8 @@ const ProfileScreen = () => {
         const token = await AsyncStorage.getItem('@pryvo/token');
         if (token && token !== 'undefined') {
           try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            currentUserId = payload.userId || payload.id;
+            const payload = decodeJWT(token);
+            currentUserId = payload?.userId || payload?.id;
             setUserId(currentUserId);
           } catch (e) {
             console.error('Failed to decode token:', e);
@@ -391,33 +392,7 @@ const ProfileScreen = () => {
             </View>
           )}
 
-        {/* Credits/Wallet Balance Card (Integrated) */}
-        <Pressable
-          onPress={() => navigation.navigate('Wallet')}
-          style={styles.walletShortcutCard}>
-          <LinearGradient
-            colors={['#FFD700' + '20', '#FFA500' + '10']}
-            start={{x: 0, y: 0}}
-            end={{x: 1, y: 1}}
-            style={styles.walletGradient}>
-            <View style={styles.walletHeaderInfo}>
-              <View style={styles.walletIconContainer}>
-                <Icon name="piggy-bank" size={24} color="#DAA520" />
-              </View>
-              <View style={styles.walletTextCol}>
-                <Text style={styles.walletTitle}>My Credits</Text>
-                <Text style={styles.walletSubtitle}>
-                  {profile?.credits || 0} Pryvo Credits
-                </Text>
-              </View>
-              <Pressable
-                style={styles.addCreditsBtn}
-                onPress={() => navigation.navigate('Wallet')}>
-                <Text style={styles.addCreditsText}>Buy More</Text>
-              </Pressable>
-            </View>
-          </LinearGradient>
-        </Pressable>
+        
         </View>
 
         {/* Dating Intention Badge (Integrated) */}

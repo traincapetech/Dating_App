@@ -21,6 +21,7 @@ import {
   uploadProfileImage,
   updateProfileApi,
 } from '../../../services/profile/profileService';
+import {decodeJWT} from '../../../utils/safeUtils';
 
 const MediaUploadScreen = () => {
   const navigation = useNavigation();
@@ -563,10 +564,9 @@ const MediaUploadScreen = () => {
         // Try to get from token (decode JWT)
         const token = await AsyncStorage.getItem('@pryvo/token');
         if (token && token !== 'undefined') {
-          // Simple JWT decode (just get payload)
           try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            userId = payload.userId || payload.id;
+            const payload = decodeJWT(token);
+            userId = payload?.userId || payload?.id;
           } catch (e) {
             console.error('Failed to decode token:', e);
           }

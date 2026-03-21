@@ -16,6 +16,7 @@ import {saveProfilePrompts} from '../../../services/profile/profileService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {useAuth} from '../../../context/AuthContext';
+import {decodeJWT} from '../../../utils/safeUtils';
 
 const ProfilePromptsScreen = () => {
   const {profile, loadProfile} = useAuth();
@@ -153,8 +154,8 @@ const ProfilePromptsScreen = () => {
         const token = await AsyncStorage.getItem('@pryvo/token');
         if (token && token !== 'undefined') {
           try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            userId = payload.userId || payload.id;
+            const payload = decodeJWT(token);
+            userId = payload?.userId || payload?.id;
           } catch (e) {
             console.error('Failed to decode token:', e);
           }
