@@ -61,9 +61,17 @@ const GiftSelectionModal = ({visible, onClose, onSend, userId}) => {
     setSending(true);
     try {
       await onSend(selectedGift);
+      try {
+        const { triggerSuccessHaptic } = require('../../utils/haptics');
+        triggerSuccessHaptic();
+      } catch (e) {}
       onClose();
     } catch (error) {
       console.error('Error sending gift:', error);
+      try {
+        const { triggerErrorHaptic } = require('../../utils/haptics');
+        triggerErrorHaptic();
+      } catch (e) {}
     } finally {
       setSending(false);
     }
@@ -74,7 +82,10 @@ const GiftSelectionModal = ({visible, onClose, onSend, userId}) => {
     return (
       <Pressable
         style={[styles.giftItem, isSelected && styles.giftItemSelected]}
-        onPress={() => setSelectedGift(item)}>
+        onPress={() => {
+          setSelectedGift(item);
+          try { require('../../utils/haptics').triggerLightHaptic(); } catch(e) {}
+        }}>
         <Image source={giftImages[item.slug]} style={styles.giftIcon} />
         <Text style={styles.giftName}>{item.name}</Text>
         <View style={styles.coinRow}>

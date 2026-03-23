@@ -151,7 +151,7 @@ const SplashScreen = ({navigation}) => {
         resizeMode="cover"
         repeat={true}
         muted={true}
-        paused={true} // TEST: Pause video to troubleshoot emulator crash
+        paused={false} // TEST: Pause video to troubleshoot emulator crash
         playWhenInactive={true}
         shutterColor="transparent"
       /> */}

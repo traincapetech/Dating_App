@@ -852,6 +852,12 @@ const HomeScreen = ({navigation}) => {
       }
     }
 
+    // 🔥 Haptic feedback on swipe
+    try {
+      const { triggerHeavyHaptic, triggerSuccessHaptic } = require('../../../utils/haptics');
+      triggerHeavyHaptic();
+    } catch(e) {}
+
     translateX.value = withTiming(
       direction === 'right' ? SCREEN_WIDTH * 1.5 : -SCREEN_WIDTH * 1.5,
       {duration: 250},
@@ -876,6 +882,12 @@ const HomeScreen = ({navigation}) => {
             setDailyLikeInfo(updatedInfo);
           }
           if (result?.isMatch && result?.match) {
+            // 🔥 Match success haptic!
+            try {
+              const { triggerSuccessHaptic } = require('../../../utils/haptics');
+              triggerSuccessHaptic();
+            } catch(e){}
+
             setMatchPopup({
               visible: true,
               myPhoto,
