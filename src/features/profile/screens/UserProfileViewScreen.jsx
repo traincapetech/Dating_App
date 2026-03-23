@@ -28,6 +28,13 @@ import { photoSocialService } from '../../../services/photoSocialService';
 import PhotoInteractionViewer from '../../../components/profile/PhotoInteractionViewer';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import Animated, { 
+  useSharedValue, 
+  useAnimatedStyle, 
+  withSpring 
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../../../context/AuthContext';
 
 import {
   likeUser,
@@ -43,10 +50,9 @@ const PHOTO_SIZE = (SCREEN_WIDTH - 4) / 3; // 3-column grid with 1px gaps
 // but removes self-profile controls (edit, settings, strength card, prompts).
 // ─────────────────────────────────────────────────────────────────────────────
 
-const UserProfileViewScreen = () => {
-  const navigation = useNavigation();
-  const route = useRoute();
+const UserProfileViewScreen = ({navigation, route}) => {
   const {userId, theirName, theirPhoto, theirAge} = route.params || {};
+  const { profile: myProfile } = useAuth();
 
   const [profile, setProfile] = useState(null);
   const [streak, setStreak] = useState(null);
@@ -63,9 +69,18 @@ const UserProfileViewScreen = () => {
     visible: false,
     myPhoto: null,
     theirPhoto: null,
+    theirName: '',
+    theirAge: null,
     matchId: null,
   });
   const socketRef = useRef(null);
+  const insets = useSafeAreaInsets();
+  
+  // Animation for button press
+  const buttonScale = useSharedValue(1);
+  const animatedButtonStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: buttonScale.value }],
+  }));
 
   // 📸 Social Interaction System
   const { photosStats, handleLike, handleComment } = usePhotoSocial(userId);
@@ -275,17 +290,15 @@ const UserProfileViewScreen = () => {
         
         if (res.isMatch && res.match) {
           // It's a match!
-          const myProfileStr = await AsyncStorage.getItem('@pryvo_user_profile');
-          let myPhoto = null;
-          if (myProfileStr) {
-            const myProfile = JSON.parse(myProfileStr);
-            myPhoto = myProfile?.media?.media?.[0]?.url || myProfile?.photos?.[0];
-          }
+          // Get MY photo from AuthContext
+          const myPhoto = myProfile?.media?.media?.[0]?.url || myProfile?.photos?.[0] || null;
 
           setMatchInfo({
             visible: true,
             myPhoto: myPhoto,
             theirPhoto: photos[0] || null,
+            theirName: name, // Dynamic name from the profile view
+            theirAge: age,
             matchId: res.match._id,
           });
           setInteractionStatus(prev => ({ ...prev, isMatched: true }));
@@ -567,51 +580,71 @@ const UserProfileViewScreen = () => {
         )}
       </ScrollView>
 
-      {/* ── Floating Send Match Footer ── */}
+      {/* ── Fixed Bottom CTA Footer ── */}
       {showMatchButton && (
-        <View style={styles.footerContainer}>
-          <LinearGradient
-            colors={interactionStatus.isLiked ? ['#EFEFEF', '#EFEFEF'] : ['#8E2DE2', '#4A00E0']}
-            start={{x: 0, y: 0}}
-            end={{x: 1, y: 0}}
-            style={styles.matchButtonGradient}>
-            <Pressable
-              disabled={interactionStatus.isLiked || isSendingLike}
-              onPress={handleSendLike}
-              style={({pressed}) => [
-                styles.matchButton,
-                pressed && !interactionStatus.isLiked && {opacity: 0.8},
-              ]}>
-              {isSendingLike ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <>
-                  <Icon
-                    name={interactionStatus.isLiked ? "check-circle" : "heart"}
-                    size={20}
-                    color={interactionStatus.isLiked ? colors.textSecondary : "#FFF"}
-                    style={{marginRight: 8}}
-                  />
-                  <Text style={[
-                      styles.matchButtonText,
-                      interactionStatus.isLiked && {color: colors.textSecondary}
-                  ]}>
-                    {interactionStatus.isLiked ? 'Request Sent' : 'Send Match'}
-                  </Text>
-                </>
-              )}
-            </Pressable>
-          </LinearGradient>
+        <View style={[
+          styles.footerContainer, 
+          { paddingBottom: Math.max(insets.bottom, 20) }
+        ]}>
+          <Animated.View style={[styles.matchButtonWrapper, animatedButtonStyle]}>
+            <LinearGradient
+              colors={interactionStatus.isLiked ? ['#F3F4F6', '#E5E7EB'] : ['#8E2DE2', '#4A00E0']}
+              start={{x: 0, y: 0}}
+              end={{x: 1, y: 0}}
+              style={styles.matchButtonGradient}>
+              <Pressable
+                disabled={interactionStatus.isLiked || isSendingLike}
+                onPressIn={() => (buttonScale.value = withSpring(0.96))}
+                onPressOut={() => (buttonScale.value = withSpring(1))}
+                onPress={handleSendLike}
+                style={({pressed}) => [
+                  styles.matchButton,
+                  pressed && !interactionStatus.isLiked && {opacity: 0.9},
+                ]}>
+                {isSendingLike ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <View style={styles.buttonContent}>
+                    <Icon
+                      name={interactionStatus.isLiked ? "check-circle" : "heart"}
+                      size={24}
+                      color={interactionStatus.isLiked ? colors.textSecondary : "#FFF"}
+                      style={styles.buttonIcon}
+                    />
+                    <Text style={[
+                        styles.matchButtonText,
+                        interactionStatus.isLiked && {color: colors.textSecondary}
+                    ]}>
+                      {interactionStatus.isLiked ? 'Request Sent' : 'Send Match'}
+                    </Text>
+                  </View>
+                )}
+              </Pressable>
+            </LinearGradient>
+          </Animated.View>
         </View>
       )}
 
       <MatchPopup
         visible={matchInfo.visible}
-        onClose={() => setMatchInfo(prev => ({...prev, visible: false}))}
         myPhoto={matchInfo.myPhoto}
         theirPhoto={matchInfo.theirPhoto}
-        matchId={matchInfo.matchId}
-        navigation={navigation}
+        theirName={matchInfo.theirName}
+        onContinue={() => setMatchInfo(prev => ({...prev, visible: false}))}
+        onMessage={() => {
+            const { matchId, theirName, theirPhoto, theirAge } = matchInfo;
+            const theirId = userId;
+            setMatchInfo(prev => ({...prev, visible: false}));
+            if (matchId && theirId) {
+              navigation.navigate('ChatScreen', {
+                matchId, 
+                theirId, 
+                theirName, 
+                theirPhoto, 
+                theirAge
+              });
+            }
+        }}
       />
 
       <PhotoInteractionViewer
@@ -634,7 +667,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 120, // Enough space to scroll past the fixed footer
   },
 
   // ── Header ──────────────────────────────────────────────────────────────────
@@ -934,35 +967,55 @@ const styles = StyleSheet.create({
   },
   footerContainer: {
     position: 'absolute',
-    bottom: 30,
-    left: 20,
-    right: 20,
-    alignItems: 'center',
-  },
-  matchButtonGradient: {
-    borderRadius: 30,
-    width: '100%',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
     ...Platform.select({
       ios: {
-        shadowColor: '#8E2DE2',
-        shadowOffset: {width: 0, height: 4},
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
       },
-      android: {elevation: 6},
+      android: { elevation: 12 },
     }),
   },
+  matchButtonWrapper: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  matchButtonGradient: {
+    borderRadius: 33,
+    width: '100%',
+    overflow: 'hidden',
+  },
   matchButton: {
-    height: 56,
+    height: 66,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    width: '100%',
+  },
+  buttonIcon: {
+    marginRight: 10,
   },
   matchButtonText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 20,
     fontFamily: typography.fontFamilyBold,
+    letterSpacing: 0.4,
+    paddingVertical: 4, // Added vertical breathing room
   },
 });
 

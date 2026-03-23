@@ -44,9 +44,10 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import {useLoading} from '../../../context/LoadingContext';
 import {useInitialLoad} from '../../../context/InitialLoadContext';
 import FullScreenLoader from '../../../components/layout/FullScreenLoader';
-import { usePhotoSocial } from '../../../hooks/usePhotoSocial';
-import { photoSocialService } from '../../../services/photoSocialService';
+import {usePhotoSocial} from '../../../hooks/usePhotoSocial';
+import {photoSocialService} from '../../../services/photoSocialService';
 import PhotoInteractionViewer from '../../../components/profile/PhotoInteractionViewer';
+import {useAuth} from '../../../context/AuthContext';
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - spacing.xl * 2;
@@ -86,7 +87,14 @@ const easeIn = t => {
 
 // ─── ProfileModal ──────────────────────────────────────────────────────────────
 
-const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId, navigation}) => {
+const ProfileModal = ({
+  visible,
+  profile,
+  onClose,
+  currentLocation,
+  currentUserId,
+  navigation,
+}) => {
   // Animation values
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const backdropOpacity = useSharedValue(0);
@@ -94,14 +102,21 @@ const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId
   // 📸 Social Interaction Engagement for Modal
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [viewerVisible, setViewerVisible] = useState(false);
-  
+
   useEffect(() => {
     if (visible) {
       backdropOpacity.value = withTiming(1, {duration: 300, easing: easeOut});
-      translateY.value = withSpring(0, {damping: 22, stiffness: 200, mass: 0.8});
+      translateY.value = withSpring(0, {
+        damping: 22,
+        stiffness: 200,
+        mass: 0.8,
+      });
     } else {
       backdropOpacity.value = withTiming(0, {duration: 250});
-      translateY.value = withTiming(SCREEN_HEIGHT, {duration: 300, easing: easeIn});
+      translateY.value = withTiming(SCREEN_HEIGHT, {
+        duration: 300,
+        easing: easeIn,
+      });
     }
   }, [visible]);
 
@@ -115,19 +130,19 @@ const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId
 
   // 📝 DRAG TO CLOSE LOGIC
   const panGesture = Gesture.Pan()
-    .onUpdate((event) => {
+    .onUpdate(event => {
       // Only allow dragging down
       if (event.translationY > 0) {
         translateY.value = event.translationY;
       }
     })
-    .onEnd((event) => {
+    .onEnd(event => {
       if (event.translationY > 150 || event.velocityY > 1000) {
         // Dragged enough or flicked fast -> CLOSE
         runOnJS(onClose)();
       } else {
         // Return to top
-        translateY.value = withSpring(0, { damping: 20, stiffness: 150 });
+        translateY.value = withSpring(0, {damping: 20, stiffness: 150});
       }
     });
 
@@ -136,7 +151,12 @@ const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId
   // Distance display logic
   const getDistanceLabel = () => {
     let dist = profile.distance ? parseFloat(profile.distance) : null;
-    if (dist === null && currentLocation && !isNaN(profile.latitude) && !isNaN(profile.longitude)) {
+    if (
+      dist === null &&
+      currentLocation &&
+      !isNaN(profile.latitude) &&
+      !isNaN(profile.longitude)
+    ) {
       dist = calculateDistance(
         currentLocation.latitude,
         currentLocation.longitude,
@@ -151,8 +171,10 @@ const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId
   };
 
   const locationStr = profile.city || profile.location || '';
-  const isCoordinates = /^\s*[-+]?\d+(\.\d+)?\s*,\s*[-+]?\d+(\.\d+)?\s*$/.test(locationStr);
-  const displayLocation = isCoordinates ? (profile.city || '') : locationStr;
+  const isCoordinates = /^\s*[-+]?\d+(\.\d+)?\s*,\s*[-+]?\d+(\.\d+)?\s*$/.test(
+    locationStr,
+  );
+  const displayLocation = isCoordinates ? profile.city || '' : locationStr;
   const distanceLabel = getDistanceLabel();
   let finalLocation = '';
   if (displayLocation) {
@@ -165,48 +187,69 @@ const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId
   const allPhotos = profile.photos || [];
 
   // 📸 Integrated Social Engagement Hook for Home Modal
-  const { photosStats, handleLike } = usePhotoSocial(profile.id || profile._id);
+  const {photosStats, handleLike} = usePhotoSocial(profile.id || profile._id);
 
   const PhotoItem = ({photoUri, index}) => {
     const photoId = photoSocialService.generatePhotoId(photoUri);
-    const stats = photosStats[photoId] || { likes: 0, commentsCount: 0, isLiked: false };
+    const stats = photosStats[photoId] || {
+      likes: 0,
+      commentsCount: 0,
+      isLiked: false,
+    };
     const isOwner = currentUserId === (profile.id || profile._id);
 
     const animatedStyle = useAnimatedStyle(() => {
       const inputOffset = index * SCREEN_HEIGHT * 0.62;
       const scale = interpolate(
         scrollY.value,
-        [inputOffset - SCREEN_HEIGHT * 0.5, inputOffset, inputOffset + SCREEN_HEIGHT * 0.5],
+        [
+          inputOffset - SCREEN_HEIGHT * 0.5,
+          inputOffset,
+          inputOffset + SCREEN_HEIGHT * 0.5,
+        ],
         [0.95, 1, 0.95],
-        'clamp'
+        'clamp',
       );
-      return { transform: [{ scale }] };
+      return {transform: [{scale}]};
     });
 
     return (
       <Animated.View style={[modalStyles.photoCard, animatedStyle]}>
-        <Image source={{uri: photoUri}} style={modalStyles.modalPhoto} resizeMode="cover" />
-        
+        <Image
+          source={{uri: photoUri}}
+          style={modalStyles.modalPhoto}
+          resizeMode="cover"
+        />
+
         {/* 📸 Social Overlay Buttons */}
         <View style={modalStyles.photoInteractionOverlay}>
-          <Pressable style={modalStyles.interactionBtn} onPress={() => handleLike(photoUri)}>
-            <MaterialCommunityIcons 
-              name={stats.isLiked ? "heart" : "heart-outline"} 
-              size={24} 
-              color={stats.isLiked ? "#FF2D55" : "#FFF"} 
+          <Pressable
+            style={modalStyles.interactionBtn}
+            onPress={() => handleLike(photoUri)}>
+            <MaterialCommunityIcons
+              name={stats.isLiked ? 'heart' : 'heart-outline'}
+              size={24}
+              color={stats.isLiked ? '#FF2D55' : '#FFF'}
             />
-            {isOwner && stats.likes > 0 && <Text style={modalStyles.statText}>{stats.likes}</Text>}
+            {isOwner && stats.likes > 0 && (
+              <Text style={modalStyles.statText}>{stats.likes}</Text>
+            )}
           </Pressable>
 
-          <Pressable 
+          <Pressable
             style={modalStyles.interactionBtn}
             onPress={() => {
               setSelectedPhoto(photoUri);
               setViewerVisible(true);
-            }}
-          >
-            <MaterialCommunityIcons name="chat-processing-outline" size={24} color="#FFF" />
-            {isOwner && stats.commentsCount > 0 && <Text style={modalStyles.statText}>{stats.commentsCount}</Text>}
+            }}>
+            <MaterialCommunityIcons
+              name="chat-processing-outline"
+              size={24}
+              color="#FFF"
+            />
+            {isOwner && stats.commentsCount > 0 && (
+              <Text style={modalStyles.statText}>{stats.commentsCount}</Text>
+            )}
           </Pressable>
         </View>
       </Animated.View>
@@ -216,12 +259,14 @@ const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId
   const InfoChip = ({icon, label}) =>
     label ? (
       <View style={modalStyles.chip}>
-        <Text style={modalStyles.chipText}>{icon} {label}</Text>
+        <Text style={modalStyles.chipText}>
+          {icon} {label}
+        </Text>
       </View>
     ) : null;
 
   const scrollY = useSharedValue(0);
-  const onScroll = (event) => {
+  const onScroll = event => {
     scrollY.value = event.nativeEvent.contentOffset.y;
   };
 
@@ -229,9 +274,9 @@ const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId
     const opacity = interpolate(
       scrollY.value,
       [0, SCREEN_HEIGHT * 0.4, SCREEN_HEIGHT * 0.5],
-      [0, 0, 1]
+      [0, 0, 1],
     );
-    return { opacity };
+    return {opacity};
   });
 
   const photoSnapOffsets = allPhotos.map((_, i) => i * SCREEN_HEIGHT * 0.58);
@@ -247,7 +292,7 @@ const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId
       <Animated.View style={[modalStyles.backdrop, backdropAnimStyle]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
- 
+
       {/* Sheet */}
       <Animated.View style={[modalStyles.sheet, modalAnimStyle]}>
         {/* Drag handle area (replaces pill / header for swipe-down) */}
@@ -256,7 +301,8 @@ const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId
             {/* Sticky Header Overlay */}
             <Animated.View style={[modalStyles.stickyHeader, headerStyle]}>
               <Text style={modalStyles.stickyHeaderText}>
-                {profile.name}{profile.age ? `, ${profile.age}` : ''}
+                {profile.name}
+                {profile.age ? `, ${profile.age}` : ''}
               </Text>
             </Animated.View>
 
@@ -269,21 +315,22 @@ const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId
 
         <ScrollView
           showsVerticalScrollIndicator={false}
-          bounces={true}
           onScroll={onScroll}
           scrollEventThrottle={16}
-          snapToOffsets={photoSnapOffsets}
           decelerationRate="fast"
-          overScrollMode="always"
+          disableIntervalMomentum={true}
+          bounces={false}
+          overScrollMode="never"
           contentContainerStyle={modalStyles.scrollContent}>
-          
           <Pressable style={{flex: 1}}>
             {/* ── Images ── */}
             <View style={modalStyles.imagesContainer}>
               <FlatList
                 data={allPhotos}
                 keyExtractor={(_, i) => `photo-${i}`}
-                renderItem={({item, index}) => <PhotoItem photoUri={item} index={index} />}
+                renderItem={({item, index}) => (
+                  <PhotoItem photoUri={item} index={index} />
+                )}
                 scrollEnabled={false}
                 pagingEnabled={false}
                 ItemSeparatorComponent={() => <View style={{height: 12}} />}
@@ -293,13 +340,20 @@ const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId
                 <View style={modalStyles.headerInfoContent}>
                   {profile.isMostCompatible && (
                     <View style={modalStyles.compatibleBadge}>
-                      <MaterialCommunityIcons name="star" size={12} color="#FFF" />
-                      <Text style={modalStyles.compatibleText}>MOST COMPATIBLE</Text>
+                      <MaterialCommunityIcons
+                        name="star"
+                        size={12}
+                        color="#FFF"
+                      />
+                      <Text style={modalStyles.compatibleText}>
+                        MOST COMPATIBLE
+                      </Text>
                     </View>
                   )}
                   <View style={modalStyles.nameRow}>
                     <Text style={modalStyles.modalName}>
-                      {profile.name}{profile.age ? `, ${profile.age}` : ''}
+                      {profile.name}
+                      {profile.age ? `, ${profile.age}` : ''}
                     </Text>
                     {profile.matchPercentage ? (
                       <LinearGradient
@@ -314,10 +368,14 @@ const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId
                     ) : null}
                   </View>
                   {profile.jobTitle ? (
-                    <Text style={modalStyles.modalJobTitle}>💼 {profile.jobTitle}</Text>
+                    <Text style={modalStyles.modalJobTitle}>
+                      💼 {profile.jobTitle}
+                    </Text>
                   ) : null}
                   {finalLocation ? (
-                    <Text style={modalStyles.modalLocation}>📍 {finalLocation}</Text>
+                    <Text style={modalStyles.modalLocation}>
+                      📍 {finalLocation}
+                    </Text>
                   ) : null}
                 </View>
               </View>
@@ -325,15 +383,34 @@ const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId
 
             {/* ── Details Container ── */}
             <View style={modalStyles.detailsContainer}>
-
               {/* Personal Info */}
-              {(profile.height || profile.gender || profile.drink || profile.religion || profile.politics) ? (
+              {profile.height ||
+              profile.gender ||
+              profile.drink ||
+              profile.religion ||
+              profile.politics ? (
                 <View style={modalStyles.profileSectionCard}>
                   <Text style={modalStyles.sectionLabel}>Personal Info</Text>
                   <View style={modalStyles.chipsRow}>
-                    <InfoChip icon="📏" label={profile.height ? `${profile.height}${profile.height.includes('cm') ? '' : ' cm'}` : null} />
+                    <InfoChip
+                      icon="📏"
+                      label={
+                        profile.height
+                          ? `${profile.height}${
+                              profile.height.includes('cm') ? '' : ' cm'
+                            }`
+                          : null
+                      }
+                    />
                     <InfoChip icon="👤" label={profile.gender} />
-                    <InfoChip icon="🍷" label={profile.drink && profile.drink !== 'No' ? profile.drink : null} />
+                    <InfoChip
+                      icon="🍷"
+                      label={
+                        profile.drink && profile.drink !== 'No'
+                          ? profile.drink
+                          : null
+                      }
+                    />
                     <InfoChip icon="⛪" label={profile.religion} />
                     <InfoChip icon="⚖️" label={profile.politics} />
                   </View>
@@ -349,7 +426,7 @@ const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId
               ) : null}
 
               {/* Looking For */}
-              {(profile.datingIntention || profile.relationshipType) ? (
+              {profile.datingIntention || profile.relationshipType ? (
                 <View style={modalStyles.profileSectionCard}>
                   <Text style={modalStyles.sectionLabel}>Looking For</Text>
                   <View style={modalStyles.intentionChip}>
@@ -367,7 +444,9 @@ const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId
                   <View style={modalStyles.tagsRow}>
                     {profile.interests.map((interest, i) => (
                       <View key={i} style={modalStyles.interestTag}>
-                        <Text style={modalStyles.interestTagText}>{interest}</Text>
+                        <Text style={modalStyles.interestTagText}>
+                          {interest}
+                        </Text>
                       </View>
                     ))}
                   </View>
@@ -375,26 +454,35 @@ const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId
               ) : null}
 
               {/* Prompts */}
-              {profile.prompts && profile.prompts.length > 0 &&
+              {profile.prompts &&
+                profile.prompts.length > 0 &&
                 profile.prompts.map((prompt, i) =>
                   prompt && prompt.answer ? (
                     <View key={i} style={modalStyles.profileSectionCard}>
-                      <Text style={modalStyles.sectionLabel}>{prompt.prompt || 'My thoughts'}</Text>
-                      <Text style={modalStyles.promptAnswer}>{prompt.answer}</Text>
+                      <Text style={modalStyles.sectionLabel}>
+                        {prompt.prompt || 'My thoughts'}
+                      </Text>
+                      <Text style={modalStyles.promptAnswer}>
+                        {prompt.answer}
+                      </Text>
                     </View>
                   ) : null,
                 )}
 
               {/* Work & Education */}
-              {(profile.jobTitle || profile.school) ? (
+              {profile.jobTitle || profile.school ? (
                 <View style={modalStyles.profileSectionCard}>
                   <Text style={modalStyles.sectionLabel}>Work & Education</Text>
                   <View style={modalStyles.workEduContent}>
                     {profile.jobTitle ? (
-                      <Text style={modalStyles.workText}>💼 {profile.jobTitle}</Text>
+                      <Text style={modalStyles.workText}>
+                        💼 {profile.jobTitle}
+                      </Text>
                     ) : null}
                     {profile.school ? (
-                      <Text style={modalStyles.workText}>🎓 {profile.school}</Text>
+                      <Text style={modalStyles.workText}>
+                        🎓 {profile.school}
+                      </Text>
                     ) : null}
                   </View>
                 </View>
@@ -402,11 +490,12 @@ const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId
 
               {/* Bottom close button */}
               <View style={modalStyles.closeButtonWrapper}>
-                <Pressable style={modalStyles.closeIconButton} onPress={onClose}>
+                <Pressable
+                  style={modalStyles.closeIconButton}
+                  onPress={onClose}>
                   <MaterialCommunityIcons name="close" size={24} color="#555" />
                 </Pressable>
               </View>
-
             </View>
           </Pressable>
         </ScrollView>
@@ -428,6 +517,7 @@ const ProfileModal = ({visible, profile, onClose, currentLocation, currentUserId
 
 const HomeScreen = ({navigation}) => {
   const {setLoading: setGlobalLoading} = useLoading();
+  const {profile: myProfile} = useAuth();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [profiles, setProfiles] = useState([]);
   const [loading, setLoadingLocal] = useState(true);
@@ -463,7 +553,9 @@ const HomeScreen = ({navigation}) => {
     {label: '1 - 100 km', value: 100},
   ];
   const [maxDistance, setMaxDistance] = useState(distancePresets[2].value);
-  const [selectedPreset, setSelectedPreset] = useState(distancePresets[2].value);
+  const [selectedPreset, setSelectedPreset] = useState(
+    distancePresets[2].value,
+  );
   const [useDistanceFilter, setUseDistanceFilter] = useState(true);
   const DISTANCE_PREF_KEY = '@pryvo_distance_preferences';
 
@@ -481,9 +573,10 @@ const HomeScreen = ({navigation}) => {
     visible: false,
     myPhoto: null,
     theirPhoto: null,
+    theirName: '',
+    theirAge: null,
     matchId: null,
   });
-
 
   // ── Initialization ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -496,7 +589,9 @@ const HomeScreen = ({navigation}) => {
         console.log('Error getting initial location:', e);
       }
 
-      const needsReset = await AsyncStorage.getItem('@pryvo_needs_profile_reset');
+      const needsReset = await AsyncStorage.getItem(
+        '@pryvo_needs_profile_reset',
+      );
       if (needsReset === 'true') {
         const userData = await AsyncStorage.getItem('@pryvo_user');
         if (userData && userData !== 'undefined') {
@@ -511,7 +606,11 @@ const HomeScreen = ({navigation}) => {
       }
 
       const prefs = await loadDistancePrefs();
-      await loadProfiles(prefs?.distance, prefs?.enabled ?? useDistanceFilter, loc);
+      await loadProfiles(
+        prefs?.distance,
+        prefs?.enabled ?? useDistanceFilter,
+        loc,
+      );
       await loadDailyLikeInfo();
     };
     init();
@@ -520,9 +619,19 @@ const HomeScreen = ({navigation}) => {
       async location => {
         setCurrentLocation(location);
         const prefs = await loadDistancePrefs();
-        await loadProfiles(prefs?.distance, prefs?.enabled ?? useDistanceFilter, location, true);
+        await loadProfiles(
+          prefs?.distance,
+          prefs?.enabled ?? useDistanceFilter,
+          location,
+          true,
+        );
       },
-      {distanceFilter: 1000, enableHighAccuracy: true, timeout: 15000, maximumAge: 10000},
+      {
+        distanceFilter: 1000,
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 10000,
+      },
     );
 
     return () => {
@@ -539,13 +648,19 @@ const HomeScreen = ({navigation}) => {
       const lng = profile.longitude;
       if (lat && lng) {
         const isCoordinates =
-          /^\s*[-+]?\d+(\.\d+)?\s*,\s*[-+]?\d+(\.\d+)?\s*$/.test(profile.location || '');
+          /^\s*[-+]?\d+(\.\d+)?\s*,\s*[-+]?\d+(\.\d+)?\s*$/.test(
+            profile.location || '',
+          );
         if (isCoordinates || !profile.city || profile.city === '') {
           const city = await reverseGeocode(lat, lng);
           setProfiles(prev => {
             const next = [...prev];
             if (next[index] && next[index].id === profile.id) {
-              next[index] = {...next[index], city: city || '', cityGeocoded: true};
+              next[index] = {
+                ...next[index],
+                city: city || '',
+                cityGeocoded: true,
+              };
             }
             return next;
           });
@@ -612,13 +727,18 @@ const HomeScreen = ({navigation}) => {
             excludeUserId = user.id;
             setCurrentUserId(user.id);
           } catch (e) {
-            console.error('Failed to parse user data in HomeScreen loadProfiles:', e);
+            console.error(
+              'Failed to parse user data in HomeScreen loadProfiles:',
+              e,
+            );
           }
         }
 
         let advancedFilters = null;
         try {
-          const savedFilters = await AsyncStorage.getItem('@pryvo_advanced_filters');
+          const savedFilters = await AsyncStorage.getItem(
+            '@pryvo_advanced_filters',
+          );
           if (savedFilters && savedFilters !== 'undefined') {
             const parsed = JSON.parse(savedFilters);
             const activeFilters = {};
@@ -627,7 +747,8 @@ const HomeScreen = ({navigation}) => {
                 activeFilters[key] = parsed[key];
               }
             });
-            if (Object.keys(activeFilters).length > 0) advancedFilters = activeFilters;
+            if (Object.keys(activeFilters).length > 0)
+              advancedFilters = activeFilters;
           }
         } catch (error) {
           console.error('Error loading advanced filters:', error);
@@ -661,8 +782,16 @@ const HomeScreen = ({navigation}) => {
                   profile.basicInfo?.locationDetails?.lng,
               );
               if (userLoc && !isNaN(lat) && !isNaN(lon)) {
-                distance = calculateDistance(userLoc.latitude, userLoc.longitude, lat, lon);
-              } else if (profile.distance !== undefined && profile.distance !== null) {
+                distance = calculateDistance(
+                  userLoc.latitude,
+                  userLoc.longitude,
+                  lat,
+                  lon,
+                );
+              } else if (
+                profile.distance !== undefined &&
+                profile.distance !== null
+              ) {
                 let d = parseFloat(profile.distance);
                 if (d > 500) d = d / 1000;
                 distance = Math.round(d);
@@ -696,8 +825,10 @@ const HomeScreen = ({navigation}) => {
                 smokeWeed: profile.lifestyle?.smokeWeed || '',
                 religion: profile.lifestyle?.religiousBeliefs || '',
                 politics: profile.lifestyle?.politicalBeliefs || '',
-                datingIntention: profile.datingPreferences?.datingIntention || '',
-                relationshipType: profile.datingPreferences?.relationshipType || '',
+                datingIntention:
+                  profile.datingPreferences?.datingIntention || '',
+                relationshipType:
+                  profile.datingPreferences?.relationshipType || '',
                 latitude: parseFloat(
                   profile.latitude ||
                     profile.location?.coordinates?.[1] ||
@@ -755,7 +886,10 @@ const HomeScreen = ({navigation}) => {
           setSelectedPreset(presetValue);
           return {distance, enabled};
         } catch (e) {
-          console.error('Failed to parse distance preferences in HomeScreen:', e);
+          console.error(
+            'Failed to parse distance preferences in HomeScreen:',
+            e,
+          );
         }
       }
       return null;
@@ -827,7 +961,7 @@ const HomeScreen = ({navigation}) => {
     runOnJS(setIsProfileFocused)(false);
   };
 
-  const processSwipe = direction => {
+  const processSwipe = async direction => {
     if (!currentProfile || !currentUserId) return;
 
     if (direction === 'right' && dailyLikeInfo.remaining <= 0) {
@@ -840,8 +974,11 @@ const HomeScreen = ({navigation}) => {
     }
 
     const likedUserId = currentProfile.userId;
-    const myPhoto = profiles[currentIndex]?.photos?.[0];
     const theirPhoto = currentProfile.photos?.[0];
+
+    // Get MY photo from AuthContext profile
+    const myPhoto =
+      myProfile?.media?.media?.[0]?.url || myProfile?.photos?.[0] || null;
 
     if (direction === 'right') {
       const newSwipeCount = swipeCount + 1;
@@ -880,6 +1017,8 @@ const HomeScreen = ({navigation}) => {
               visible: true,
               myPhoto,
               theirPhoto,
+              theirName: currentProfile.name,
+              theirAge: currentProfile.age,
               matchId: result.match._id,
             });
           }
@@ -889,7 +1028,8 @@ const HomeScreen = ({navigation}) => {
           if (err?.response?.status === 429 || err?.limitReached) {
             Alert.alert(
               'Daily Like Limit Reached',
-              err?.message || "You've reached your daily like limit. Come back tomorrow!",
+              err?.message ||
+                "You've reached your daily like limit. Come back tomorrow!",
               [{text: 'OK'}],
             );
             loadDailyLikeInfo();
@@ -919,7 +1059,10 @@ const HomeScreen = ({navigation}) => {
     .onEnd(event => {
       if (event.translationX > SWIPE_THRESHOLD || event.velocityX > 500) {
         runOnJS(processSwipe)('right');
-      } else if (event.translationX < -SWIPE_THRESHOLD || event.velocityX < -500) {
+      } else if (
+        event.translationX < -SWIPE_THRESHOLD ||
+        event.velocityX < -500
+      ) {
         runOnJS(processSwipe)('left');
       } else {
         translateX.value = withSpring(0);
@@ -939,9 +1082,17 @@ const HomeScreen = ({navigation}) => {
 
   const animatedStyle = useAnimatedStyle(() => {
     const rotate =
-      interpolate(translateX.value, [-SCREEN_WIDTH, 0, SCREEN_WIDTH], [-15, 0, 15]) + 'deg';
+      interpolate(
+        translateX.value,
+        [-SCREEN_WIDTH, 0, SCREEN_WIDTH],
+        [-15, 0, 15],
+      ) + 'deg';
     return {
-      transform: [{translateX: translateX.value}, {translateY: translateY.value}, {rotate}],
+      transform: [
+        {translateX: translateX.value},
+        {translateY: translateY.value},
+        {rotate},
+      ],
       opacity: opacity.value,
     };
   });
@@ -960,18 +1111,32 @@ const HomeScreen = ({navigation}) => {
   // ── Shared header ───────────────────────────────────────────────────────────
   const renderHeader = () => (
     <View style={styles.header}>
-      <Pressable onPress={() => navigation.navigate('Matches')} style={styles.headerIconButton}>
+      <Pressable
+        onPress={() => navigation.navigate('Matches')}
+        style={styles.headerIconButton}>
         <MaterialCommunityIcons name="heart" size={24} color={colors.primary} />
       </Pressable>
-      <Text className="text-4xl font-mona-sans-semibold tracking-[2px] text-black">Pryvo</Text>
+      <Text className="text-4xl font-mona-sans-semibold tracking-[2px] text-black">
+        Pryvo
+      </Text>
       <View style={styles.headerRight}>
-        <Pressable onPress={() => navigation.navigate('Chats')} style={styles.headerIconButton}>
-          <MaterialCommunityIcons name="chat" size={24} color={colors.textPrimary} />
+        <Pressable
+          onPress={() => navigation.navigate('Chats')}
+          style={styles.headerIconButton}>
+          <MaterialCommunityIcons
+            name="chat"
+            size={24}
+            color={colors.textPrimary}
+          />
         </Pressable>
         <Pressable
           onPress={() => navigation.navigate('AdvancedFilters')}
           style={styles.headerIconButton}>
-          <MaterialCommunityIcons name="filter-variant" size={24} color={colors.textPrimary} />
+          <MaterialCommunityIcons
+            name="filter-variant"
+            size={24}
+            color={colors.textPrimary}
+          />
         </Pressable>
       </View>
     </View>
@@ -980,19 +1145,24 @@ const HomeScreen = ({navigation}) => {
   if (loading) {
     if (!visited.home) {
       return (
-        <FullScreenLoader 
-          visible={true} 
-          message="Matching vibes, not just faces…" 
+        <FullScreenLoader
+          visible={true}
+          message="Matching vibes, not just faces…"
         />
       );
     }
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+        <StatusBar
+          barStyle="dark-content"
+          backgroundColor={colors.background}
+        />
         {renderHeader()}
         <View style={styles.emptyContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.emptySubtitle, {marginTop: 16}]}>Finding profiles for you...</Text>
+          <Text style={[styles.emptySubtitle, {marginTop: 16}]}>
+            Finding profiles for you...
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -1002,16 +1172,23 @@ const HomeScreen = ({navigation}) => {
   if (!currentProfile) {
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-        <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+        <StatusBar
+          barStyle="dark-content"
+          backgroundColor={colors.background}
+        />
         {renderHeader()}
         <View style={styles.emptyContainer}>
           <View style={{marginBottom: 20}}>
-            <MaterialCommunityIcons name="account-search" size={80} color={colors.primary} />
+            <MaterialCommunityIcons
+              name="account-search"
+              size={80}
+              color={colors.primary}
+            />
           </View>
           <Text style={styles.emptyTitle}>No more profiles</Text>
           <Text style={styles.emptySubtitle}>
-            We've run out of people nearby. Try adjusting your distance or age filters to see more
-            people.
+            We've run out of people nearby. Try adjusting your distance or age
+            filters to see more people.
           </Text>
           <Pressable
             style={styles.refreshButton}
@@ -1045,7 +1222,9 @@ const HomeScreen = ({navigation}) => {
 
   // ── Distance label for card ─────────────────────────────────────────────────
   const getCardDistanceLabel = () => {
-    let dist = currentProfile.distance ? parseFloat(currentProfile.distance) : null;
+    let dist = currentProfile.distance
+      ? parseFloat(currentProfile.distance)
+      : null;
     if (
       dist === null &&
       currentLocation &&
@@ -1062,9 +1241,15 @@ const HomeScreen = ({navigation}) => {
     const locationStr = currentProfile.city || currentProfile.location || '';
     const isCoordinates =
       /^\s*[-+]?\d+(\.\d+)?\s*,\s*[-+]?\d+(\.\d+)?\s*$/.test(locationStr);
-    const displayLocation = isCoordinates ? (currentProfile.city || '') : locationStr;
+    const displayLocation = isCoordinates
+      ? currentProfile.city || ''
+      : locationStr;
     const distLabel =
-      dist !== null && dist > 0 ? (dist > 1000 ? 'Far away' : `${dist} km away`) : null;
+      dist !== null && dist > 0
+        ? dist > 1000
+          ? 'Far away'
+          : `${dist} km away`
+        : null;
     let final = '';
     if (displayLocation) {
       final = displayLocation;
@@ -1101,7 +1286,6 @@ const HomeScreen = ({navigation}) => {
         {/* Current swipeable card — tap opens modal, swipe triggers like/dislike */}
         <GestureDetector gesture={gesture}>
           <Animated.View style={[styles.card, animatedStyle]}>
-
             {/* Full-bleed first photo only */}
             <Image
               source={{uri: currentProfile.photos[0]}}
@@ -1118,15 +1302,17 @@ const HomeScreen = ({navigation}) => {
             )}
             {currentProfile.matchPercentage && (
               <View style={styles.matchScoreBadge}>
-                <Text style={styles.matchScoreText}>{currentProfile.matchPercentage}% Match</Text>
+                <Text style={styles.matchScoreText}>
+                  {currentProfile.matchPercentage}% Match
+                </Text>
               </View>
             )}
 
             {/* Tap-to-reveal focal button overlay */}
-            <Animated.View 
+            <Animated.View
               style={[styles.focusOverlay, focusOverlayStyle]}
               pointerEvents={isProfileFocused ? 'auto' : 'none'}>
-              <Pressable 
+              <Pressable
                 style={styles.viewProfileButton}
                 onPress={() => {
                   setModalVisible(true);
@@ -1150,18 +1336,22 @@ const HomeScreen = ({navigation}) => {
 
                 {/* Short bio — 1 line */}
                 {currentProfile.bio ? (
-                  <Text style={styles.cardBio} numberOfLines={1} ellipsizeMode="tail">
+                  <Text
+                    style={styles.cardBio}
+                    numberOfLines={1}
+                    ellipsizeMode="tail">
                     {currentProfile.bio}
                   </Text>
                 ) : null}
 
                 {/* Location */}
                 {cardLocationLabel ? (
-                  <Text style={styles.cardLocation}>📍 {cardLocationLabel}</Text>
+                  <Text style={styles.cardLocation}>
+                    📍 {cardLocationLabel}
+                  </Text>
                 ) : null}
               </View>
             </LinearGradient>
-
           </Animated.View>
         </GestureDetector>
       </View>
@@ -1174,7 +1364,9 @@ const HomeScreen = ({navigation}) => {
             start={{x: 0, y: 0}}
             end={{x: 1, y: 0}}
             style={styles.likePopup}>
-            <Text style={styles.likePopupText}>{dailyLikeInfo.remaining} likes left</Text>
+            <Text style={styles.likePopupText}>
+              {dailyLikeInfo.remaining} likes left
+            </Text>
           </LinearGradient>
         </View>
       )}
@@ -1195,14 +1387,23 @@ const HomeScreen = ({navigation}) => {
       {/* Match Popup */}
       <MatchPopup
         visible={matchPopup.visible}
-        profileA={matchPopup.myPhoto}
-        profileB={matchPopup.theirPhoto}
+        myPhoto={matchPopup.myPhoto}
+        theirPhoto={matchPopup.theirPhoto}
+        theirName={matchPopup.theirName}
         onContinue={() => setMatchPopup(prev => ({...prev, visible: false}))}
         onMessage={() => {
-          const matchId = matchPopup.matchId;
+          const {matchId, theirName, theirPhoto, theirAge} = matchPopup;
           const theirId = currentProfile?.userId;
           setMatchPopup(prev => ({...prev, visible: false}));
-          if (matchId && theirId) navigation.navigate('ChatScreen', {matchId, theirId});
+          if (matchId && theirId) {
+            navigation.navigate('ChatScreen', {
+              matchId,
+              theirId,
+              theirName,
+              theirPhoto,
+              theirAge,
+            });
+          }
         }}
       />
 
@@ -1543,7 +1744,7 @@ const modalStyles = StyleSheet.create({
     backgroundColor: '#E5E7EB',
   },
 
-  // Images 
+  // Images
   imagesContainer: {
     paddingTop: 4,
   },
@@ -1554,7 +1755,7 @@ const modalStyles = StyleSheet.create({
     backgroundColor: '#FFF',
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 5,
@@ -1585,7 +1786,7 @@ const modalStyles = StyleSheet.create({
     marginTop: 2,
     fontFamily: typography.fontFamilyBold,
   },
-  
+
   // Header Info Card (Floating over bottom of images)
   headerInfoCard: {
     marginTop: 16,
@@ -1594,7 +1795,7 @@ const modalStyles = StyleSheet.create({
     borderRadius: 20,
     padding: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 3,
@@ -1666,7 +1867,7 @@ const modalStyles = StyleSheet.create({
     padding: 20,
     marginTop: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 3,
@@ -1760,7 +1961,7 @@ const modalStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.05,
     shadowRadius: 5,
     elevation: 2,

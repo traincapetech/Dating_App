@@ -43,7 +43,7 @@ const ProfileDetailsScreen = () => {
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [scrollEnabled, setScrollEnabled] = useState(true);
 
-  const userId = route.params?.userId || profile?.id || profile?._id;
+  const userId = route.params?.userId || profile?._id || profile?.id;
 
   // 📸 Social Interaction System
   const { photosStats } = usePhotoSocial(userId);
@@ -53,18 +53,28 @@ const ProfileDetailsScreen = () => {
 
   useEffect(() => {
     loadProfile();
-  }, [route.params?.userId]);
+    
+    // Refresh profile whenever screen is focused
+    const unsubscribe = navigation.addListener('focus', () => {
+      // Use the actual profile ID we have if userId param is missing
+      const currentTarget = route.params?.userId || profile?._id || profile?.id;
+      loadProfile(currentTarget);
+    });
+    
+    return unsubscribe;
+  }, [navigation, route.params?.userId, profile?._id, profile?.id]);
 
-  const loadProfile = async () => {
+  const loadProfile = async (specificTargetId = null) => {
     try {
       setLoading(true);
-      let targetId = userId;
+      let targetId = specificTargetId || route.params?.userId;
 
       if (!targetId) {
+        // Ultimate fallback to local storage
         const userData = await AsyncStorage.getItem('@pryvo_user');
         if (userData && userData !== 'undefined') {
           const user = JSON.parse(userData);
-          targetId = user.id;
+          targetId = user.id || user._id;
         }
       }
 
@@ -85,10 +95,13 @@ const ProfileDetailsScreen = () => {
       setProfile(profileData);
 
       // Check if it's the current user's profile
+      // Check if it's the current user's profile
       const userData = await AsyncStorage.getItem('@pryvo_user');
       if (userData && userData !== 'undefined') {
         const user = JSON.parse(userData);
-        setIsOwnProfile(user.id === currentUserId);
+        const meId = user.id || user._id;
+        setIsOwnProfile(meId === targetId);
+        setCurrentUserId(meId);
       }
 
       setEditedProfile({

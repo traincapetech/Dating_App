@@ -19,9 +19,12 @@ import {fetchMatches} from '../../../services/chatService';
 import {useLoading} from '../../../context/LoadingContext';
 import {useInitialLoad} from '../../../context/InitialLoadContext';
 import FullScreenLoader from '../../../components/layout/FullScreenLoader';
+import MatchPopup from '../../../components/profile/MatchPopup';
+import { useAuth } from '../../../context/AuthContext';
 
 const LikesScreen = ({navigation}) => {
   const {setLoading: setGlobalLoading} = useLoading();
+  const { profile: myProfile } = useAuth();
   const [likes, setLikes] = useState([]);
   const [matches, setMatches] = useState([]);
   const [likesCount, setLikesCount] = useState(0);
@@ -30,6 +33,15 @@ const LikesScreen = ({navigation}) => {
   const [refreshing, setRefreshing] = useState(false);
   const [isPremiumRequired, setIsPremiumRequired] = useState(false);
   const {visited, markVisited} = useInitialLoad();
+  const [matchPopup, setMatchPopup] = useState({
+    visible: false,
+    myPhoto: null,
+    theirPhoto: null,
+    theirName: '',
+    theirAge: null,
+    matchId: null,
+    theirId: null,
+  });
 
   useFocusEffect(
     useCallback(() => {
@@ -100,18 +112,23 @@ const LikesScreen = ({navigation}) => {
       console.log('[LikesScreen] Like result:', result);
 
       if (result.isMatch) {
-        Alert.alert("It's a Match! 🎉", 'You can now start chatting!', [
-          {
-            text: 'Send Message',
-            onPress: () => {
-              navigation.navigate('ChatScreen', {
-                matchId: result.match._id,
-                theirId: likerId,
-              });
-            },
-          },
-          {text: 'Continue', style: 'cancel'},
-        ]);
+         // Get MY photo from AuthContext
+         const myPhoto = myProfile?.media?.media?.[0]?.url || myProfile?.photos?.[0] || null;
+
+         // Find the person's name and photo from the likes state or result
+        const matchedUser = likes.find(l => l.senderId === likerId);
+        const theirName = matchedUser?.name || result?.match?.matchedUserName || 'Someone';
+        const theirPhoto = matchedUser?.photo || result?.match?.matchedUserPhoto || null;
+        
+        setMatchPopup({
+           visible: true,
+           myPhoto,
+           theirPhoto,
+           theirName,
+           theirAge: matchedUser?.age || result?.match?.matchedUserAge || null,
+           matchId: result.match._id,
+           theirId: likerId,
+        });
 
         // Remove from likes list
         setLikes(prev => prev.filter(l => l.senderId !== likerId));
@@ -280,6 +297,26 @@ const LikesScreen = ({navigation}) => {
             tintColor={colors.primary}
           />
         }
+      />
+      <MatchPopup
+        visible={matchPopup.visible}
+        myPhoto={matchPopup.myPhoto}
+        theirPhoto={matchPopup.theirPhoto}
+        theirName={matchPopup.theirName}
+        onContinue={() => setMatchPopup(prev => ({...prev, visible: false}))}
+        onMessage={() => {
+          const { matchId, theirId, theirName, theirPhoto, theirAge } = matchPopup;
+          setMatchPopup(prev => ({...prev, visible: false}));
+          if (matchId && theirId) {
+            navigation.navigate('ChatScreen', {
+              matchId, 
+              theirId, 
+              theirName, 
+              theirPhoto, 
+              theirAge
+            });
+          }
+        }}
       />
     </SafeAreaView>
   );

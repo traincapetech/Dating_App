@@ -34,6 +34,7 @@ const SettingsScreen = () => {
   const [isPaused, setIsPaused] = React.useState(false);
   const [loadingPause, setLoadingPause] = React.useState(false);
   const [loadingLogoutAll, setLoadingLogoutAll] = React.useState(false);
+  const [currentUserId, setCurrentUserId] = React.useState(null);
 
   React.useEffect(() => {
     checkPremiumStatus();
@@ -56,6 +57,8 @@ const SettingsScreen = () => {
       if (userData && userData !== 'undefined') {
         try {
           const user = JSON.parse(userData);
+          const userId = user.id || user._id;
+          setCurrentUserId(userId);
           const {getProfile} = await import(
             '../../../services/profile/profileService'
           );
@@ -279,7 +282,7 @@ const SettingsScreen = () => {
               icon="account-edit"
               iconColor="#4A90E2"
               title="Edit Profile"
-              onPress={() => navigation.navigate('ProfileDetails')}
+              onPress={() => navigation.navigate('ProfileDetails', { userId: currentUserId })}
             />
             <SettingItem
               icon="wallet-outline"
