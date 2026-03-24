@@ -1,9 +1,19 @@
-import React from 'react';
-import {View, Text, StyleSheet, ScrollView, StatusBar} from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  StatusBar,
+  TouchableOpacity,
+} from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import Icon from 'react-native-vector-icons/Ionicons';
+import {useNavigation} from '@react-navigation/native';
 import {colors, typography, spacing} from '../../../../theme';
 
 const PrivacyScreen = () => {
+  const navigation = useNavigation();
+
   const getCurrentDate = () => {
     const date = new Date();
     const options = {year: 'numeric', month: 'long'};
@@ -18,6 +28,11 @@ const PrivacyScreen = () => {
       <LinearGradient
         colors={[colors.primaryDark, colors.primary]}
         style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backButton}>
+          <Icon name="chevron-back" size={28} color={colors.textInverse} />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Privacy Policy</Text>
         <Text style={styles.headerSubtitle}>
           Last Updated: {lastUpdatedDate}
@@ -248,13 +263,21 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: colors.textInverse,
-    fontSize: 32,
+    fontSize: 28,
     fontFamily: typography.fontFamilyBold,
   },
   headerSubtitle: {
     color: 'rgba(255,255,255,0.7)',
     marginTop: spacing.xs,
     fontSize: 14,
+  },
+  backButton: {
+    marginBottom: spacing.md,
+    marginLeft: -spacing.xs,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   content: {
     padding: spacing.xl,
