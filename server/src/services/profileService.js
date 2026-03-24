@@ -151,14 +151,10 @@ export async function getProfile(userId, viewerId = null) {
   const users = await getUsers();
   const user = users.find(u => (u._id || u.id) === profile.userId);
 
-  // Combine firstName and lastName if fullName is not available
-  const fullName =
-    user?.fullName ||
-    (profile.basicInfo?.firstName && profile.basicInfo?.lastName
-      ? `${profile.basicInfo.firstName} ${profile.basicInfo.lastName}`.trim()
-      : profile.basicInfo?.firstName ||
-        profile.basicInfo?.lastName ||
-        'Unknown');
+  const profileName = `${profile.basicInfo?.firstName || ''} ${
+    profile.basicInfo?.lastName || ''
+  }`.trim();
+  const displayName = profileName || user?.fullName || 'Unknown';
 
   const ageFromDob = computeAge(profile.basicInfo?.dob);
 
@@ -170,7 +166,7 @@ export async function getProfile(userId, viewerId = null) {
 
   return {
     ...profile,
-    name: fullName,
+    name: displayName,
     email: user?.email || '',
     isVerified: user?.isVerified || false,
     showOnlineStatus: user?.showOnlineStatus !== false, // Defaults to true
@@ -360,14 +356,10 @@ export async function getAllProfiles(excludeUserId = null, options = {}) {
     })
     .map(profile => {
       const user = users.find(u => (u._id || u.id) === profile.userId);
-      // Combine firstName and lastName if fullName is not available
-      const fullName =
-        user?.fullName ||
-        (profile.basicInfo?.firstName && profile.basicInfo?.lastName
-          ? `${profile.basicInfo.firstName} ${profile.basicInfo.lastName}`.trim()
-          : profile.basicInfo?.firstName ||
-            profile.basicInfo?.lastName ||
-            'Unknown');
+      const profileName = `${profile.basicInfo?.firstName || ''} ${
+        profile.basicInfo?.lastName || ''
+      }`.trim();
+      const displayName = profileName || user?.fullName || 'Unknown';
 
       const ageFromDob = computeAge(profile.basicInfo?.dob);
 
@@ -379,7 +371,7 @@ export async function getAllProfiles(excludeUserId = null, options = {}) {
 
       return {
         ...profile,
-        name: fullName,
+        name: displayName,
         email: user?.email || '',
         isActiveToday: !!isActiveToday,
         // Extract age from profile if available

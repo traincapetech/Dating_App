@@ -44,8 +44,7 @@ import {
   deleteMessageApi,
 } from '../../../services/chatService';
 import CountdownTimer from '../components/CountdownTimer';
-import {getMatchDetails, scheduleDate} from '../../../services/matchService';
-import DateSchedulerModal from '../components/DateSchedulerModal';
+import {getMatchDetails} from '../../../services/matchService';
 import giftService from '../../../services/giftService';
 import GiftSelectionModal from '../../../components/chat/GiftSelectionModal';
 import streakService from '../../../services/streakService';
@@ -89,8 +88,6 @@ const ChatScreen = ({route, navigation}) => {
 
   // Date or Dissolve State
   const [matchDetails, setMatchDetails] = useState(null);
-  const [showDateModal, setShowDateModal] = useState(false);
-  const [scheduling, setScheduling] = useState(false);
   const [streak, setStreak] = useState(null);
   const [showStreakWarning, setShowStreakWarning] = useState(false);
   const [showGiftAnimation, setShowGiftAnimation] = useState(false);
@@ -625,47 +622,7 @@ const ChatScreen = ({route, navigation}) => {
     });
   };
 
-  const handleScheduleDate = async date => {
-    if (!currentUserId || !matchId) return;
 
-    setScheduling(true);
-    try {
-      const result = await scheduleDate(
-        matchId,
-        date,
-        'Date scheduled via Pryvo',
-        'in-person',
-      );
-      if (result.success) {
-        setMatchDetails(prev => ({
-          ...prev,
-          status: 'secured',
-          dateScheduled: date,
-          expiresAt: null,
-        }));
-        setShowDateModal(false);
-        Alert.alert(
-          'Date Secured! 🎉',
-          'The timer has stopped. Improve your Karma by showing up!',
-        );
-
-        // Optionally send a system message
-        await sendMessageApi({
-          matchId,
-          senderId: currentUserId,
-          receiverId: theirId,
-          text: `📅 I've promised a date on ${new Date(
-            date,
-          ).toLocaleDateString()}! Let's meet!`,
-        });
-      }
-    } catch (error) {
-      console.error('Schedule date error:', error);
-      Alert.alert('Error', 'Failed to schedule date');
-    } finally {
-      setScheduling(false);
-    }
-  };
 
   const handleOpenImage = url => {
     if (!url) return;
@@ -923,18 +880,7 @@ const ChatScreen = ({route, navigation}) => {
               </View>
 
               <View style={styles.headerActions}>
-                <Pressable
-                  onPress={() => setShowDateModal(true)}
-                  style={({pressed}) => ({
-                    opacity: pressed ? 0.7 : 1,
-                    marginRight: spacing.sm,
-                  })}>
-                  <Icon
-                    name="calendar-outline"
-                    size={24}
-                    color={colors.primary}
-                  />
-                </Pressable>
+
                 <Pressable
                   onPress={() => setShowUnmatchModal(true)}
                   style={({pressed}) => ({
@@ -1104,13 +1050,7 @@ const ChatScreen = ({route, navigation}) => {
           userId={currentUserId}
         />
 
-        {/* Date Scheduler Modal */}
-        <DateSchedulerModal
-          visible={showDateModal}
-          onClose={() => setShowDateModal(false)}
-          onSchedule={handleScheduleDate}
-          loading={scheduling}
-        />
+
 
         {/* Unmatch Modal */}
         <Modal
