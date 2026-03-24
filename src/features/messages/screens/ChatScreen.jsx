@@ -52,6 +52,7 @@ import streakService from '../../../services/streakService';
 import StreakBadge from '../../../components/common/StreakBadge';
 import StreakWarningBanner from '../../../components/common/StreakWarningBanner';
 import GiftReceiverAnimation from '../../../components/chat/GiftReceiverAnimation';
+import IcebreakerSuggestions from '../../../components/chat/IcebreakerSuggestions';
 import giftImages from '../../../assets/images/gifts';
 
 const REPORT_REASONS = [
@@ -331,37 +332,43 @@ const ChatScreen = ({route, navigation}) => {
     }
   }, [messages.length]);
 
+  const sendMessage = async (textToSubmit) => {
+    if (!textToSubmit?.trim() || !currentUserId || sending) return false;
+
+    setSending(true);
+    try {
+      const saved = await sendMessageApi({
+        matchId,
+        senderId: currentUserId,
+        receiverId: theirId,
+        text: textToSubmit.trim(),
+      });
+
+      setMessages(prev => {
+        if (prev.some(m => m._id === saved._id)) return prev;
+        return [...prev, saved];
+      });
+      scrollToBottom();
+      emitStopTyping(matchId, currentUserId);
+      return true;
+    } catch (e) {
+      console.log('Send message error', e);
+      Alert.alert('Error', 'Failed to send message. Please try again.');
+      return false;
+    } finally {
+      setSending(false);
+    }
+  };
+
   const handleSend = async () => {
     if ((!inputText.trim() && !uploadingMedia) || !currentUserId || sending)
       return;
 
     const text = inputText.trim();
     setInputText('');
-    setSending(true);
-
-    try {
-      const saved = await sendMessageApi({
-        matchId,
-        senderId: currentUserId,
-        receiverId: theirId,
-        text,
-      });
-
-      setMessages(prev => {
-        // Avoid adding if already received via socket
-        if (prev.some(m => m._id === saved._id)) return prev;
-        return [...prev, saved];
-      });
-      scrollToBottom();
-
-      // Stop typing indicator
-      emitStopTyping(matchId, currentUserId);
-    } catch (e) {
-      console.log('Send message error', e);
-      Alert.alert('Error', 'Failed to send message. Please try again.');
+    const success = await sendMessage(text);
+    if (!success) {
       setInputText(text); // Restore text on error
-    } finally {
-      setSending(false);
     }
   };
 
@@ -999,6 +1006,14 @@ const ChatScreen = ({route, navigation}) => {
               <Text style={styles.typingText}>{theirName} is typing...</Text>
             </View>
           )}
+
+          {/* Icebreaker suggestions - only shown if no messages yet */}
+          <IcebreakerSuggestions
+            targetUserId={theirId}
+            matchId={matchId}
+            onSelect={sendMessage}
+            visible={messages.length === 0}
+          />
 
           {/* Input Area */}
           <View
