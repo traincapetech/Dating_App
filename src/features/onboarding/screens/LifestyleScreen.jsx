@@ -14,6 +14,7 @@ import {colors, typography, spacing} from '../../../theme';
 import {saveLifestyle} from '../../../services/profile/profileService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useAuth} from '../../../context/AuthContext';
+import {decodeJWT} from '../../../utils/safeUtils';
 
 const LifestyleScreen = () => {
   const {profile, loadProfile} = useAuth();
@@ -78,8 +79,8 @@ const LifestyleScreen = () => {
         const token = await AsyncStorage.getItem('@pryvo/token');
         if (token && token !== 'undefined') {
           try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            userId = payload.userId || payload.id;
+            const payload = decodeJWT(token);
+            userId = payload?.userId || payload?.id;
           } catch (e) {
             console.error('Failed to decode token:', e);
           }
@@ -142,7 +143,15 @@ const LifestyleScreen = () => {
       contentContainerStyle={styles.container}
       showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
-        <Text style={styles.title}>Lifestyle & Beliefs</Text>
+        <View style={styles.headerTop}>
+          <Text style={styles.title}>Lifestyle & Beliefs</Text>
+          <Pressable 
+            onPress={() => navigation.navigate(AppRoute.ProfilePrompts)}
+            style={styles.skipButton}
+          >
+            <Text style={styles.skipText}>Skip</Text>
+          </Pressable>
+        </View>
         <Text style={styles.subtitle}>
           Share your lifestyle choices and beliefs
         </Text>
@@ -189,11 +198,26 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: spacing.xl,
   },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
   title: {
     fontFamily: typography.fontFamilyBold,
     fontSize: typography.headings.h2,
     color: colors.textPrimary,
-    marginBottom: spacing.sm,
+    flex: 1,
+  },
+  skipButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  skipText: {
+    fontFamily: typography.fontFamilyBold,
+    fontSize: typography.body.medium,
+    color: colors.primary,
   },
   subtitle: {
     fontFamily: typography.fontFamilyRegular,

@@ -21,6 +21,7 @@ import {
   uploadProfileImage,
   updateProfileApi,
 } from '../../../services/profile/profileService';
+import {decodeJWT} from '../../../utils/safeUtils';
 
 const MediaUploadScreen = () => {
   const navigation = useNavigation();
@@ -563,10 +564,9 @@ const MediaUploadScreen = () => {
         // Try to get from token (decode JWT)
         const token = await AsyncStorage.getItem('@pryvo/token');
         if (token && token !== 'undefined') {
-          // Simple JWT decode (just get payload)
           try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            userId = payload.userId || payload.id;
+            const payload = decodeJWT(token);
+            userId = payload?.userId || payload?.id;
           } catch (e) {
             console.error('Failed to decode token:', e);
           }
@@ -737,7 +737,15 @@ const MediaUploadScreen = () => {
       contentContainerStyle={styles.container}
       showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
-        <Text style={styles.title}>Pick your photos and videos</Text>
+        <View style={styles.headerTop}>
+          <Text style={styles.title}>Pick your photos and videos</Text>
+          <Pressable 
+            onPress={() => navigation.navigate(AppRoute.SubscriptionUpsell)}
+            style={styles.skipButton}
+          >
+            <Text style={styles.skipText}>Skip</Text>
+          </Pressable>
+        </View>
         <Text style={styles.subtitle}>
           In order to verify the real you, you must add at least 5 photos/videos
           to your profile.
@@ -841,11 +849,26 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: spacing.xl,
   },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
   title: {
     fontFamily: typography.fontFamilyBold,
     fontSize: typography.headings.h2,
     color: colors.textPrimary,
-    marginBottom: spacing.sm,
+    flex: 1,
+  },
+  skipButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  skipText: {
+    fontFamily: typography.fontFamilyBold,
+    fontSize: typography.body.medium,
+    color: colors.primary,
   },
   subtitle: {
     fontFamily: typography.fontFamilyRegular,

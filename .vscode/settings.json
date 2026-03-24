@@ -5,5 +5,8 @@
         "headshots",
         "Pressable",
         "Upsell"
-    ]
+    ],
+    "java.jdt.ls.java.home": "/Users/a/Library/Java/JavaVirtualMachines/ms-21.0.7/Contents/Home",
+    "java.import.gradle.java.home": "/Users/a/Library/Java/JavaVirtualMachines/ms-21.0.7/Contents/Home",
+    "gradle.java.home": "/Users/a/Library/Java/JavaVirtualMachines/ms-21.0.7/Contents/Home"
 }

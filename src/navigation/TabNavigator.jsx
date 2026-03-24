@@ -6,8 +6,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import HomeScreen from '../features/discovery/screens/HomeScreen';
 import LikesScreen from '../features/likes/screens/LikesScreen';
 import ChatsScreen from '../features/messages/screens/ChatsScreen';
+import ProfileDetailsScreen from '../features/profile/screens/ProfileDetailsScreen';
 import ProfileScreen from '../features/profile/screens/ProfileScreen';
-import SettingsScreen from '../features/settings/screens/SettingsScreen';
 import {colors, typography} from '../theme';
 import {getLikesCount} from '../services/swipeActions';
 import {getUnreadConversationsCount} from '../services/chatService';
@@ -35,6 +35,7 @@ const TabNavigator = () => {
     }, 30000);
     return () => clearInterval(interval);
   }, []);
+
 
   useEffect(() => {
     let nameToSet = 'User';

@@ -1,0 +1,287 @@
+﻿Activity Resolver Table:
+  Schemes:
+      stripe:
+        39203b com.pryvo/com.stripe.android.financialconnections.FinancialConnectionsSheetRedirectActivity filter 8c6e358
+          Action: "android.intent.action.VIEW"
+          Category: "android.intent.category.DEFAULT"
+          Category: "android.intent.category.BROWSABLE"
+          Scheme: "stripe-auth"
+          Scheme: "stripe"
+          Authority: "link-accounts": -1
+          Authority: "link-native-accounts": -1
+          Authority: "link-accounts": -1
+          Authority: "link-accounts": -1
+          Authority: "native-redirect": -1
+          Authority: "auth-redirect": -1
+          Path: "PatternMatcher{PREFIX: /com.pryvo/authentication_return}"
+          Path: "PatternMatcher{PREFIX: /com.pryvo/authentication_return}"
+          Path: "PatternMatcher{LITERAL: /com.pryvo/success}"
+          Path: "PatternMatcher{LITERAL: /com.pryvo/cancel}"
+          Path: "PatternMatcher{PREFIX: /com.pryvo}"
+          Path: "PatternMatcher{PREFIX: /com.pryvo}"
+        403ccb1 com.pryvo/com.stripe.android.financialconnections.lite.FinancialConnectionsSheetLiteRedirectActivity filter fe24596
+          Action: "android.intent.action.VIEW"
+          Category: "android.intent.category.DEFAULT"
+          Category: "android.intent.category.BROWSABLE"
+          Scheme: "stripe"
+          Authority: "financial-connections-lite": -1
+          Path: "PatternMatcher{PREFIX: /com.pryvo/auth_redirect}"
+      link-popup:
+        bf2911f com.pryvo/com.stripe.android.link.LinkRedirectHandlerActivity filter b796c6c
+          Action: "android.intent.action.VIEW"
+          Category: "android.intent.category.DEFAULT"
+          Category: "android.intent.category.BROWSABLE"
+          Scheme: "link-popup"
+          Authority: "complete": -1
+          Path: "PatternMatcher{LITERAL: /com.pryvo}"
+      stripesdk:
+        9444235 com.pryvo/com.stripe.android.payments.StripeBrowserProxyReturnActivity filter 83a86ca
+          Action: "android.intent.action.VIEW"
+          Category: "android.intent.category.DEFAULT"
+          Category: "android.intent.category.BROWSABLE"
+          Scheme: "stripesdk"
+          Authority: "payment_return_url": -1
+          Path: "PatternMatcher{LITERAL: /com.pryvo}"
+      stripe-auth:
+        39203b com.pryvo/com.stripe.android.financialconnections.FinancialConnectionsSheetRedirectActivity filter 8c6e358
+          Action: "android.intent.action.VIEW"
+          Category: "android.intent.category.DEFAULT"
+          Category: "android.intent.category.BROWSABLE"
+          Scheme: "stripe-auth"
+          Scheme: "stripe"
+          Authority: "link-accounts": -1
+          Authority: "link-native-accounts": -1
+          Authority: "link-accounts": -1
+          Authority: "link-accounts": -1
+          Authority: "native-redirect": -1
+          Authority: "auth-redirect": -1
+          Path: "PatternMatcher{PREFIX: /com.pryvo/authentication_return}"
+          Path: "PatternMatcher{PREFIX: /com.pryvo/authentication_return}"
+          Path: "PatternMatcher{LITERAL: /com.pryvo/success}"
+          Path: "PatternMatcher{LITERAL: /com.pryvo/cancel}"
+          Path: "PatternMatcher{PREFIX: /com.pryvo}"
+          Path: "PatternMatcher{PREFIX: /com.pryvo}"
+
+  Non-Data Actions:
+      android.intent.action.MAIN:
+        859a779 com.pryvo/.MainActivity filter fc95cbe
+          Action: "android.intent.action.MAIN"
+          Category: "android.intent.category.LAUNCHER"
+
+Receiver Resolver Table:
+  Non-Data Actions:
+      androidx.profileinstaller.action.SAVE_PROFILE:
+        f7d5bb3 com.pryvo/androidx.profileinstaller.ProfileInstallReceiver filter 64716e
+          Action: "androidx.profileinstaller.action.SAVE_PROFILE"
+      androidx.profileinstaller.action.INSTALL_PROFILE:
+        f7d5bb3 com.pryvo/androidx.profileinstaller.ProfileInstallReceiver filter 9c2c570
+          Action: "androidx.profileinstaller.action.INSTALL_PROFILE"
+      com.google.android.c2dm.intent.RECEIVE:
+        c8f8517 com.pryvo/io.invertase.firebase.messaging.ReactNativeFirebaseMessagingReceiver filter a72dd04
+          Action: "com.google.android.c2dm.intent.RECEIVE"
+        75782ed com.pryvo/com.google.firebase.iid.FirebaseInstanceIdReceiver filter a752522
+          Action: "com.google.android.c2dm.intent.RECEIVE"
+      androidx.profileinstaller.action.SKIP_FILE:
+        f7d5bb3 com.pryvo/androidx.profileinstaller.ProfileInstallReceiver filter 4b660e9
+          Action: "androidx.profileinstaller.action.SKIP_FILE"
+      androidx.profileinstaller.action.BENCHMARK_OPERATION:
+        f7d5bb3 com.pryvo/androidx.profileinstaller.ProfileInstallReceiver filter e68000f
+          Action: "androidx.profileinstaller.action.BENCHMARK_OPERATION"
+
+Service Resolver Table:
+  Non-Data Actions:
+      com.google.firebase.MESSAGING_EVENT:
+        ce6c89c com.pryvo/io.invertase.firebase.messaging.ReactNativeFirebaseMessagingService filter 40b22a5
+          Action: "com.google.firebase.MESSAGING_EVENT"
+        ae5d288 com.pryvo/com.google.firebase.messaging.FirebaseMessagingService filter 7304421
+          Action: "com.google.firebase.MESSAGING_EVENT"
+          mPriority=-500, mOrder=0, mHasStaticPartialTypes=false, mHasDynamicPartialTypes=false
+      com.google.android.gms.metadata.MODULE_DEPENDENCIES:
+        dea367a com.pryvo/com.google.android.gms.metadata.ModuleDependencies filter 5ae8e2b
+          Action: "com.google.android.gms.metadata.MODULE_DEPENDENCIES"
+
+Domain verification status:
+
+Permissions:
+  Permission [com.pryvo.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION] (bb53faf):
+    sourcePackage=com.pryvo
+    uid=10222 gids=[] type=0 prot=signature
+    perm=PermissionInfo{2e33e83 com.pryvo.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION}
+    flags=0x0
+
+Registered ContentProviders:
+  com.pryvo/io.invertase.firebase.app.ReactNativeFirebaseAppInitProvider:
+    Provider{41fb800 com.pryvo/io.invertase.firebase.app.ReactNativeFirebaseAppInitProvider}
+  com.pryvo/com.google.firebase.provider.FirebaseInitProvider:
+    Provider{b918839 com.pryvo/com.google.firebase.provider.FirebaseInitProvider}
+  com.pryvo/androidx.startup.InitializationProvider:
+    Provider{98e8e7e com.pryvo/androidx.startup.InitializationProvider}
+  com.pryvo/com.reactnative.ivpusic.imagepicker.IvpusicImagePickerFileProvider:
+    Provider{4913fdf com.pryvo/com.reactnative.ivpusic.imagepicker.IvpusicImagePickerFileProvider}
+  com.pryvo/com.imagepicker.ImagePickerProvider:
+    Provider{8c8542c com.pryvo/com.imagepicker.ImagePickerProvider}
+  com.pryvo/androidx.core.content.FileProvider:
+    Provider{cf96ef5 com.pryvo/androidx.core.content.FileProvider}
+
+ContentProvider Authorities:
+  [com.pryvo.androidx-startup]:
+    Provider{98e8e7e com.pryvo/androidx.startup.InitializationProvider}
+      applicationInfo=ApplicationInfo{5ed9fbc com.pryvo}
+  [com.pryvo.provider]:
+    Provider{4913fdf com.pryvo/com.reactnative.ivpusic.imagepicker.IvpusicImagePickerFileProvider}
+      applicationInfo=ApplicationInfo{4407b45 com.pryvo}
+  [com.pryvo.firebaseinitprovider]:
+    Provider{b918839 com.pryvo/com.google.firebase.provider.FirebaseInitProvider}
+      applicationInfo=ApplicationInfo{161b29a com.pryvo}
+  [com.pryvo.imagepickerprovider]:
+    Provider{8c8542c com.pryvo/com.imagepicker.ImagePickerProvider}
+      applicationInfo=ApplicationInfo{82027cb com.pryvo}
+  [com.pryvo.fileprovider]:
+    Provider{cf96ef5 com.pryvo/androidx.core.content.FileProvider}
+      applicationInfo=ApplicationInfo{3d2fba8 com.pryvo}
+  [com.pryvo.reactnativefirebaseappinitprovider]:
+    Provider{41fb800 com.pryvo/io.invertase.firebase.app.ReactNativeFirebaseAppInitProvider}
+      applicationInfo=ApplicationInfo{57286c1 com.pryvo}
+
+Key Set Manager:
+  [com.pryvo]
+      Signing KeySets: 70
+
+Packages:
+  Package [com.pryvo] (157f210):
+    appId=10222
+    pkg=Package{e3efcc4 com.pryvo}
+    codePath=/data/app/~~ZwJuCyBWwmdaxkCY2vsZ-Q==/com.pryvo-EzubLTUdujn293rBpoVOvw==
+    resourcePath=/data/app/~~ZwJuCyBWwmdaxkCY2vsZ-Q==/com.pryvo-EzubLTUdujn293rBpoVOvw==
+    legacyNativeLibraryDir=/data/app/~~ZwJuCyBWwmdaxkCY2vsZ-Q==/com.pryvo-EzubLTUdujn293rBpoVOvw==/lib
+    extractNativeLibs=false
+    primaryCpuAbi=x86_64
+    secondaryCpuAbi=null
+    cpuAbiOverride=null
+    versionCode=1 minSdk=24 targetSdk=36
+    minExtensionVersions=[]
+    versionName=1.0
+    hiddenApiEnforcementPolicy=2
+    usesNonSdkApi=false
+    splits=[base]
+    apkSigningVersion=2
+    flags=[ DEBUGGABLE HAS_CODE ALLOW_CLEAR_USER_DATA ALLOW_BACKUP ]
+    privateFlags=[ PRIVATE_FLAG_ACTIVITIES_RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION ALLOW_AUDIO_PLAYBACK_CAPTURE PARTIALLY_DIRECT_BOOT_AWARE PRIVATE_FLAG_ALLOW_NATIVE_HEAP_POINTER_TAGGING ]
+    forceQueryable=false
+    pageSizeCompat=0
+    queriesPackages=[com.android.chrome, com.google.android.apps.maps]
+    queriesIntents=[Intent { act=android.media.action.IMAGE_CAPTURE }, Intent { act=android.intent.action.VIEW dat=http:/... }]
+    scannedAsStoppedSystemApp=false
+    supportsScreens=[small, medium, large, xlarge, resizeable, anyDensity]
+    usesOptionalLibraries:
+      org.apache.http.legacy
+      android.ext.adservices
+    usesLibraryFiles:
+      /system/framework/org.apache.http.legacy.jar
+    timeStamp=2026-03-18 12:31:40
+    lastUpdateTime=2026-03-18 12:31:40
+    installerPackageName=null
+    installerPackageUid=-1
+    initiatingPackageName=com.android.shell
+    originatingPackageName=null
+    packageSource=1
+    appMetadataFilePath=null
+    appMetadataSource=0
+    signatures=PackageSignatures{56d87ad version:2, signatures:[51ed3f60], past signatures:[]}
+    installPermissionsFixed=false
+    pkgFlags=[ DEBUGGABLE HAS_CODE ALLOW_CLEAR_USER_DATA ALLOW_BACKUP ]
+    privatePkgFlags=[ PRIVATE_FLAG_ACTIVITIES_RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION ALLOW_AUDIO_PLAYBACK_CAPTURE PARTIALLY_DIRECT_BOOT_AWARE PRIVATE_FLAG_ALLOW_NATIVE_HEAP_POINTER_TAGGING ]
+    apexModuleName=null
+    declared permissions:
+      com.pryvo.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION: prot=signature
+    requested permissions:
+      com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE
+      android.permission.POST_NOTIFICATIONS
+      com.google.android.c2dm.permission.RECEIVE
+      android.permission.ACCESS_FINE_LOCATION
+      android.permission.SYSTEM_ALERT_WINDOW
+      android.permission.READ_MEDIA_VISUAL_USER_SELECTED
+      android.permission.ACCESS_ADSERVICES_AD_ID
+      android.permission.INTERNET
+      android.permission.READ_EXTERNAL_STORAGE
+      android.permission.ACCESS_COARSE_LOCATION
+      android.permission.READ_MEDIA_IMAGES
+      android.permission.ACCESS_NETWORK_STATE
+      android.permission.CAMERA
+      android.permission.ACCESS_ADSERVICES_ATTRIBUTION
+      android.permission.READ_MEDIA_VIDEO
+      com.pryvo.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+      com.google.android.gms.permission.AD_ID
+      android.permission.WAKE_LOCK
+    install permissions:
+      com.google.android.finsky.permission.BIND_GET_INSTALL_REFERRER_SERVICE: granted=true
+      com.google.android.c2dm.permission.RECEIVE: granted=true
+      android.permission.ACCESS_ADSERVICES_AD_ID: granted=true
+      android.permission.INTERNET: granted=true
+      android.permission.ACCESS_NETWORK_STATE: granted=true
+      android.permission.ACCESS_ADSERVICES_ATTRIBUTION: granted=true
+      com.pryvo.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION: granted=true
+      com.google.android.gms.permission.AD_ID: granted=true
+      android.permission.WAKE_LOCK: granted=true
+    User 0: ceDataInode=0 deDataInode=40968 installed=true hidden=false suspended=false distractionFlags=0 stopped=true notLaunched=true enabled=0 instant=false virtual=false quarantined=false
+      installReason=0
+      dataDir=/data/user/0/com.pryvo
+      firstInstallTime=2026-03-18 12:31:40
+      uninstallReason=0
+      overlay paths:
+        /product/overlay/EmulationPixel8/EmulationPixel8Overlay.apk
+        /product/overlay/NavigationBarMode3Button/NavigationBarMode3ButtonOverlay.apk
+        /data/resource-cache/com.android.systemui-neutral-3MLp.frro
+        /data/resource-cache/com.android.systemui-accent-b4VF.frro
+        /data/resource-cache/com.android.systemui-dynamic-xMaK.frro
+      legacy overlay paths:
+        /product/overlay/EmulationPixel8/EmulationPixel8Overlay.apk
+        /product/overlay/NavigationBarMode3Button/NavigationBarMode3ButtonOverlay.apk
+      gids=[3003]
+      runtime permissions:
+        android.permission.POST_NOTIFICATIONS: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+        android.permission.ACCESS_FINE_LOCATION: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+        android.permission.READ_MEDIA_VISUAL_USER_SELECTED: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+        android.permission.READ_EXTERNAL_STORAGE: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED|RESTRICTION_INSTALLER_EXEMPT]
+        android.permission.ACCESS_COARSE_LOCATION: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+        android.permission.READ_MEDIA_IMAGES: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+        android.permission.CAMERA: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+        android.permission.READ_MEDIA_VIDEO: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+
+Queries:
+  system apps queryable: false
+  queries via forceQueryable:
+  queries via package name:
+    com.pryvo:
+      com.android.chrome
+      com.google.android.apps.maps
+  queries via component:
+    com.google.android.as.oss:
+      com.pryvo
+    com.google.android.as:
+      com.pryvo
+    com.google.android.apps.messaging:
+      com.pryvo
+    com.google.android.settings.intelligence:
+      com.pryvo
+    com.google.android.apps.accessibility.voiceaccess:
+      com.pryvo
+    com.pryvo:
+      com.google.android.googlequicksearchbox
+      com.android.chrome
+      com.android.camera2
+      com.google.android.calendar
+      com.google.android.apps.docs
+  queryable via interaction:
+    User 0:
+  queryable via uses-library:
+
+Dexopt state:
+  [com.pryvo]
+    path: /data/app/~~ZwJuCyBWwmdaxkCY2vsZ-Q==/com.pryvo-EzubLTUdujn293rBpoVOvw==/base.apk
+      x86_64: [status=run-from-apk] [reason=unknown] [primary-abi]
+        [location is error]
+
+Compiler stats:
+  [com.pryvo]
+    (No recorded stats)

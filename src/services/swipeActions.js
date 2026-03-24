@@ -44,6 +44,25 @@ export const passUser = async (userId, passedUserId) => {
   }
 };
 
+export const sendComment = async (senderId, receiverId, options) => {
+  try {
+    const payload = {
+      senderId,
+      receiverId,
+      comment: options.text,
+      targetContent: {
+        type: options.targetType || 'profile',
+        photoUrl: options.photoUrl
+      }
+    };
+    const res = await apiClient.post('/comments', payload);
+    return res;
+  } catch (err) {
+    console.error('Send Comment Error:', err?.message || err);
+    throw err;
+  }
+};
+
 export const resetPasses = async userId => {
   try {
     const res = await apiClient.post('/swipe/reset-passes', {userId});
@@ -118,5 +137,20 @@ export const getUndoStatus = async userId => {
   } catch (err) {
     console.error('Undo Status Error:', err?.message || err);
     return {success: false, canUndo: false};
+  }
+};
+
+/**
+ * Check if current user has already liked another user
+ * @param {string} viewerId - Current user ID
+ * @param {string} targetId - User being checked
+ */
+export const checkLikedStatus = async (viewerId, targetId) => {
+  try {
+    const res = await apiClient.get(`/swipe/liked-status/${viewerId}/${targetId}`);
+    return res;
+  } catch (err) {
+    console.error('Check Liked Status Error:', err?.message || err);
+    return { success: false, liked: false };
   }
 };

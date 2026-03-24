@@ -90,7 +90,15 @@ const OTPVerificationScreen = () => {
           contentContainerStyle={styles.container}
           keyboardShouldPersistTaps="handled">
           <View style={styles.header}>
-            <Text style={styles.title}>OTP Verification</Text>
+            <View style={styles.headerTop}>
+              <Text style={styles.title}>OTP Verification</Text>
+              <Pressable 
+                onPress={handleSkip}
+                style={styles.skipButton}
+              >
+                <Text style={styles.skipText}>Skip</Text>
+              </Pressable>
+            </View>
             <Text style={styles.subtitle}>
               We've sent a verification code to {phone}
             </Text>
@@ -128,9 +136,9 @@ const OTPVerificationScreen = () => {
             )}
           </Pressable>
 
-          {phone && (
-            <Pressable style={styles.resendButton} onPress={handleSkip}>
-              <Text style={styles.resendText}>Skip verification</Text>
+          {!phone && (
+            <Pressable style={styles.resendButton}>
+              <Text style={styles.resendText}>Resend code</Text>
             </Pressable>
           )}
           {!phone && (
@@ -155,13 +163,28 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: spacing.xxl,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: spacing.xs,
+    width: '100%',
   },
   title: {
     fontFamily: typography.fontFamilyBold,
     fontSize: typography.headings.h2,
     color: colors.textPrimary,
-    marginBottom: spacing.sm,
+    flex: 1,
+  },
+  skipButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  skipText: {
+    fontFamily: typography.fontFamilyBold,
+    fontSize: typography.body.medium,
+    color: colors.primary,
   },
   subtitle: {
     fontFamily: typography.fontFamilyRegular,

@@ -15,6 +15,7 @@ import {colors, typography, spacing} from '../../../theme';
 import {savePersonalDetails} from '../../../services/profile/profileService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useAuth} from '../../../context/AuthContext';
+import {decodeJWT} from '../../../utils/safeUtils';
 
 const PersonalDetailsScreen = () => {
   const {profile, loadProfile} = useAuth();
@@ -90,8 +91,8 @@ const PersonalDetailsScreen = () => {
         const token = await AsyncStorage.getItem('@pryvo/token');
         if (token && token !== 'undefined') {
           try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            userId = payload.userId || payload.id;
+            const payload = decodeJWT(token);
+            userId = payload?.userId || payload?.id;
           } catch (e) {
             console.error('Failed to decode token:', e);
           }
@@ -131,7 +132,15 @@ const PersonalDetailsScreen = () => {
       contentContainerStyle={styles.container}
       showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
-        <Text style={styles.title}>More about you</Text>
+        <View style={styles.headerTop}>
+          <Text style={styles.title}>More about you</Text>
+          <Pressable 
+            onPress={() => navigation.navigate(AppRoute.Lifestyle)}
+            style={styles.skipButton}
+          >
+            <Text style={styles.skipText}>Skip</Text>
+          </Pressable>
+        </View>
         <Text style={styles.subtitle}>
           The more you share, the better your matches will be
         </Text>
@@ -332,11 +341,26 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: spacing.xl,
   },
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
   title: {
     fontFamily: typography.fontFamilyBold,
     fontSize: typography.headings.h2,
     color: colors.textPrimary,
-    marginBottom: spacing.sm,
+    flex: 1,
+  },
+  skipButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  skipText: {
+    fontFamily: typography.fontFamilyBold,
+    fontSize: typography.body.medium,
+    color: colors.primary,
   },
   subtitle: {
     fontFamily: typography.fontFamilyRegular,

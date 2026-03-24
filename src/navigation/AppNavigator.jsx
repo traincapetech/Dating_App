@@ -18,10 +18,10 @@ import OTPVerificationScreen from '../features/onboarding/screens/OTPVerificatio
 import WelcomeScreen from '../features/onboarding/screens/WelcomeScreen.jsx';
 import BasicInfoScreen from '../features/onboarding/screens/BasicInfoScreen.jsx';
 import DatingPreferencesScreen from '../features/onboarding/screens/DatingPreferencesScreen.jsx';
-import PersonalDetailsScreen from '../features/onboarding/screens/PersonalDetailsScreen.jsx';
 import LifestyleScreen from '../features/onboarding/screens/LifestyleScreen.jsx';
 import ProfilePromptsScreen from '../features/onboarding/screens/ProfilePromptsScreen.jsx';
 import MediaUploadScreen from '../features/onboarding/screens/MediaUploadScreen.jsx';
+import PersonalDetailsScreen from '../features/onboarding/screens/PersonalDetailsScreen.jsx';
 import SubscriptionUpsellScreen from '../features/subscription/screens/SubscriptionUpsellScreen.jsx';
 import HelpCentreScreen from '../features/settings/screens/HelpCentreScreen.jsx';
 import ReportProblemScreen from '../features/settings/screens/ReportProblemScreen.jsx';
@@ -44,7 +44,7 @@ import AdvancedFiltersScreen from '../features/settings/screens/AdvancedFiltersS
 import CategoryHelpScreen from '../features/settings/screens/CategoryHelpScreen.jsx';
 import UserProfileViewScreen from '../features/profile/screens/UserProfileViewScreen.jsx';
 import {colors, typography} from '../theme';
-import {setupNotificationHandlers} from '../services/notifications/notificationService';
+import {setupNotificationHandlers, setupTokenRefreshListener, enableNotifications} from '../services/notifications/notificationService';
 import {useEffect} from 'react';
 import {SocketProvider} from '../context/SocketContext';
 import GlobalNotification from '../components/layout/GlobalNotification';
@@ -66,9 +66,12 @@ const AppNavigator = () => {
   useEffect(() => {
     // Wait for navigation to be ready
     if (navigationRef.isReady()) {
-      const unsubscribe = setupNotificationHandlers(navigationRef);
+      const unsubscribeHandlers = setupNotificationHandlers(navigationRef);
+      const unsubscribeRefresh = setupTokenRefreshListener();
+
       return () => {
-        if (unsubscribe) unsubscribe();
+        if (unsubscribeHandlers) unsubscribeHandlers();
+        if (unsubscribeRefresh) unsubscribeRefresh();
       };
     }
   }, [navigationRef]);

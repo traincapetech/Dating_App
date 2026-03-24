@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
+import {decodeJWT} from '../../../utils/safeUtils';
 import {useNavigation, useFocusEffect} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {colors, typography, spacing} from '../../../theme';
@@ -70,8 +71,8 @@ const ProfileScreen = () => {
         const token = await AsyncStorage.getItem('@pryvo/token');
         if (token && token !== 'undefined') {
           try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            currentUserId = payload.userId || payload.id;
+            const payload = decodeJWT(token);
+            currentUserId = payload?.userId || payload?.id;
             setUserId(currentUserId);
           } catch (e) {
             console.error('Failed to decode token:', e);
@@ -253,11 +254,18 @@ const ProfileScreen = () => {
           <Text style={styles.headerTitle}>
             {firstName.toLowerCase() || 'profile'}
           </Text>
-          <Pressable
-            style={styles.headerIconBtn}
-            onPress={() => navigation.navigate('Settings')}>
-            <Icon name="menu" size={26} color={colors.textPrimary} />
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable
+              style={styles.headerIconBtn}
+              onPress={() => navigation.navigate('Wallet')}>
+              <Icon name="wallet-outline" size={26} color={colors.textPrimary} />
+            </Pressable>
+            <Pressable
+              style={styles.headerIconBtn}
+              onPress={() => navigation.navigate('Settings')}>
+              <Icon name="menu" size={26} color={colors.textPrimary} />
+            </Pressable>
+          </View>
         </View>
 
         {/* Profile Header (Avatar + Stats) */}
@@ -383,6 +391,8 @@ const ProfileScreen = () => {
                 ))}
             </View>
           )}
+
+        
         </View>
 
         {/* Dating Intention Badge (Integrated) */}
@@ -581,6 +591,20 @@ const styles = StyleSheet.create({
   },
   headerIconBtn: {
     padding: 4,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  headerBtn: {
+    padding: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 50,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   profileHeader: {
     flexDirection: 'row',

@@ -5,10 +5,12 @@ import {SafeAreaProvider} from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
 import {LoadingProvider} from './src/context/LoadingContext';
 import {AuthProvider} from './src/context/AuthContext';
+
 import {InitialLoadProvider} from './src/context/InitialLoadContext';
 import {StripeProvider} from '@stripe/stripe-react-native';
 
 import './global.css';
+
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -80,7 +82,7 @@ const App = () => {
                   translucent={Platform.OS === 'android'}
                 />
                 <StripeProvider
-                  publishableKey={process.env.STRIPE_PUBLISHABLE_KEY} // Placeholder, should be from env ideally
+                  publishableKey={process.env.STRIPE_PUBLISHABLE_KEY || ""} // Ideally from .env
                 >
                   <AppNavigator />
                 </StripeProvider>

@@ -44,8 +44,8 @@ export async function requestNotificationPermission() {
 
     const authStatus = await getMessaging().requestPermission();
     const enabled =
-      authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-      authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+      authStatus === AuthorizationStatus.AUTHORIZED ||
+      authStatus === AuthorizationStatus.PROVISIONAL;
 
     await AsyncStorage.setItem(
       NOTIFICATION_PERMISSION_KEY,
@@ -74,8 +74,8 @@ export async function checkNotificationPermission() {
 
     const authStatus = await getMessaging().hasPermission();
     return (
-      authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-      authStatus === messaging.AuthorizationStatus.PROVISIONAL
+      authStatus === AuthorizationStatus.AUTHORIZED ||
+      authStatus === AuthorizationStatus.PROVISIONAL
     );
   } catch (error) {
     console.error('Error checking notification permission:', error);
@@ -84,23 +84,24 @@ export async function checkNotificationPermission() {
 }
 
 // Get FCM token
-export async function getFCMToken() {
+export async function getFCMToken(forceRefresh = false) {
   try {
-    // Check if we already have a token stored
-    const storedToken = await AsyncStorage.getItem(NOTIFICATION_TOKEN_KEY);
-    if (storedToken) {
-      return storedToken;
+    if (!forceRefresh) {
+      // Check if we already have a token stored
+      const storedToken = await AsyncStorage.getItem(NOTIFICATION_TOKEN_KEY);
+      if (storedToken) {
+        return storedToken;
+      }
     }
 
     // Request permission first
     const hasPermission = await requestNotificationPermission();
     if (!hasPermission) {
-      // Don't throw, just return null if permission denied
       console.log('Notification permission not granted, skipping token fetch');
       return null;
     }
 
-    // Get FCM token
+    // Get FCM token directly from Firebase
     try {
       const token = await getMessaging().getToken();
       if (token) {
@@ -109,7 +110,6 @@ export async function getFCMToken() {
       }
     } catch (tokenError) {
       console.warn('Failed to fetch FCM token:', tokenError);
-      // Suppress error to avoid crashing app on simulators without Play Services
       return null;
     }
 
@@ -134,36 +134,67 @@ export async function deleteFCMToken() {
 }
 
 // Setup notification handlers
+import notifee, { EventType } from '@notifee/react-native';
+import { displayChatNotification, updateNotificationWithReply } from '../notificationHelper.js';
+import { sendSmartMessage } from '../chatSendService.js';
+
+// Setup notification handlers
 export function setupNotificationHandlers(navigation) {
-  // Handle foreground notifications
+  // Handle FCM foreground notifications (App is open)
   const unsubscribeForeground = getMessaging().onMessage(
     async remoteMessage => {
       console.log('Foreground notification received:', remoteMessage);
-      // NOTE: We rely on the Socket.IO receiveMessage event for real-time foreground updates
-      // as it's faster and contains more structured data for the GlobalNotification banner.
+      if (remoteMessage.data?.type === 'chat_message') {
+        // Only display if user is not actively chatting with them right now
+        // Typically you'd check active route, but for safety we draw it
+        await displayChatNotification(remoteMessage.data);
+      }
     },
   );
 
-  // Handle background/quit state notifications
-  getMessaging().onNotificationOpenedApp(remoteMessage => {
-    console.log('Notification opened app:', remoteMessage);
+  // Handle Notifee Actions (Tap on notification or Reply button) while app is open
+  const unsubscribeNotifee = notifee.onForegroundEvent(async ({ type, detail }) => {
+    const { notification, pressAction, input } = detail;
 
-    // Navigate to relevant screen
-    if (remoteMessage.data?.type === 'message') {
+    // Handle Quick Reply while app is open
+    if (type === EventType.ACTION_PRESS && pressAction?.id === 'reply') {
+      const replyText = input?.trim();
+      if (!replyText || !notification?.data) return;
+      
+      const { chatId, senderId } = notification.data;
+      const myId = await getUserId();
+      
+      const result = await sendSmartMessage(replyText, chatId, senderId, myId);
+      if (result.success) {
+        await updateNotificationWithReply(notification, replyText);
+      }
+    }
+
+    // Handle standard tap on the whole notification
+    if (type === EventType.ACTION_PRESS && pressAction?.id === 'default') {
+      if (notification?.data?.type === 'chat_message') {
+        navigation?.navigate('Messages'); // Or direct to ChatScreen if you pass params
+      }
+    }
+  });
+
+  // Handle FCM OS-level notification clicks (if not data-only)
+  getMessaging().onNotificationOpenedApp(remoteMessage => {
+    console.log('Notification opened app (FCM):', remoteMessage);
+    if (remoteMessage.data?.type === 'message' || remoteMessage.data?.type === 'chat_message') {
       navigation?.navigate('Messages');
     } else if (remoteMessage.data?.type === 'match') {
       navigation?.navigate('HomeTabs');
     }
   });
 
-  // Check if app was opened from a quit state via notification
+  // Handle initial boot from FCM notification
   getMessaging()
     .getInitialNotification()
     .then(remoteMessage => {
       if (remoteMessage) {
-        console.log('App opened from notification:', remoteMessage);
-        // Handle navigation
-        if (remoteMessage.data?.type === 'message') {
+        console.log('App opened from notification (FCM Init):', remoteMessage);
+        if (remoteMessage.data?.type === 'message' || remoteMessage.data?.type === 'chat_message') {
           navigation?.navigate('Messages');
         } else if (remoteMessage.data?.type === 'match') {
           navigation?.navigate('HomeTabs');
@@ -171,7 +202,43 @@ export function setupNotificationHandlers(navigation) {
       }
     });
 
-  return unsubscribeForeground;
+  // Wait, also check Notifee initial boot in case FCM didn't catch the data-only proxy
+  notifee.getInitialNotification().then(initialNotification => {
+    if (initialNotification) {
+      console.log('App opened from notification (Notifee Init):', initialNotification);
+      if (initialNotification.notification.data?.type === 'chat_message') {
+        setTimeout(() => navigation?.navigate('Messages'), 500); // Small delay to let Nav mount
+      }
+    }
+  });
+
+  return () => {
+    unsubscribeForeground();
+    unsubscribeNotifee();
+  };
+}
+
+// Setup token refresh listener
+export function setupTokenRefreshListener() {
+  const unsubscribe = getMessaging().onTokenRefresh(async token => {
+    try {
+      await AsyncStorage.setItem(NOTIFICATION_TOKEN_KEY, token);
+      
+      const userId = await getUserId();
+      if (userId) {
+        console.log('FCM Token refreshed for user:', userId);
+        await apiClient.post('/notifications/register', {
+          userId,
+          token,
+          platform: Platform.OS,
+        });
+      }
+    } catch (error) {
+      console.warn('Failed to handle token refresh:', error);
+    }
+  });
+
+  return unsubscribe;
 }
 
 // Get userId from storage (if available)
@@ -194,18 +261,16 @@ export async function enableNotifications(userId = null) {
     const hasPermission = await requestNotificationPermission();
 
     if (!hasPermission) {
-      throw new Error(
-        'Notification permission denied. Please enable in device settings.',
-      );
+      return {success: false, reason: 'permission_denied'};
     }
 
-    const token = await getFCMToken();
+    // Always try to get a fresh token from Firebase to handle re-installs
+    const token = await getFCMToken(true); 
 
     if (!token) {
       console.warn(
         'Failed to get notification token - notifications may not work',
       );
-      // Return success: false but don't throw, so UI doesn't show error
       return {success: false, reason: 'no_token'};
     }
 
