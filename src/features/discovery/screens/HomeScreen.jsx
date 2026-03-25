@@ -48,6 +48,7 @@ import {usePhotoSocial} from '../../../hooks/usePhotoSocial';
 import {photoSocialService} from '../../../services/photoSocialService';
 import PhotoInteractionViewer from '../../../components/profile/PhotoInteractionViewer';
 import {useAuth} from '../../../context/AuthContext';
+import {triggerMediumHaptic} from '../../../utils/haptics';
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - spacing.xl * 2;
@@ -1062,13 +1063,28 @@ const HomeScreen = ({navigation}) => {
     runOnJS(setIsProfileFocused)(false);
   };
 
+  // ✨ Haptic feedback state for gesture threshold
+  const hasTriggeredHaptic = useSharedValue(false);
+
   const panGesture = Gesture.Pan()
     .activeOffsetX([-10, 10])
     .onUpdate(event => {
       translateX.value = event.translationX;
       translateY.value = event.translationY;
+
+      // 📳 Trigger haptic when crossing the swipe threshold
+      const absX = Math.abs(event.translationX);
+      if (absX >= SWIPE_THRESHOLD && !hasTriggeredHaptic.value) {
+        hasTriggeredHaptic.value = true;
+        runOnJS(triggerMediumHaptic)();
+      } else if (absX < SWIPE_THRESHOLD && hasTriggeredHaptic.value) {
+        // Reset if they pull back
+        hasTriggeredHaptic.value = false;
+      }
     })
     .onEnd(event => {
+      hasTriggeredHaptic.value = false; // Reset for next gesture
+      
       if (event.translationX > SWIPE_THRESHOLD || event.velocityX > 500) {
         runOnJS(processSwipe)('right');
       } else if (
@@ -1180,7 +1196,7 @@ const HomeScreen = ({navigation}) => {
     );
   }
 
-  // ── Empty state ─────────────────────────────────────────────────────────────
+  // ── Empty state (REFINED 10/10 Polish) ───────────────────────────────────────
   if (!currentProfile) {
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
@@ -1190,43 +1206,69 @@ const HomeScreen = ({navigation}) => {
         />
         {renderHeader()}
         <View style={styles.emptyContainer}>
-          <View style={{marginBottom: 20}}>
+          <View style={styles.emptyIconCircle}>
+            <LinearGradient
+              colors={['#7C3AED', '#C026D3']}
+              style={StyleSheet.absoluteFill}
+              borderRadius={60}
+            />
             <MaterialCommunityIcons
-              name="account-search"
-              size={80}
-              color={colors.primary}
+              name="creation"
+              size={60}
+              color="#FFF"
             />
           </View>
-          <Text style={styles.emptyTitle}>No more profiles</Text>
+          
+
+          <Text style={styles.emptyTitle}>Discovery Complete!</Text>
           <Text style={styles.emptySubtitle}>
-            We've run out of people nearby. Try adjusting your distance or age
-            filters to see more people.
+            You've seen all the amazing people nearby. We'll find more for you soon, or you can expand your search.
           </Text>
-          <Pressable
-            style={styles.refreshButton}
-            onPress={async () => {
-              setProfiles([]);
-              setCurrentIndex(0);
-              translateX.value = 0;
-              translateY.value = 0;
-              opacity.value = 1;
-              if (currentUserId) {
-                try {
-                  await resetPasses(currentUserId);
-                } catch (e) {
-                  console.error('Failed to reset passes:', e);
-                }
-              }
-              await loadProfiles();
-            }}>
-            <LinearGradient
-              colors={['#9411FA', '#E040C8', '#FF6B35']}
-              start={{x: 0, y: 0}}
-              end={{x: 1, y: 0}}
-              style={styles.refreshButtonGradient}>
-              <Text style={styles.refreshButtonText}>Refresh Profiles</Text>
-            </LinearGradient>
-          </Pressable>
+
+          <View style={styles.emptyOptions}>
+             <Pressable
+                style={styles.refreshButton}
+                onPress={async () => {
+                  setProfiles([]);
+                  setCurrentIndex(0);
+                  translateX.value = 0;
+                  translateY.value = 0;
+                  opacity.value = 1;
+                  if (currentUserId) {
+                    try {
+                      await resetPasses(currentUserId);
+                      triggerMediumHaptic();
+                    } catch (e) {
+                      console.error('Failed to reset passes:', e);
+                    }
+                  }
+                  await loadProfiles();
+                }}>
+                <LinearGradient
+                  colors={['#7C3AED', '#EC4899', '#F43F5E']}
+                  start={{x: 0, y: 0}}
+                  end={{x: 1, y: 0}}
+                  style={styles.refreshButtonGradient}>
+                  <Text style={styles.refreshButtonText}>Refresh Discover</Text>
+                </LinearGradient>
+              </Pressable>
+
+              <Pressable 
+                onPress={() => navigation.navigate('AdvancedFilters')}
+                style={styles.adjustFilterButton}>
+                 <Text style={styles.adjustFilterText}>Adjust Filters</Text>
+              </Pressable>
+          </View>
+
+          <View style={styles.discoveryTipCard}>
+             <MaterialCommunityIcons name="lightbulb-on-outline" size={24} color="#7C3AED" />
+             <View style={styles.tipTextContainer}>
+                <Text style={styles.tipTitle}>Pro Tip</Text>
+                <Text style={styles.tipDescription}>
+                  Users who update their bio get 3x more matches. Why not polish yours while we find more people?
+                </Text>
+             </View>
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -1604,36 +1646,91 @@ const styles = StyleSheet.create({
   // ── Empty / Loading ───────────────────────────────────────────────────────
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
+    paddingHorizontal: 32,
     alignItems: 'center',
-    paddingHorizontal: spacing.xl,
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+  },
+  emptyIconCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#7C3AED',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 32,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
   },
   emptyTitle: {
-    fontSize: typography.headings.h2,
+    fontSize: 28,
     fontFamily: typography.fontFamilyBold,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
+    color: '#000',
+    textAlign: 'center',
+    marginBottom: 16,
   },
   emptySubtitle: {
-    fontSize: typography.body.large,
-    fontFamily: typography.fontFamilyRegular,
-    color: colors.textSecondary,
+    fontSize: 16,
+    fontFamily: typography.fontFamilyMedium,
+    color: '#666',
     textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 40,
+  },
+  emptyOptions: {
+    width: '100%',
+    gap: 16,
   },
   refreshButton: {
-    marginTop: 30,
-    borderRadius: 28,
+    width: '100%',
+    height: 60,
+    borderRadius: 30,
     overflow: 'hidden',
   },
   refreshButtonGradient: {
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 28,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   refreshButtonText: {
     color: '#FFF',
+    fontSize: 18,
     fontFamily: typography.fontFamilyBold,
+  },
+  adjustFilterButton: {
+    width: '100%',
+    paddingVertical: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  discoveryTipCard: {
+    marginTop: 40,
+    padding: 20,
+    backgroundColor: '#FAFAFA',
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+    borderWidth: 1,
+    borderColor: '#F1F1F1',
+  },
+  tipTextContainer: {
+    flex: 1,
+  },
+  tipTitle: {
     fontSize: 16,
+    fontFamily: typography.fontFamilyBold,
+    color: '#000',
+    marginBottom: 4,
+  },
+  tipDescription: {
+    fontSize: 13,
+    fontFamily: typography.fontFamilyRegular,
+    color: '#666',
+    lineHeight: 18,
   },
 
   // ── Floating ──────────────────────────────────────────────────────────────

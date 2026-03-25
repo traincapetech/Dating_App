@@ -90,25 +90,23 @@ const SplashScreen = ({navigation}) => {
     ]).start();
   }, []);
 
-  // Auth Routing logic (UNTOUCHED constraint)
+  // Auth Routing logic (FIXED: Eliminated mandatory 1.5s delay for authenticated users)
   useEffect(() => {
-    let timer;
     if (!authLoading) {
-      timer = setTimeout(() => {
-        if (isAuthenticated) {
-          if (profile) {
-            console.log('[SplashScreen] Session found with profile, navigating to Home');
-            navigation?.reset({index: 0, routes: [{name: AppRoute.HomeTabs}]});
-          } else {
-            console.log('[SplashScreen] Session found but no profile, navigating to Onboarding');
-            navigation?.reset({index: 0, routes: [{name: AppRoute.Welcome}]});
-          }
+      if (isAuthenticated) {
+        // NAVIGATE IMMEDIATELY if authenticated
+        if (profile) {
+          console.log('[SplashScreen] Session found with profile, navigating to Home');
+          navigation?.reset({index: 0, routes: [{name: AppRoute.HomeTabs}]});
+        } else {
+          console.log('[SplashScreen] Session found but no profile, navigating to Onboarding');
+          navigation?.reset({index: 0, routes: [{name: AppRoute.Welcome}]});
         }
-      }, 1500);
+      } else {
+        // If guest, keep on Splash and show buttons (animations handle the rest)
+        console.log('[SplashScreen] No session found, stay on Splash');
+      }
     }
-    return () => {
-      if (timer) clearTimeout(timer);
-    };
   }, [authLoading, isAuthenticated, profile, navigation]);
 
   const handleCreateAccount = () => {
@@ -145,7 +143,7 @@ const SplashScreen = ({navigation}) => {
   return (
     <View style={styles.container}>
       {/* Background Video - Disabled for emulator stability testing */}
-      <Video
+      {/* <Video
         source={require('../../../assets/videos/landing.mp4')}
         style={StyleSheet.absoluteFillObject}
         resizeMode="cover"
@@ -154,7 +152,7 @@ const SplashScreen = ({navigation}) => {
         paused={false} // TEST: Pause video to troubleshoot emulator crash
         playWhenInactive={true}
         shutterColor="transparent"
-      />
+      /> */}
       
       {/* Dark overlay for readability */}
       <LinearGradient
@@ -172,57 +170,67 @@ const SplashScreen = ({navigation}) => {
           }}>
 
           {/* Buttons — no glass card, floating directly on gradient */}
-          <View style={[styles.actionsContainer, {width: actionCardWidth}]}>
-            {/* Google Button */}
-            <AnimatedPressable
-              onPress={handleGoogleSignIn}
-              disabled={googleLoading}
-              style={{width: '100%', marginBottom: 12}}>
-              <View style={[styles.googleButton, googleLoading && {opacity: 0.7}]}>
-                {googleLoading ? (
-                  <ActivityIndicator size="small" color="#000" />
-                ) : (
-                  <Image source={google} style={styles.googleIcon} />
-                )}
-                <Text style={styles.googleButtonText}>
-                  {googleLoading ? 'Signing in...' : 'Continue with Google'}
+          {/* Buttons — only show if NOT authenticated and NOT loading */}
+          {!isAuthenticated && !authLoading && (
+            <View style={[styles.actionsContainer, {width: actionCardWidth}]}>
+              {/* Google Button */}
+              <AnimatedPressable
+                onPress={handleGoogleSignIn}
+                disabled={googleLoading}
+                style={{width: '100%', marginBottom: 12}}>
+                <View style={[styles.googleButton, googleLoading && {opacity: 0.7}]}>
+                  {googleLoading ? (
+                    <ActivityIndicator size="small" color="#000" />
+                  ) : (
+                    <Image source={google} style={styles.googleIcon} />
+                  )}
+                  <Text style={styles.googleButtonText}>
+                    {googleLoading ? 'Signing in...' : 'Continue with Google'}
+                  </Text>
+                </View>
+              </AnimatedPressable>
+
+              {/* Log In Button (Gradient) */}
+              <AnimatedPressable onPress={handleCreateAccount} style={{width: '100%', marginBottom: 16}}>
+                <LinearGradient
+                  colors={['#7C3AED', '#C084FC']}
+                  start={{x: 0, y: 0}}
+                  end={{x: 1, y: 0}}
+                  style={styles.loginButton}>
+                  <Text style={styles.loginButtonText}>Log In</Text>
+                </LinearGradient>
+              </AnimatedPressable>
+
+              {/* Sign Up Text link */}
+              <Pressable onPress={handleSignIn} style={({pressed}) => [{opacity: pressed ? 0.7 : 1, marginTop: 8}]}>
+                <Text style={styles.signUpPrompt}>
+                  Don't have an account? <Text style={styles.signUpHighlight}>Sign Up</Text>
                 </Text>
-              </View>
-            </AnimatedPressable>
+              </Pressable>
 
-            {/* Log In Button (Gradient) */}
-            <AnimatedPressable onPress={handleCreateAccount} style={{width: '100%', marginBottom: 16}}>
-              <LinearGradient
-                colors={['#7C3AED', '#C084FC']}
-                start={{x: 0, y: 0}}
-                end={{x: 1, y: 0}}
-                style={styles.loginButton}>
-                <Text style={styles.loginButtonText}>Log In</Text>
-              </LinearGradient>
-            </AnimatedPressable>
-
-            {/* Sign Up Text link */}
-            <Pressable onPress={handleSignIn} style={({pressed}) => [{opacity: pressed ? 0.7 : 1, marginTop: 8}]}>
-              <Text style={styles.signUpPrompt}>
-                Don't have an account? <Text style={styles.signUpHighlight}>Sign Up</Text>
+              <Text style={[styles.legalText, {maxWidth: Math.min(width - 40, 360)}]}>
+                By continuing, you agree to our{' '}
+                <Text
+                  style={styles.legalLink}
+                  onPress={() => navigation.navigate(AppRoute.Terms)}>
+                  Terms of Service
+                </Text>{' '}
+                and{' '}
+                <Text
+                  style={styles.legalLink}
+                  onPress={() => navigation.navigate(AppRoute.Privacy)}>
+                  Privacy Policy
+                </Text>
               </Text>
-            </Pressable>
+            </View>
+          )}
 
-            <Text style={[styles.legalText, {maxWidth: Math.min(width - 40, 360)}]}>
-              By continuing, you agree to our{' '}
-              <Text
-                style={styles.legalLink}
-                onPress={() => navigation.navigate(AppRoute.Terms)}>
-                Terms of Service
-              </Text>{' '}
-              and{' '}
-              <Text
-                style={styles.legalLink}
-                onPress={() => navigation.navigate(AppRoute.Privacy)}>
-                Privacy Policy
-              </Text>
-            </Text>
-          </View>
+          {/* Optional: Add a simple loader if authenticated but waiting for navigation */}
+          {isAuthenticated && (
+             <View style={{ marginBottom: 100 }}>
+                <ActivityIndicator color={colors.primary} size="large" />
+             </View>
+          )}
         </Animated.ScrollView>
       </SafeAreaView>
     </View>

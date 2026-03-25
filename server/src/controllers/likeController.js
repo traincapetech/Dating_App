@@ -47,7 +47,7 @@ async function getProfileInfo(userId) {
 
 // Configuration for premium features
 // Set to false to require premium for seeing who liked you
-const LIKES_VISIBLE_FREE = true; // Change to false when you want to monetize
+const LIKES_VISIBLE_FREE = false; // Change to false when you want to monetize
 
 // Daily like limit configuration
 const DAILY_LIKE_LIMIT = 50; // Free tier limit
