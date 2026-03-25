@@ -145,7 +145,7 @@ const SplashScreen = ({navigation}) => {
   return (
     <View style={styles.container}>
       {/* Background Video - Disabled for emulator stability testing */}
-      {/* <Video
+      <Video
         source={require('../../../assets/videos/landing.mp4')}
         style={StyleSheet.absoluteFillObject}
         resizeMode="cover"
@@ -154,7 +154,7 @@ const SplashScreen = ({navigation}) => {
         paused={false} // TEST: Pause video to troubleshoot emulator crash
         playWhenInactive={true}
         shutterColor="transparent"
-      /> */}
+      />
       
       {/* Dark overlay for readability */}
       <LinearGradient
