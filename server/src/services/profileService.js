@@ -5,6 +5,7 @@ import {
   getProfiles,
 } from '../models/profileModel.js';
 import {getUsers} from '../models/userModel.js';
+import { resolveDisplayName } from '../utils/nameUtils.js';
 import Like from '../models/Like.js';
 import Pass from '../models/Pass.js';
 import Match from '../models/Match.js';
@@ -151,10 +152,7 @@ export async function getProfile(userId, viewerId = null) {
   const users = await getUsers();
   const user = users.find(u => (u._id || u.id) === profile.userId);
 
-  const profileName = `${profile.basicInfo?.firstName || ''} ${
-    profile.basicInfo?.lastName || ''
-  }`.trim();
-  const displayName = profileName || user?.fullName || 'Unknown';
+  const displayName = resolveDisplayName(profile, user);
 
   const ageFromDob = computeAge(profile.basicInfo?.dob);
 
@@ -356,10 +354,7 @@ export async function getAllProfiles(excludeUserId = null, options = {}) {
     })
     .map(profile => {
       const user = users.find(u => (u._id || u.id) === profile.userId);
-      const profileName = `${profile.basicInfo?.firstName || ''} ${
-        profile.basicInfo?.lastName || ''
-      }`.trim();
-      const displayName = profileName || user?.fullName || 'Unknown';
+      const displayName = resolveDisplayName(profile, user);
 
       const ageFromDob = computeAge(profile.basicInfo?.dob);
 

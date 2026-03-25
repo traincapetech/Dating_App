@@ -87,13 +87,8 @@ const PhotoInteractionViewer = ({
       const res = await photoSocialService.getPhotoDetails(photoUrl, isInitial ? null : cursor);
       if (res.success) {
         setComments(prev => {
-          const fetched = res.comments.map(c => ({
-            ...c,
-            senderId: {
-                ...c.senderId,
-                name: c.senderId?.fullName || c.senderId?.name || 'Someone'
-            }
-          }));
+          // Simply trust the resolved 'name' field from the backend
+          const fetched = res.comments;
           const newList = isInitial ? fetched : [...prev, ...fetched];
           return Array.from(new Map(newList.map(c => [c._id, c])).values());
         });
@@ -203,7 +198,7 @@ const PhotoInteractionViewer = ({
 
   const renderComment = ({ item }) => {
     const sender = item.senderId;
-    const isMe = sender?._id === currentUserId;
+    const isMe = (sender?._id || sender?.id) === currentUserId;
 
     return (
       <View style={styles.commentItem}>

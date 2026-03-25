@@ -29,11 +29,6 @@ const getApiBaseUrl = () => {
   if (IS_PRODUCTION) {
     return PRODUCTION_API_URL;
   }
-  // For Android physical device, use LOCAL_API_URL
-  // If using emulator, uncomment the block below:
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:3000/api';
-  }
 
   // For Android physical device, use LOCAL_API_URL
   // If using emulator, uncomment the block below:

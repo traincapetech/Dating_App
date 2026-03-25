@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useCallback} from 'react';
+import React, {useEffect, useState, useCallback, useRef} from 'react';
 import {
   View,
   Text,
@@ -8,11 +8,14 @@ import {
   Pressable,
   ActivityIndicator,
   RefreshControl,
+  Animated,
+  Platform,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useFocusEffect} from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Ionicons';
+import LinearGradient from 'react-native-linear-gradient';
 import {colors, typography, spacing} from '../../../theme';
 import {fetchMatches, fetchLastMessages} from '../../../services/chatService';
 
@@ -23,6 +26,40 @@ import {initSocket} from '../../../services/socket';
 import {useLoading} from '../../../context/LoadingContext';
 import {useInitialLoad} from '../../../context/InitialLoadContext';
 import FullScreenLoader from '../../../components/layout/FullScreenLoader';
+
+/**
+ * 🌠 ChatsScreen: PREMIUM MESSAGING LIST
+ * Redesigned for visual consistency with the Matches screen.
+ */
+
+const EmptyState = () => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 800,
+      useNativeDriver: true,
+    }).start();
+  }, [fadeAnim]);
+
+  return (
+    <Animated.View style={[styles.emptyContainer, {opacity: fadeAnim}]}>
+      <View style={styles.emptyIllustrationContainer}>
+        <LinearGradient
+          colors={['#FFF5F5', '#FFF0F0', '#FFE5E5']}
+          style={styles.illustrationCircle}>
+          <Text style={styles.emptyEmoji}>💬</Text>
+        </LinearGradient>
+      </View>
+      <Text style={styles.emptyTitle}>No conversations yet</Text>
+      <Text style={styles.emptySubtitle}>
+        When you match with someone, you can start chatting here. Your next
+        great story is about to begin.
+      </Text>
+    </Animated.View>
+  );
+};
 
 const ChatsScreen = ({navigation}) => {
   const {setLoading: setGlobalLoading} = useLoading();
@@ -35,7 +72,6 @@ const ChatsScreen = ({navigation}) => {
   const [refreshing, setRefreshing] = useState(false);
   const {visited, markVisited} = useInitialLoad();
 
-  // Load matches when screen comes into focus
   useFocusEffect(
     useCallback(() => {
       loadMatches();
@@ -43,17 +79,14 @@ const ChatsScreen = ({navigation}) => {
   );
 
   useEffect(() => {
-    // Initialize socket when component mounts
     const initializeSocket = async () => {
       const userData = await AsyncStorage.getItem('@pryvo_user');
       if (userData && userData !== 'undefined') {
         try {
           const user = JSON.parse(userData);
           setCurrentUserId(user.id);
-
           const socket = initSocket(user.id);
 
-          // Listen for new messages to update the list
           socket.on('receiveMessage', msg => {
             setLastMessages(prev => ({
               ...prev,
@@ -66,7 +99,6 @@ const ChatsScreen = ({navigation}) => {
             }));
           });
 
-          // Real-time streak updates
           socket.on('streak:update', data => {
             setStreaks(prev => ({
               ...prev,
@@ -78,7 +110,6 @@ const ChatsScreen = ({navigation}) => {
         }
       }
     };
-
     initializeSocket();
   }, []);
 
@@ -94,8 +125,6 @@ const ChatsScreen = ({navigation}) => {
 
         const response = await fetchMatches(user.id);
         const list = response?.matches || [];
-
-        // Deduplicate by theirId to ensure one chat per person
         const uniqueMatches = [];
         const seenIds = new Set();
 
@@ -109,11 +138,9 @@ const ChatsScreen = ({navigation}) => {
 
         setMatches(uniqueMatches);
 
-        // Load last messages for all matches
         if (list.length > 0) {
           const matchIds = list.map(m => m._id);
           const lastMsgs = await fetchLastMessages(matchIds, user.id);
-
           const msgMap = {};
           lastMsgs.forEach(item => {
             msgMap[item.matchId] = {
@@ -124,13 +151,11 @@ const ChatsScreen = ({navigation}) => {
           setLastMessages(msgMap);
         }
 
-        // Load Streaks
         try {
           const streakList = await fetchUserStreaks(user.id);
           const streakMap = {};
           streakList.forEach(s => {
-            const pairId = s.userPairId;
-            streakMap[pairId] = s;
+            streakMap[s.userPairId] = s;
           });
           setStreaks(streakMap);
         } catch (err) {
@@ -142,9 +167,7 @@ const ChatsScreen = ({navigation}) => {
     } finally {
       setLoading(false);
       setRefreshing(false);
-      if (!visited.chats) {
-        markVisited('chats');
-      }
+      if (!visited.chats) markVisited('chats');
     }
   };
 
@@ -155,20 +178,14 @@ const ChatsScreen = ({navigation}) => {
 
   const formatTime = timestamp => {
     if (!timestamp) return '';
-
     const date = new Date(timestamp);
     const now = new Date();
     const diffDays = Math.floor((now - date) / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) {
+    if (diffDays === 0)
       return date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
-    } else if (diffDays === 1) {
-      return 'Yesterday';
-    } else if (diffDays < 7) {
-      return date.toLocaleDateString([], {weekday: 'short'});
-    } else {
-      return date.toLocaleDateString([], {month: 'short', day: 'numeric'});
-    }
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return date.toLocaleDateString([], {weekday: 'short'});
+    return date.toLocaleDateString([], {month: 'short', day: 'numeric'});
   };
 
   const getPreviewText = message => {
@@ -186,98 +203,8 @@ const ChatsScreen = ({navigation}) => {
     );
   }
 
-  // Removed blank loading screen
-  if (!matches.length && !loading) {
-    return (
-      <SafeAreaView style={styles.center} edges={['top', 'left', 'right']}>
-        <Text style={styles.emptyEmoji}>💬</Text>
-        <Text style={styles.emptyTitle}>No matches yet</Text>
-        <Text style={styles.emptyText}>
-          When you match with someone, you can start chatting here
-        </Text>
-      </SafeAreaView>
-    );
-  }
-
-  const renderItem = ({item}) => {
-    const theirId = item.users.find(u => u !== currentUserId);
-    const matchData = lastMessages[item._id] || {};
-    const lastMessage = matchData.lastMessage;
-    const unreadCount = matchData.unreadCount || 0;
-
-    const ids = [currentUserId, theirId].sort();
-    const pairId = `${ids[0]}_${ids[1]}`;
-    const streakData = streaks[pairId];
-
-    return (
-      <Pressable
-        style={styles.chatItem}
-        onPress={() =>
-          navigation.navigate('ChatScreen', {
-            matchId: item._id,
-            theirId,
-            theirName: item.theirName || `User ${theirId?.slice(0, 6) || ''}`,
-            theirPhoto: item.theirPhoto,
-            theirAge: item.theirAge,
-          })
-        }>
-        <View style={styles.avatarContainer}>
-          <Image
-            source={{
-              uri:
-                item.theirPhoto ||
-                'https://ui-avatars.com/api/?background=667eea&color=fff&name=User',
-            }}
-            style={styles.avatar}
-          />
-          {unreadCount > 0 && (
-            <View style={styles.unreadBadge}>
-              <Text style={styles.unreadText}>
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </Text>
-            </View>
-          )}
-          {streakData && streakData.streakCount > 0 && (
-            <View style={styles.streakBadgeOverlay}>
-              <StreakBadge
-                count={streakData.streakCount}
-                graceUsed={streakData.graceUsed}
-                compact={true}
-              />
-            </View>
-          )}
-        </View>
-
-        <View style={styles.textContainer}>
-          <View style={styles.nameRow}>
-            <Text
-              style={[styles.name, unreadCount > 0 && styles.nameBold]}
-              numberOfLines={1}>
-              {item.theirName || `User ${theirId?.slice(0, 6) || ''}`}
-              {item.theirAge ? `, ${item.theirAge}` : ''}
-            </Text>
-            {lastMessage && (
-              <Text style={styles.timeText}>
-                {formatTime(lastMessage.timestamp)}
-              </Text>
-            )}
-          </View>
-          <Text
-            style={[
-              styles.lastMessage,
-              unreadCount > 0 && styles.lastMessageUnread,
-            ]}
-            numberOfLines={1}>
-            {lastMessage?.senderId === currentUserId && '✓ '}
-            {getPreviewText(lastMessage)}
-          </Text>
-        </View>
-      </Pressable>
-    );
-  };
-
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Messages</Text>
         <Pressable
@@ -291,8 +218,92 @@ const ChatsScreen = ({navigation}) => {
       <FlatList
         data={matches}
         keyExtractor={item => item._id}
-        renderItem={renderItem}
-        contentContainerStyle={{paddingVertical: spacing.sm}}
+        ListEmptyComponent={
+          !loading && matches.length === 0 ? <EmptyState /> : null
+        }
+        contentContainerStyle={[
+          styles.listContent,
+          matches.length === 0 && {flex: 1},
+        ]}
+        renderItem={({item}) => {
+          const theirId = item.users.find(u => u !== currentUserId);
+          const matchData = lastMessages[item._id] || {};
+          const unreadCount = matchData.unreadCount || 0;
+          const streakData =
+            streaks[
+              `${[currentUserId, theirId].sort()[0]}_${
+                [currentUserId, theirId].sort()[1]
+              }`
+            ];
+
+          return (
+            <Pressable
+              style={styles.chatItem}
+              onPress={() =>
+                navigation.navigate('ChatScreen', {
+                  matchId: item._id,
+                  theirId,
+                  theirName:
+                    item.theirName || `User ${theirId?.slice(0, 6) || ''}`,
+                  theirPhoto: item.theirPhoto,
+                  theirAge: item.theirAge,
+                })
+              }>
+              <View style={styles.avatarContainer}>
+                <Image
+                  source={{
+                    uri:
+                      item.theirPhoto ||
+                      'https://ui-avatars.com/api/?background=667eea&color=fff&name=User',
+                  }}
+                  style={styles.avatar}
+                />
+                {unreadCount > 0 && (
+                  <View style={styles.unreadBadge}>
+                    <Text style={styles.unreadText}>
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </Text>
+                  </View>
+                )}
+                {streakData && streakData.streakCount > 0 && (
+                  <View style={styles.streakBadgeOverlay}>
+                    <StreakBadge
+                      count={streakData.streakCount}
+                      graceUsed={streakData.graceUsed}
+                      compact={true}
+                    />
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.textContainer}>
+                <View style={styles.nameRow}>
+                  <Text
+                    style={[styles.name, unreadCount > 0 && styles.nameBold]}
+                    numberOfLines={1}>
+                    {item.theirName || `User ${theirId?.slice(0, 6) || ''}`}
+                    {item.theirAge ? `, ${item.theirAge}` : ''}
+                  </Text>
+                  {matchData.lastMessage && (
+                    <Text style={styles.timeText}>
+                      {formatTime(matchData.lastMessage.timestamp)}
+                    </Text>
+                  )}
+                </View>
+                <Text
+                  style={[
+                    styles.lastMessage,
+                    unreadCount > 0 && styles.lastMessageUnread,
+                  ]}
+                  numberOfLines={1}>
+                  {matchData.lastMessage?.senderId === currentUserId && '✓ '}
+                  {getPreviewText(matchData.lastMessage)}
+                </Text>
+              </View>
+            </Pressable>
+          );
+        }}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -309,74 +320,61 @@ const ChatsScreen = ({navigation}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
+    backgroundColor: '#FFFFFF',
   },
   header: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    paddingHorizontal: 22,
+    paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F2F2F7',
   },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 28,
     fontFamily: typography.fontFamilyBold,
-    color: colors.textPrimary,
+    color: colors.primary,
+    letterSpacing: -0.5,
+    textShadowColor: 'rgba(148, 17, 250, 0.2)',
+    textShadowOffset: {width: 0, height: 2},
+    textShadowRadius: 6,
   },
   leaderboardButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFF0F0',
+    backgroundColor: '#FFF5F5',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
   },
   leaderboardText: {
     fontSize: 14,
-    fontWeight: 'bold',
+    fontFamily: typography.fontFamilyBold,
     color: colors.primary,
     marginLeft: 4,
   },
-  emptyEmoji: {
-    fontSize: 48,
-    marginBottom: spacing.md,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontFamily: typography.fontFamilyBold,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  emptyText: {
-    fontSize: typography.body?.large || 16,
-    color: colors.textSecondary,
-    textAlign: 'center',
+  listContent: {
+    paddingTop: 10,
+    paddingBottom: 32,
   },
   chatItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    backgroundColor: '#FFFFFF',
   },
   avatarContainer: {
     position: 'relative',
-    marginRight: spacing.md,
+    marginRight: 16,
   },
   avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#eee',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#F8F8F8',
   },
   unreadBadge: {
     position: 'absolute',
@@ -389,20 +387,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 6,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
   },
   unreadText: {
     color: '#fff',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: 'bold',
   },
   streakBadgeOverlay: {
     position: 'absolute',
-    bottom: -6,
+    bottom: -4,
     right: -4,
-    transform: [{scale: 0.85}],
+    transform: [{scale: 0.8}],
   },
   textContainer: {
     flex: 1,
+    paddingBottom: 14,
+    justifyContent: 'center',
+  },
+  separator: {
+    height: 1,
+    backgroundColor: '#EBEBEF',
+    width: '100%',
   },
   nameRow: {
     flexDirection: 'row',
@@ -411,7 +418,8 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   name: {
-    fontSize: typography.body?.large || 16,
+    fontSize: 17,
+    fontFamily: typography.fontFamilyMedium,
     color: colors.textPrimary,
     flex: 1,
   },
@@ -421,15 +429,49 @@ const styles = StyleSheet.create({
   timeText: {
     fontSize: 12,
     color: colors.textSecondary,
-    marginLeft: spacing.sm,
+    marginLeft: 8,
   },
   lastMessage: {
-    fontSize: typography.body?.small || 14,
+    fontSize: 14,
     color: colors.textSecondary,
+    fontFamily: typography.fontFamilyRegular,
   },
   lastMessageUnread: {
     color: colors.textPrimary,
-    fontWeight: '600',
+    fontFamily: typography.fontFamilyBold,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    minHeight: 400,
+  },
+  emptyIllustrationContainer: {
+    marginBottom: 24,
+  },
+  illustrationCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyEmoji: {
+    fontSize: 50,
+  },
+  emptyTitle: {
+    fontSize: 22,
+    fontFamily: typography.fontFamilyBold,
+    color: colors.textPrimary,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  emptySubtitle: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
   },
 });
 
