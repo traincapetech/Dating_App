@@ -18,7 +18,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useFocusEffect} from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import {colors, typography, spacing} from '../../../theme';
-import {getLikesReceived, likeUser} from '../../../services/swipeActions';
+import {getLikesReceived, likeUser, rejectLike} from '../../../services/swipeActions';
 import {fetchMatches} from '../../../services/chatService';
 import {useLoading} from '../../../context/LoadingContext';
 import {useInitialLoad} from '../../../context/InitialLoadContext';
@@ -206,6 +206,19 @@ const LikesScreen = ({navigation}) => {
     }
   };
 
+  const handleRejectLike = async likerId => {
+    try {
+      // Optimistically remove from UI immediately
+      setLikes(prev => prev.filter(l => l.senderId !== likerId));
+      setLikesCount(prev => Math.max(0, prev - 1));
+      await rejectLike(currentUserId, likerId);
+    } catch (e) {
+      console.log('Reject error:', e);
+      // Reload to restore accurate state if request failed
+      loadLikes();
+    }
+  };
+
   const currentMatchesList = isExpanded ? matches : matches.slice(0, 4);
 
   const renderLikerItem = ({item}) => (
@@ -215,11 +228,16 @@ const LikesScreen = ({navigation}) => {
         <Text style={styles.cardNameUnified}>{item.name}{item.age ? `, ${item.age}` : ''}</Text>
         <Text style={styles.cardSubtextUnified}>Liked your profile</Text>
       </View>
-      <Pressable style={styles.matchBtnUnified} onPress={() => handleLikeBack(item.senderId)}>
-        <LinearGradient colors={['#6A0DAD', '#9370DB']} style={styles.btnGradientUnified}>
-           <Text style={styles.btnTextUnified}>❤️ Match</Text>
-        </LinearGradient>
-      </Pressable>
+      <View style={styles.actionBtnsUnified}>
+        <Pressable style={styles.rejectBtnUnified} onPress={() => handleRejectLike(item.senderId)}>
+          <Text style={styles.rejectBtnTextUnified}>✕</Text>
+        </Pressable>
+        <Pressable style={styles.matchBtnUnified} onPress={() => handleLikeBack(item.senderId)}>
+          <LinearGradient colors={['#6A0DAD', '#9370DB']} style={styles.btnGradientUnified}>
+            <Text style={styles.btnTextUnified}>❤️ Match</Text>
+          </LinearGradient>
+        </Pressable>
+      </View>
     </Pressable>
   );
 
@@ -288,7 +306,7 @@ const LikesScreen = ({navigation}) => {
             keyExtractor={(item, index) => item._id || item.senderId || index.toString()}
             renderItem={renderLikerItem}
             ListHeaderComponent={renderHeaderUnified}
-            ListEmptyComponent={!loading && likes.length === 0 ? <EmptyStateUnified icon="✨" title="No new likes" subtitle="Keep swiping to find your pair!" /> : null}
+            ListEmptyComponent={!loading && likes.length === 0 ? <EmptyStateUnified icon="✨" title="No new Matches" subtitle="Keep swiping to find your pair!" /> : null}
             contentContainerStyle={styles.listScrollPaddingUnified}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => {setRefreshing(true); loadLikes();}} tintColor="#6A0DAD" />}
           />
@@ -493,6 +511,25 @@ const styles = StyleSheet.create({
   matchBtnUnified: {
     borderRadius: 30,
     overflow: 'hidden',
+  },
+  actionBtnsUnified: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  rejectBtnUnified: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F2F2F7',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rejectBtnTextUnified: {
+    fontSize: 15,
+    color: '#8E8E93',
+    fontWeight: 'bold',
+    lineHeight: 18,
   },
   btnGradientUnified: {
     paddingHorizontal: 16,

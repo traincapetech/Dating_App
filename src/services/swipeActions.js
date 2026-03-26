@@ -154,3 +154,13 @@ export const checkLikedStatus = async (viewerId, targetId) => {
     return { success: false, liked: false };
   }
 };
+
+export const rejectLike = async (userId, likerId) => {
+  try {
+    const res = await apiClient.post('/swipe/likes/reject', {userId, likerId});
+    return res;
+  } catch (err) {
+    console.error('Reject Like Error:', err?.message || err);
+    return {success: false, message: 'Failed to reject match request'};
+  }
+};
