@@ -26,6 +26,7 @@ import {initSocket} from '../../../services/socket';
 import {useLoading} from '../../../context/LoadingContext';
 import {useInitialLoad} from '../../../context/InitialLoadContext';
 import FullScreenLoader from '../../../components/layout/FullScreenLoader';
+import ThemeBackground from '../../../components/layout/ThemeBackground';
 
 /**
  * 🌠 ChatsScreen: PREMIUM MESSAGING LIST
@@ -204,8 +205,9 @@ const ChatsScreen = ({navigation}) => {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
+    <ThemeBackground>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
         <Text style={styles.headerTitle}>Messages</Text>
         <Pressable
           style={styles.leaderboardButton}
@@ -313,14 +315,16 @@ const ChatsScreen = ({navigation}) => {
           />
         }
       />
-    </SafeAreaView>
+      </SafeAreaView>
+    </ThemeBackground>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
+    paddingBottom: 84, // Space for floating tab bar
   },
   header: {
     paddingHorizontal: 22,
@@ -328,18 +332,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
     borderBottomWidth: 1,
-    borderBottomColor: '#F2F2F7',
+    borderBottomColor: 'rgba(255,255,255,0.1)',
   },
   headerTitle: {
     fontSize: 28,
     fontFamily: typography.fontFamilyBold,
-    color: colors.primary,
+    color: '#1f1f1f',
     letterSpacing: -0.5,
-    textShadowColor: 'rgba(148, 17, 250, 0.2)',
-    textShadowOffset: {width: 0, height: 2},
-    textShadowRadius: 6,
   },
   leaderboardButton: {
     flexDirection: 'row',
@@ -362,9 +363,14 @@ const styles = StyleSheet.create({
   chatItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     paddingVertical: 14,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.65)',
+    marginHorizontal: 16,
+    marginVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
   },
   avatarContainer: {
     position: 'relative',
@@ -407,9 +413,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   separator: {
-    height: 1,
-    backgroundColor: '#EBEBEF',
-    width: '100%',
+    height: 0,
+    backgroundColor: 'transparent',
   },
   nameRow: {
     flexDirection: 'row',

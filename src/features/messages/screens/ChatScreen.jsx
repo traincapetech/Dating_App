@@ -17,6 +17,7 @@ import {
   Dimensions,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import ThemeBackground from '../../../components/layout/ThemeBackground';
 import Icon from 'react-native-vector-icons/Ionicons';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -720,13 +721,9 @@ const ChatScreen = ({route, navigation}) => {
               isMe ? styles.bubbleRight : styles.bubbleLeft,
             ]}>
             {isMe ? (
-              <LinearGradient
-                colors={[colors.primary, '#FF6B6B']}
-                start={{x: 0, y: 0}}
-                end={{x: 1, y: 1}}
-                style={styles.bubbleGradient}>
+              <View style={[styles.bubbleGradient, styles.bubbleRight]}>
                 {renderBubbleContent(item, isMe, isGif, isGift)}
-              </LinearGradient>
+              </View>
             ) : (
               <View style={styles.bubbleContentThem}>
                 {renderBubbleContent(item, isMe, isGif, isGift)}
@@ -821,7 +818,7 @@ const ChatScreen = ({route, navigation}) => {
   }
 
   return (
-    <>
+    <ThemeBackground>
       <SafeAreaView style={styles.safe} edges={['top']}>
         <StatusBar
           translucent
@@ -1225,7 +1222,6 @@ const ChatScreen = ({route, navigation}) => {
                   style={styles.previewSendGradient}>
                   <Text style={styles.previewSendText}>Send Image</Text>
                   <Icon
-                    name="send"
                     size={18}
                     color="#fff"
                     style={{marginLeft: 8}}
@@ -1274,13 +1270,19 @@ const ChatScreen = ({route, navigation}) => {
           setReceivedGiftForAnimation(null);
         }}
       />
-    </>
+    </ThemeBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  safe: {flex: 1, backgroundColor: '#f8f9fa'},
-  container: {flex: 1, backgroundColor: '#f8f9fa'},
+  safe: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  container: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
   center: {
     flex: 1,
     justifyContent: 'center',
@@ -1290,20 +1292,14 @@ const styles = StyleSheet.create({
 
   // Header
   headerContainer: {
-    height: 70, // Increased height
-    justifyContent: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    backgroundColor: '#fff',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.05,
-    shadowRadius: 5,
+    height: 64,
+    width: '100%',
     zIndex: 10,
+    backgroundColor: 'transparent',
   },
   headerBackground: {
     ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'transparent',
   },
   headerContent: {
     flexDirection: 'row',
@@ -1431,18 +1427,16 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   bubbleLeft: {
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
     borderBottomLeftRadius: 4,
-    elevation: 1,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 1},
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
   },
   bubbleRight: {
     borderBottomRightRadius: 4,
   },
   bubbleGradient: {
+    backgroundColor: 'rgba(124, 58, 237, 0.75)',
     padding: spacing.sm,
     paddingHorizontal: spacing.md,
   },
@@ -1492,20 +1486,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     padding: spacing.sm,
-    backgroundColor: '#fff',
+    backgroundColor: 'rgba(255, 255, 255, 0.65)',
     borderTopWidth: 1,
-    borderTopColor: '#f0f0f0',
+    borderTopColor: 'rgba(255, 255, 255, 0.3)',
   },
   inputWrapper: {
     flex: 1,
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    backgroundColor: '#f8f9fa',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
     borderRadius: 24,
-    paddingHorizontal: spacing.sm,
-    marginRight: spacing.sm,
+    paddingHorizontal: 16,
+    paddingVertical: Platform.OS === 'ios' ? 10 : 4,
+    marginRight: 8,
     borderWidth: 1,
-    borderColor: '#eee',
+    borderColor: 'rgba(255, 255, 255, 0.4)',
   },
   input: {
     flex: 1,

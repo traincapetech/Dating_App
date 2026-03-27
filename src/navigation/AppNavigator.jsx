@@ -3,6 +3,7 @@ import {View, Text, StyleSheet} from 'react-native';
 import {
   NavigationContainer,
   useNavigationContainerRef,
+  DefaultTheme,
 } from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 // Use literal route names to avoid undefined values
@@ -76,9 +77,21 @@ const AppNavigator = () => {
     }
   }, [navigationRef]);
 
+  const transparentTheme = {
+    ...DefaultTheme,
+    colors: {
+      ...DefaultTheme.colors,
+      background: 'transparent',
+      card: 'transparent',
+      border: 'transparent',
+      primary: '#7c3aed',
+      text: '#1a1a1a',
+    },
+  };
+
   return (
     <SocketProvider>
-      <NavigationContainer ref={navigationRef}>
+      <NavigationContainer ref={navigationRef} theme={transparentTheme}>
         <Stack.Navigator
           initialRouteName="OnboardingIntro"
           screenOptions={{headerShown: false}}>

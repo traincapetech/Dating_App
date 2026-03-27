@@ -19,12 +19,15 @@ import {getProfile} from '../../../services/profile/profileService';
 import {useLoading} from '../../../context/LoadingContext';
 import {useInitialLoad} from '../../../context/InitialLoadContext';
 import FullScreenLoader from '../../../components/layout/FullScreenLoader';
+import ThemeBackground from '../../../components/layout/ThemeBackground';
+import {useAuth} from '../../../context/AuthContext';
 import { usePhotoSocial } from '../../../hooks/usePhotoSocial';
 import { photoSocialService } from '../../../services/photoSocialService';
 import PhotoInteractionViewer from '../../../components/profile/PhotoInteractionViewer';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
@@ -229,25 +232,26 @@ const ProfileScreen = () => {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[colors.primary]}
-          />
-        }>
+    <ThemeBackground>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.primary]}
+            />
+          }>
         {/* Top Header */}
         <View style={styles.header}>
           <Pressable
             style={styles.headerIconBtn}
-            onPress={() => navigation.navigate('ProfileDetails', {userId})}>
+            onPress={() => navigation.navigate('Wallet')}>
             <Icon
-              name="plus-box-outline"
-              size={26}
+              name="wallet-outline"
+              size={24}
               color={colors.textPrimary}
             />
           </Pressable>
@@ -257,163 +261,118 @@ const ProfileScreen = () => {
           <View style={styles.headerActions}>
             <Pressable
               style={styles.headerIconBtn}
-              onPress={() => navigation.navigate('Wallet')}>
-              <Icon name="wallet-outline" size={26} color={colors.textPrimary} />
-            </Pressable>
-            <Pressable
-              style={styles.headerIconBtn}
               onPress={() => navigation.navigate('Settings')}>
               <Icon name="menu" size={26} color={colors.textPrimary} />
             </Pressable>
           </View>
         </View>
 
-        {/* Profile Header (Avatar + Stats) */}
-        <View style={styles.profileHeader}>
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatarWrapper}>
-              {photos.length > 0 ? (
-                <Image source={{uri: photos[0]}} style={styles.avatar} />
-              ) : (
-                <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                  <Icon name="account" size={40} color={colors.textTertiary} />
-                </View>
-              )}
-              {completionPercentage < 100 && (
-                <LinearGradient
-                  colors={[colors.primary, '#8E2DE2']}
-                  style={styles.miniBadge}>
-                  <Text style={styles.miniBadgeText}>
-                    {completionPercentage}%
-                  </Text>
-                </LinearGradient>
-              )}
-              {profile?.isActiveToday && (
-                <View style={styles.onlineIndicator} />
-              )}
-            </View>
+        {/* Hero Section: Centered Avatar with Overlapping Name */}
+        <View style={styles.heroSection}>
+          <View style={styles.avatarGlowWrapper}>
+            <LinearGradient
+              colors={[colors.primary, '#E040C8']}
+              style={styles.avatarGradientBorder}>
+              <View style={styles.avatarInnerContainer}>
+                {photos.length > 0 ? (
+                  <Image source={{uri: photos[0]}} style={styles.headerAvatar} />
+                ) : (
+                  <View style={styles.headerAvatarPlaceholder}>
+                    <Icon name="account" size={48} color={colors.textTertiary} />
+                  </View>
+                )}
+              </View>
+            </LinearGradient>
+            {profile?.isActiveToday && <View style={styles.onlineStatusDot} />}
           </View>
 
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{profile?.stats?.likes || 0}</Text>
-              <Text style={styles.statLabel}>Likes</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>
-                {profile?.stats?.matches || 0}
+          {/* User Identity block with Overlap */}
+          <View style={styles.identityBlockOverlay}>
+            <View style={styles.nameRowCentered}>
+              <Text style={styles.heroName}>
+                {name}
+                {age ? `, ${age}` : ''}
               </Text>
-              <Text style={styles.statLabel}>Matches</Text>
+              <Icon name="check-decagram" size={20} color={colors.primary} style={styles.verificationIcon} />
             </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>
-                {profile?.stats?.views >= 1000
-                  ? `${(profile.stats.views / 1000).toFixed(1)}k`
-                  : profile?.stats?.views || 0}
-              </Text>
-              <Text style={styles.statLabel}>Views</Text>
-            </View>
+            <Text style={styles.heroBio} numberOfLines={2}>
+              {profile?.bio ||
+                profile?.profilePrompts?.aboutMe?.answer ||
+                'Express yourself with a bio...'}
+            </Text>
+          </View>
+
+          {/* Primary CTA: Dating Intention */}
+          {profile?.datingPreferences?.datingIntention && (
+            <Pressable style={styles.primaryCtaBtn}>
+              <LinearGradient
+                colors={[colors.primary, '#8E2DE2']}
+                start={{x: 0, y: 0}}
+                end={{x: 1, y: 0}}
+                style={styles.ctaGradient}>
+                <Icon name="heart-flash" size={18} color="#FFF" style={{marginRight: 8}} />
+                <Text style={styles.ctaText}>
+                  Looking for {profile.datingPreferences.datingIntention}
+                </Text>
+              </LinearGradient>
+            </Pressable>
+          )}
+        </View>
+
+        {/* Stats Row: Refined Hierarchy */}
+        <View style={styles.statsContainer}>
+          <View style={styles.statBox}>
+            <Text style={styles.statNumber}>{profile?.stats?.likes || 0}</Text>
+            <Text style={styles.statSublabel}>Likes</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statBox}>
+            <Text style={styles.statNumber}>{profile?.stats?.matches || 0}</Text>
+            <Text style={styles.statSublabel}>Matches</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statBox}>
+            <Text style={styles.statNumber}>
+              {profile?.stats?.views >= 1000
+                ? `${(profile.stats.views / 1000).toFixed(1)}k`
+                : profile?.stats?.views || 0}
+            </Text>
+            <Text style={styles.statSublabel}>Views</Text>
           </View>
         </View>
 
-        {/* Profile Strength Card (Bumble Style) */}
+        {/* Profile Strength Strategy (Floating Card) */}
         {completionPercentage < 100 && (
           <Pressable
             onPress={() => navigation.navigate('ProfileDetails', {userId})}
-            style={styles.strengthCard}>
-            <LinearGradient
-              colors={[colors.primary + '15', colors.primary + '05']}
-              start={{x: 0, y: 0}}
-              end={{x: 1, y: 1}}
-              style={styles.strengthGradient}>
-              <View style={styles.strengthHeader}>
-                <View style={styles.strengthTextCol}>
-                  <Text style={styles.strengthTitle}>
-                    Profile Strength: {completionPercentage}%
+            style={styles.floatingStrengthCard}>
+            <View style={styles.strengthCardBody}>
+              <View style={styles.strengthContent}>
+                <View style={styles.strengthTextRow}>
+                  <Text style={styles.strengthStatusText}>
+                    Profile Strength: <Text style={{color: colors.primary}}>{completionPercentage}%</Text>
                   </Text>
-                  <Text style={styles.strengthSubtitle}>
-                    Add photos for 3x more matches!
-                  </Text>
+                  <Icon name="lightning-bolt" size={16} color="#F59E0B" />
                 </View>
-                <Icon name="chevron-right" size={24} color={colors.primary} />
+                <Text style={styles.strengthHint}>
+                  Add more details to find your perfect match
+                </Text>
               </View>
-              <View style={styles.progressBarBg}>
-                <View
-                  style={[
-                    styles.progressBarFill,
-                    {width: `${completionPercentage}%`},
-                  ]}
-                />
+              <View style={styles.strengthProgressContainer}>
+                <View style={styles.strengthProgressBg}>
+                  <View
+                    style={[
+                      styles.strengthProgressFill,
+                      {width: `${completionPercentage}%`},
+                    ]}
+                  />
+                </View>
               </View>
-            </LinearGradient>
-          </Pressable>
-        )}
-
-        {/* Bio Section */}
-        <View style={styles.bioSection}>
-          <Text style={styles.nameLabel}>
-            {name}
-            {age ? `, ${age}` : ''}
-            {'  '}
-            <Icon name="check-decagram" size={18} color={colors.primary} />
-          </Text>
-
-          {profile?.personalDetails?.jobTitle ||
-          profile?.personalDetails?.school ? (
-            <Text style={styles.occupationText}>
-              {[
-                profile?.personalDetails?.jobTitle,
-                profile?.personalDetails?.school,
-              ]
-                .filter(Boolean)
-                .join(' at ')}
-            </Text>
-          ) : null}
-
-          <Text style={styles.bioText}>
-            {profile?.bio ||
-              profile?.profilePrompts?.aboutMe?.answer ||
-              'Add a bio to express yourself...'}
-          </Text>
-
-          {/* Interests Chips */}
-          {(profile?.interests || profile?.lifestyle?.interests || []).length >
-            0 && (
-            <View style={styles.interestsRow}>
-              {(profile?.interests || profile?.lifestyle?.interests || [])
-                .slice(0, 8)
-                .map((interest, idx) => (
-                  <View key={idx} style={styles.interestTag}>
-                    <Text style={styles.interestTagText}>
-                      #{interest.toLowerCase()}
-                    </Text>
-                  </View>
-                ))}
+              <View style={styles.strengthChevronCircle}>
+                <Icon name="chevron-right" size={20} color={colors.primary} />
+              </View>
             </View>
-          )}
-
-        
-        </View>
-
-        {/* Dating Intention Badge (Integrated) */}
-        {profile?.datingPreferences?.datingIntention && (
-          <View style={styles.intentWrapper}>
-            <LinearGradient
-              colors={['#8E2DE2', '#4A00E0']}
-              start={{x: 0, y: 0}}
-              end={{x: 1, y: 0}}
-              style={styles.intentBadge}>
-              <Icon
-                name="heart-flash"
-                size={16}
-                color="#FFF"
-                style={{marginRight: 6}}
-              />
-              <Text style={styles.intentBadgeText}>
-                Looking for {profile.datingPreferences.datingIntention}
-              </Text>
-            </LinearGradient>
-          </View>
+          </Pressable>
         )}
 
         {/* Tabs Selection */}
@@ -424,10 +383,10 @@ const ProfileScreen = () => {
               styles.tabBtn,
               activeTab === 'gallery' && styles.activeTabBtn,
             ]}>
-            <Icon
-              name="grid"
-              size={24}
-              color={activeTab === 'gallery' ? colors.primary : '#8E8E8E'}
+            <Ionicons
+              name="grid-outline"
+              size={22}
+              color={activeTab === 'gallery' ? colors.primary : '#A1A1AA'}
             />
           </Pressable>
           <Pressable
@@ -436,10 +395,10 @@ const ProfileScreen = () => {
               styles.tabBtn,
               activeTab === 'insights' && styles.activeTabBtn,
             ]}>
-            <Icon
-              name="account-details-outline"
+            <Ionicons
+              name="list-outline"
               size={24}
-              color={activeTab === 'insights' ? colors.primary : '#8E8E8E'}
+              color={activeTab === 'insights' ? colors.primary : '#A1A1AA'}
             />
           </Pressable>
         </View>
@@ -562,17 +521,18 @@ const ProfileScreen = () => {
         currentUserId={userId}
         navigation={navigation}
       />
-    </SafeAreaView>
+      </SafeAreaView>
+    </ThemeBackground>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: 100, // Safe padding for floating tab bar
   },
   header: {
     flexDirection: 'row',
@@ -580,8 +540,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#EFEFEF',
+    backgroundColor: 'transparent',
   },
   headerTitle: {
     fontSize: 18,
@@ -678,88 +637,236 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamilyRegular,
     color: '#262626',
   },
-  bioSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+  // ── HERO REDESIGN STYLES ──
+  heroSection: {
+    alignItems: 'center',
+    paddingTop: 24,
+    paddingBottom: 24,
   },
-  nameLabel: {
-    fontSize: 16,
-    fontFamily: typography.fontFamilyBold,
-    color: '#262626',
-    marginBottom: 2,
+  avatarGlowWrapper: {
+    padding: 4,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 15,
+    zIndex: 2,
   },
-  occupationText: {
-    fontSize: 14,
-    fontFamily: typography.fontFamilyRegular,
-    color: '#8E8E8E',
-    marginBottom: 4,
+  avatarGradientBorder: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    padding: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  bioText: {
-    fontSize: 14,
-    fontFamily: typography.fontFamilyRegular,
-    color: '#262626',
-    lineHeight: 18,
+  avatarInnerContainer: {
+    width: 114,
+    height: 114,
+    borderRadius: 57,
+    backgroundColor: '#FFF',
+    padding: 2,
+    overflow: 'hidden',
   },
-  interestsRow: {
+  headerAvatar: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 55,
+  },
+  headerAvatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#F9FAFB',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  onlineStatusDot: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#22C55E',
+    borderWidth: 3,
+    borderColor: '#FFF',
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  identityBlockOverlay: {
+    alignItems: 'center',
+    marginTop: -16, // Overlap effect
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 5,
+    zIndex: 1,
+    minWidth: '60%',
+  },
+  nameRowCentered: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: 8,
+    alignItems: 'center',
     gap: 6,
   },
-  interestTag: {
-    backgroundColor: colors.primary + '10',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  interestTagText: {
-    fontSize: 12,
+  heroName: {
+    fontSize: 24,
     fontFamily: typography.fontFamilyBold,
-    color: colors.primary,
+    color: '#111',
   },
-  strengthCard: {
-    marginHorizontal: 16,
-    marginTop: 10,
-    marginBottom: 10,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: colors.primary + '20',
-  },
-  strengthGradient: {
-    padding: 16,
-  },
-  strengthHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  strengthTextCol: {
-    flex: 1,
-  },
-  strengthTitle: {
-    fontSize: 15,
-    fontFamily: typography.fontFamilyBold,
-    color: '#000',
-  },
-  strengthSubtitle: {
-    fontSize: 12,
-    fontFamily: typography.fontFamilyRegular,
-    color: '#666',
+  verificationIcon: {
     marginTop: 2,
   },
-  progressBarBg: {
-    height: 6,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 3,
+  heroBio: {
+    fontSize: 13,
+    fontFamily: typography.fontFamilyRegular,
+    color: '#71717A',
+    textAlign: 'center',
+    marginTop: 4,
+    lineHeight: 18,
+  },
+  primaryCtaBtn: {
+    marginTop: 20,
+    borderRadius: 30,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  ctaGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 30,
+  },
+  ctaText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontFamily: typography.fontFamilyBold,
+  },
+  statsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    marginHorizontal: 16,
+    paddingVertical: 20,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  statBox: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 20,
+    fontFamily: typography.fontFamilyBold,
+    color: '#111',
+  },
+  statSublabel: {
+    fontSize: 12,
+    fontFamily: typography.fontFamilyMedium,
+    color: '#9CA3AF',
+    marginTop: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  statDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#F3F4F6',
+  },
+  floatingStrengthCard: {
+    marginHorizontal: 16,
+    marginTop: 20,
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  strengthCardBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  strengthContent: {
+    flex: 1,
+  },
+  strengthTextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  strengthStatusText: {
+    fontSize: 15,
+    fontFamily: typography.fontFamilyBold,
+    color: '#111',
+  },
+  strengthHint: {
+    fontSize: 12,
+    fontFamily: typography.fontFamilyRegular,
+    color: '#888',
+    marginTop: 2,
+  },
+  strengthProgressContainer: {
+    width: 60,
+    height: 8,
+    marginHorizontal: 15,
+  },
+  strengthProgressBg: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#F3F4F6',
+    borderRadius: 4,
     overflow: 'hidden',
   },
-  progressBarFill: {
+  strengthProgressFill: {
     height: '100%',
     backgroundColor: colors.primary,
+    borderRadius: 4,
+  },
+  strengthChevronCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primary + '10',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerIconBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  heroSection: {
+    alignItems: 'center',
+    paddingVertical: 32,
+    paddingHorizontal: 20,
   },
   intentWrapper: {
     paddingHorizontal: 20,

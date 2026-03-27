@@ -132,16 +132,31 @@ const TabNavigator = () => {
 
   return (
     <Tab.Navigator
+      sceneContainerStyle={{backgroundColor: 'transparent'}}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        // tabBarInactiveTintColor: colors.textSecondary,
+        tabBarActiveTintColor: '#7c3aed',
+        tabBarInactiveTintColor: '#9ca3af',
         tabBarStyle: {
-          backgroundColor: colors.surface,
-
-          paddingBottom: Math.max(insets.bottom, 10),
-          paddingTop: 8,
-          height: 60 + Math.max(insets.bottom - 8, 0),
+          backgroundColor: '#ffffff',
+          position: 'absolute',
+          bottom: Platform.OS === 'ios' ? 25 : 20,
+          left: 20,
+          right: 20,
+          borderRadius: 30,
+          borderTopWidth: 0,
+          height: 64,
+          elevation: 10,
+          shadowColor: '#000',
+          shadowOffset: {width: 0, height: 8},
+          shadowOpacity: 0.1,
+          shadowRadius: 12,
+          overflow: 'hidden',
+          paddingBottom: 0, // Centered vertically
+        },
+        tabBarItemStyle: {
+          height: 64,
+          paddingVertical: 8,
         },
         tabBarLabelStyle: {
           fontSize: 11,
@@ -219,14 +234,7 @@ const TabNavigator = () => {
         component={ProfileScreen}
         options={{
           tabBarLabel: userName,
-          tabBarIcon: ({color, size}) => (
-            <MaterialCommunityIcons
-              name="account-circle"
-              size={25}
-              color={color}
-              style={styles.inputIcon}
-            />
-          ),
+          tabBarItemStyle: { display: 'none' },
         }}
       />
     </Tab.Navigator>

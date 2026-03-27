@@ -48,10 +48,11 @@ import {usePhotoSocial} from '../../../hooks/usePhotoSocial';
 import {photoSocialService} from '../../../services/photoSocialService';
 import PhotoInteractionViewer from '../../../components/profile/PhotoInteractionViewer';
 import {useAuth} from '../../../context/AuthContext';
+import ThemeBackground from '../../../components/layout/ThemeBackground';
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - spacing.xl * 2;
-const CARD_HEIGHT = SCREEN_HEIGHT * 0.76;
+const CARD_HEIGHT = SCREEN_HEIGHT * 0.70;
 const SWIPE_THRESHOLD = 120;
 
 // ─── Utility ──────────────────────────────────────────────────────────────────
@@ -991,9 +992,12 @@ const HomeScreen = ({navigation}) => {
 
     // 🔥 Haptic feedback on swipe
     try {
-      const { triggerHeavyHaptic, triggerSuccessHaptic } = require('../../../utils/haptics');
+      const {
+        triggerHeavyHaptic,
+        triggerSuccessHaptic,
+      } = require('../../../utils/haptics');
       triggerHeavyHaptic();
-    } catch(e) {}
+    } catch (e) {}
 
     translateX.value = withTiming(
       direction === 'right' ? SCREEN_WIDTH * 1.5 : -SCREEN_WIDTH * 1.5,
@@ -1021,9 +1025,9 @@ const HomeScreen = ({navigation}) => {
           if (result?.isMatch && result?.match) {
             // 🔥 Match success haptic!
             try {
-              const { triggerSuccessHaptic } = require('../../../utils/haptics');
+              const {triggerSuccessHaptic} = require('../../../utils/haptics');
               triggerSuccessHaptic();
-            } catch(e){}
+            } catch (e) {}
 
             setMatchPopup({
               visible: true,
@@ -1121,38 +1125,91 @@ const HomeScreen = ({navigation}) => {
   );
 
   // ── Shared header ───────────────────────────────────────────────────────────
-  const renderHeader = () => (
-    <View style={styles.header}>
-      <Pressable
-        onPress={() => navigation.navigate('Matches')}
-        style={styles.headerIconButton}>
-        <MaterialCommunityIcons name="heart" size={24} color={colors.primary} />
-      </Pressable>
-      <Text className="text-4xl font-mona-sans-semibold tracking-[2px] text-black">
-        Pryvo
-      </Text>
-      <View style={styles.headerRight}>
+  const renderHeader = () => {
+    const userPhoto =
+      myProfile?.media?.media?.[0]?.url || myProfile?.photos?.[0];
+
+    return (
+      <View style={styles.header}>
         <Pressable
-          onPress={() => navigation.navigate('Chats')}
-          style={styles.headerIconButton}>
-          <MaterialCommunityIcons
-            name="chat"
-            size={24}
-            color={colors.textPrimary}
-          />
+          onPress={() => navigation.navigate('User')}
+          style={[styles.avatarButton, {borderColor: colors.primary}]}>
+          {userPhoto ? (
+            <Image source={{uri: userPhoto}} style={styles.avatarImage} />
+          ) : (
+            <MaterialCommunityIcons name="account" size={24} color="#CCC" />
+          )}
         </Pressable>
-        <Pressable
-          onPress={() => navigation.navigate('AdvancedFilters')}
-          style={styles.headerIconButton}>
-          <MaterialCommunityIcons
-            name="filter-variant"
-            size={24}
-            color={colors.textPrimary}
-          />
-        </Pressable>
+
+        <Text className="text-4xl font-mona-sans-semibold tracking-[2px] text-black">
+          Pryvo
+        </Text>
+
+        <View style={styles.headerRight}>
+          <Pressable
+            onPress={() => navigation.navigate('AdvancedFilters')}
+            style={styles.headerIconButton}>
+            <MaterialCommunityIcons
+              name="filter-variant"
+              size={24}
+              color={colors.textPrimary}
+            />
+          </Pressable>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
+
+  // ── Swipe Feedbacks Overlays ────────────────────────────────────────────────
+  const likeOverlayStyle = useAnimatedStyle(() => {
+    const opacityVal = interpolate(
+      translateX.value,
+      [0, SWIPE_THRESHOLD * 0.2, SWIPE_THRESHOLD],
+      [0, 0, 1],
+      'clamp',
+    );
+    const scaleVal = interpolate(
+      translateX.value,
+      [0, SWIPE_THRESHOLD],
+      [0.9, 1.05],
+      'clamp',
+    );
+    const transX = interpolate(
+      translateX.value,
+      [0, SWIPE_THRESHOLD],
+      [60, 0],
+      'clamp',
+    );
+    return {
+      opacity: opacityVal,
+      transform: [{scale: scaleVal}, {translateX: transX}],
+    };
+  });
+
+  const rejectOverlayStyle = useAnimatedStyle(() => {
+    const opacityVal = interpolate(
+      translateX.value,
+      [0, -SWIPE_THRESHOLD * 0.2, -SWIPE_THRESHOLD],
+      [0, 0, 1],
+      'clamp',
+    );
+    const scaleVal = interpolate(
+      translateX.value,
+      [0, -SWIPE_THRESHOLD],
+      [0.9, 1.05],
+      'clamp',
+    );
+    const transX = interpolate(
+      translateX.value,
+      [0, -SWIPE_THRESHOLD],
+      [-60, 0],
+      'clamp',
+    );
+    return {
+      opacity: opacityVal,
+      transform: [{scale: scaleVal}, {translateX: transX}],
+    };
+  });
 
   if (loading) {
     if (!visited.home) {
@@ -1276,10 +1333,28 @@ const HomeScreen = ({navigation}) => {
 
   // ── Main render ─────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+    <ThemeBackground>
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       {renderHeader()}
+
+      {/* Swipe Overlay Icons */}
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.swipeOverlay, styles.likeOverlay, likeOverlayStyle]}>
+        <View style={styles.overlayIconWrapper}>
+          <MaterialCommunityIcons name="heart" size={50} color="#00FFCA" />
+        </View>
+      </Animated.View>
+
+      <Animated.View
+        pointerEvents="none"
+        style={[styles.swipeOverlay, styles.rejectOverlay, rejectOverlayStyle]}>
+        <View style={styles.overlayIconWrapper}>
+          <MaterialCommunityIcons name="close" size={50} color="#FF2D55" />
+        </View>
+      </Animated.View>
 
       {/* Card Stack */}
       <View style={styles.cardContainer}>
@@ -1366,6 +1441,18 @@ const HomeScreen = ({navigation}) => {
             </LinearGradient>
           </Animated.View>
         </GestureDetector>
+        {/* Floating Rewind Button - anchored to the card corner */}
+        <Pressable
+          style={styles.cardRewindButton}
+          onPress={handleRewind}
+          disabled={currentIndex === 0}>
+          <MaterialCommunityIcons
+            name="undo-variant"
+            size={28}
+            color="#F5B900"
+            style={{opacity: currentIndex === 0 ? 0.4 : 1}}
+          />
+        </Pressable>
       </View>
 
       {/* Like Remaining Popup */}
@@ -1383,18 +1470,6 @@ const HomeScreen = ({navigation}) => {
         </View>
       )}
 
-      {/* Floating Rewind Button */}
-      <Pressable
-        style={styles.floatingRewindButton}
-        onPress={handleRewind}
-        disabled={currentIndex === 0}>
-        <MaterialCommunityIcons
-          name="undo-variant"
-          size={28}
-          color="#F5B900"
-          style={{opacity: currentIndex === 0 ? 0.4 : 1}}
-        />
-      </Pressable>
 
       {/* Match Popup */}
       <MatchPopup
@@ -1428,7 +1503,8 @@ const HomeScreen = ({navigation}) => {
         currentUserId={currentUserId}
         navigation={navigation}
       />
-    </SafeAreaView>
+      </SafeAreaView>
+    </ThemeBackground>
   );
 };
 
@@ -1437,7 +1513,8 @@ const HomeScreen = ({navigation}) => {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: 'transparent',
+    paddingBottom: 84, // Space for floating tab bar (64 height + 20 bottom)
   },
   header: {
     flexDirection: 'row',
@@ -1445,9 +1522,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    backgroundColor: colors.background,
+    backgroundColor: 'transparent',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.03)',
+    borderBottomColor: 'rgba(255,255,255,0.1)',
   },
   headerRight: {
     flexDirection: 'row',
@@ -1461,6 +1538,47 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#F3F4F6',
+  },
+  avatarButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    padding: 2,
+    backgroundColor: '#FFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 18,
+  },
+  swipeOverlay: {
+    position: 'absolute',
+    top: SCREEN_HEIGHT * 0.4,
+    zIndex: 2000,
+  },
+  likeOverlay: {
+    right: 40,
+  },
+  rejectOverlay: {
+    left: 40,
+  },
+  overlayIconWrapper: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
+    // Removed shadow and elevation to prevent Android rendering artifacts during scale
   },
   cardContainer: {
     flex: 1,
@@ -1637,22 +1755,22 @@ const styles = StyleSheet.create({
   },
 
   // ── Floating ──────────────────────────────────────────────────────────────
-  floatingRewindButton: {
+  cardRewindButton: {
     position: 'absolute',
-    bottom: spacing.xxxl,
-    right: spacing.xl,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    bottom: (SCREEN_HEIGHT - (100 + CARD_HEIGHT + 84)) / 2 + 10, // Dynamic centering offset + small pad
+    right: (SCREEN_WIDTH - CARD_WIDTH) / 2 + 10,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#FFF',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
-    zIndex: 1000,
+    shadowRadius: 10,
+    elevation: 6,
+    zIndex: 3000,
   },
   likePopupContainer: {
     position: 'absolute',

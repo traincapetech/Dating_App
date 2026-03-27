@@ -25,6 +25,7 @@ import {useInitialLoad} from '../../../context/InitialLoadContext';
 import FullScreenLoader from '../../../components/layout/FullScreenLoader';
 import MatchPopup from '../../../components/profile/MatchPopup';
 import {useAuth} from '../../../context/AuthContext';
+import ThemeBackground from '../../../components/layout/ThemeBackground';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
@@ -284,9 +285,9 @@ const LikesScreen = ({navigation}) => {
   }
 
   return (
-    <SafeAreaView style={styles.containerUnified} edges={['top']}>
-      <StatusBar barStyle="dark-content" />
-      <LinearGradient colors={['#FFFFFF', '#FDFDFF']} style={styles.fullGradientUnified}>
+    <ThemeBackground>
+      <SafeAreaView style={styles.containerUnified} edges={['top']}>
+        <StatusBar barStyle="dark-content" />
         <Animated.View style={[styles.flexFullUnified, {opacity: screenFadeAnim}]}>
           {/* Main Dominant Header */}
           <View style={styles.mainActionBarUnified}>
@@ -311,7 +312,7 @@ const LikesScreen = ({navigation}) => {
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => {setRefreshing(true); loadLikes();}} tintColor="#6A0DAD" />}
           />
         </Animated.View>
-      </LinearGradient>
+      </SafeAreaView>
       
       <MatchPopup
         visible={matchPopup.visible}
@@ -325,14 +326,15 @@ const LikesScreen = ({navigation}) => {
           navigation.navigate('ChatScreen', {matchId, theirId, theirName, theirPhoto});
         }}
       />
-    </SafeAreaView>
+    </ThemeBackground>
   );
 };
 
 const styles = StyleSheet.create({
   containerUnified: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
+    paddingBottom: 84, // Space for floating tab bar
   },
   fullGradientUnified: {
     flex: 1,
@@ -343,9 +345,9 @@ const styles = StyleSheet.create({
   mainActionBarUnified: {
     paddingHorizontal: 20,
     paddingVertical: 18,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
     borderBottomWidth: 1,
-    borderBottomColor: '#F2F2F7',
+    borderBottomColor: 'rgba(255,255,255,0.1)',
   },
   mainTitleStack: {
     flexDirection: 'row',
@@ -354,12 +356,9 @@ const styles = StyleSheet.create({
   mainHeaderTitleUnified: {
     fontSize: 30, // Dominant
     fontFamily: typography.fontFamilyBold,
-    color: '#6A0DAD', // Purple Branding
+    color: '#1f1f1f', // Premium dark
     fontWeight: '900',
     letterSpacing: -1,
-    textShadowColor: 'rgba(106, 13, 221, 0.12)',
-    textShadowOffset: {width: 0, height: 4},
-    textShadowRadius: 8,
   },
   countBadgeUnified: {
     marginLeft: 14,
@@ -476,16 +475,13 @@ const styles = StyleSheet.create({
   cardUnified: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 20,
-    marginVertical: 10,
-    padding: 14,
-    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginVertical: 8,
+    padding: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
     borderRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
   },
   cardAvatarUnified: {
     width: 64,
