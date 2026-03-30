@@ -29,7 +29,7 @@
 //   const [errors, setErrors] = useState({});
 //   const [isSubmitting, setIsSubmitting] = useState(false);
 //   const [showPassword, setShowPassword] = useState(false);
-  
+
 //   const headerSpacing = Math.min(72, height * 0.08);
 //   const contentPaddingBottom = Platform.OS === 'ios' ? 70 : 50;
 
@@ -64,7 +64,7 @@
 //       if (data?.user) {
 //         // login() awaits loadProfile internally and returns true if profile exists
 //         hasProfile = await login(data.user);
-        
+
 //         // Register for notifications on sign-in (handles re-installs)
 //         try {
 //           await enableNotifications(data.user.id);
@@ -310,7 +310,7 @@
 
 // export default SignInScreen;
 
-import React, {useState, useRef} from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -324,21 +324,23 @@ import {
   useWindowDimensions,
   ImageBackground,
   Animated,
+  SafeAreaView,
 } from 'react-native';
-import {useNavigation} from '@react-navigation/native';
+import LinearGradient from 'react-native-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import {AppRoute} from '../../../constants/routes';
-import {colors, typography, spacing} from '../../../theme';
-import {signIn} from '../../../services/auth';
-import {useLoading} from '../../../context/LoadingContext';
-import {useAuth} from '../../../context/AuthContext';
+import { AppRoute } from '../../../constants/routes';
+import { colors, typography, spacing } from '../../../theme';
+import { signIn } from '../../../services/auth';
+import { useLoading } from '../../../context/LoadingContext';
+import { useAuth } from '../../../context/AuthContext';
 
 const SignInScreen = () => {
   const navigation = useNavigation();
-  const {setLoading} = useLoading();
-  const {login} = useAuth();
-  const {height} = useWindowDimensions();
-  const [form, setForm] = useState({email: '', password: ''});
+  const { setLoading } = useLoading();
+  const { login } = useAuth();
+  const { height } = useWindowDimensions();
+  const [form, setForm] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -390,8 +392,8 @@ const SignInScreen = () => {
   });
 
   const handleChange = (field, value) => {
-    setForm(prev => ({...prev, [field]: value}));
-    setErrors(prev => ({...prev, [field]: undefined, api: undefined}));
+    setForm(prev => ({ ...prev, [field]: value }));
+    setErrors(prev => ({ ...prev, [field]: undefined, api: undefined }));
   };
 
   const validate = () => {
@@ -416,17 +418,16 @@ const SignInScreen = () => {
         email: form.email.trim().toLowerCase(),
         password: form.password,
       });
-      let hasProfile = false;
       if (data?.user) {
-        hasProfile = await login(data.user);
+        await login(data.user);
       }
       navigation.reset({
         index: 0,
-        routes: [{name: hasProfile ? AppRoute.HomeTabs : AppRoute.Welcome}],
+        routes: [{ name: AppRoute.HomeTabs }],
       });
     } catch (error) {
       const message = error?.message || 'Unable to sign you in right now.';
-      setErrors(prev => ({...prev, api: message}));
+      setErrors(prev => ({ ...prev, api: message }));
     } finally {
       setIsSubmitting(false);
       setLoading(false);
@@ -435,14 +436,20 @@ const SignInScreen = () => {
 
   return (
     <ImageBackground
-      source={require('../../../assets/images/signup_bg.png')}
+      source={require('../../../assets/images/signup.png')}
       style={styles.bgImage}
+      imageStyle={styles.bgImageCrop}
       resizeMode="cover">
-      <View style={styles.overlay} />
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 40}>
+      <LinearGradient
+        colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.7)']}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
+      <SafeAreaView style={styles.flex}>
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 40}>
         <ScrollView
           contentContainerStyle={[
             styles.scrollContainer,
@@ -454,6 +461,7 @@ const SignInScreen = () => {
           keyboardShouldPersistTaps="handled">
 
           <View style={styles.header}>
+            <Text style={styles.logoText}>Pryvo</Text>
             <Text style={styles.title}>Welcome back 👋</Text>
             <Text style={styles.subtitle}>
               Pick up where you left off with your conversations and matches.
@@ -535,30 +543,39 @@ const SignInScreen = () => {
             <Text style={styles.forgotPasswordText}>Forgot password?</Text>
           </Pressable>
 
-          <View style={styles.actionsContainer}>
-            <Pressable
-              style={styles.primaryButton}
-              onPress={handleSubmit}
-              disabled={isSubmitting}>
-              {isSubmitting ? (
-                <ActivityIndicator color="#FFFFFF" />
-              ) : (
-                <Text style={styles.primaryButtonText}>Log in</Text>
-              )}
-            </Pressable>
+          <View style={styles.glassCard}>
+            <View style={styles.actionsContainer}>
+              <Pressable
+                style={isSubmitting && styles.primaryButtonDisabled}
+                onPress={handleSubmit}
+                disabled={isSubmitting}>
+                <LinearGradient
+                  colors={['#7C3AED', '#C084FC']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.primaryButton}>
+                  {isSubmitting ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.primaryButtonText}>Log in</Text>
+                  )}
+                </LinearGradient>
+              </Pressable>
 
-            <Pressable
-              style={styles.secondaryCta}
-              onPress={() => navigation.navigate(AppRoute.SignUp)}>
-              <Text style={styles.secondaryCtaText}>
-                Need an account?{' '}
-                <Text style={styles.secondaryCtaHighlight}>Sign up</Text>
-              </Text>
-            </Pressable>
+              <Pressable
+                style={styles.secondaryCta}
+                onPress={() => navigation.navigate(AppRoute.SignUp)}>
+                <Text style={styles.secondaryCtaText}>
+                  Need an account?{' '}
+                  <Text style={styles.secondaryCtaHighlight}>Sign up</Text>
+                </Text>
+              </Pressable>
+            </View>
           </View>
 
         </ScrollView>
       </KeyboardAvoidingView>
+      </SafeAreaView>
     </ImageBackground>
   );
 };
@@ -569,13 +586,11 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(58, 30, 100, 0.62)',
+  bgImageCrop: {
+    transform: [{ scale: 1.08 }, { translateY: 15 }, { translateX: 15 }],
   },
   flex: {
     flex: 1,
-    backgroundColor: 'transparent',
   },
   scrollContainer: {
     flexGrow: 1,
@@ -586,20 +601,35 @@ const styles = StyleSheet.create({
   header: {
     marginBottom: spacing.xl,
   },
-  title: {
+  logoText: {
     fontFamily: typography.fontFamilyBold,
-    fontSize: 34,
+    fontSize: 44,
     color: '#FFFFFF',
     fontWeight: '800',
+    letterSpacing: 1,
+    textAlign: 'center',
     textShadowColor: 'rgba(0,0,0,0.4)',
-    textShadowOffset: {width: 0, height: 1},
-    textShadowRadius: 4,
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 10,
+    marginBottom: 4,
+  },
+  title: {
+    fontFamily: typography.fontFamilyBold,
+    fontSize: 28,
+    color: '#FFFFFF',
+    fontWeight: '800',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
   },
   subtitle: {
     marginTop: spacing.xs,
     fontFamily: typography.fontFamilyRegular,
     fontSize: typography.body.medium,
-    color: 'rgba(255, 255, 255, 0.85)',
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   fieldset: {
     marginBottom: spacing.md,
@@ -646,19 +676,32 @@ const styles = StyleSheet.create({
   },
   forgotPasswordText: {
     fontSize: typography.body.small,
-    color: '#D4AF37',
+    color: '#FFFFFF',
     fontWeight: '600',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  glassCard: {
+    backgroundColor: 'transparent',
+    marginTop: spacing.xs,
   },
   actionsContainer: {
-    marginTop: spacing.sm,
     width: '100%',
   },
   primaryButton: {
-    backgroundColor: '#4C2882',
     paddingVertical: 16,
-    borderRadius: 14,
+    borderRadius: 999,
     alignItems: 'center',
-    elevation: 4,
+    justifyContent: 'center',
+    elevation: 6,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+  },
+  primaryButtonDisabled: {
+    opacity: 0.6,
   },
   primaryButtonText: {
     color: '#FFFFFF',
@@ -676,8 +719,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   secondaryCtaHighlight: {
-    color: '#D4AF37',
+    color: '#C084FC',
     fontWeight: '700',
+    fontFamily: typography.fontFamilyBold,
   },
   eyeIcon: {
     padding: spacing.xs,

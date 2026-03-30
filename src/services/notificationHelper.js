@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import notifee, { AndroidStyle } from '@notifee/react-native';
+import notifee, { AndroidStyle, AndroidImportance, AndroidVisibility } from '@notifee/react-native';
 
 // Retrieve existing messages from the system tray so we don't overwrite them
 export async function getExistingMessages(chatId) {
@@ -8,50 +8,71 @@ export async function getExistingMessages(chatId) {
     const notifications = await notifee.getDisplayedNotifications();
     const existing = notifications.find(n => n.id === chatId);
     if (existing?.notification?.android?.style?.messages) {
-      return existing.notification.android.style.messages;
+      // Filter out any invalid messages
+      return existing.notification.android.style.messages.filter(m => m.text);
     }
   } catch(e) {}
   return [];
 }
 
 export async function displayChatNotification(data) {
-  const { chatId, senderName, messageText, timestamp } = data;
+  const { chatId, senderName, senderPhoto, messageText, timestamp } = data;
   
-  if (Platform.OS !== 'android') return; // Notifee messaging style is Android only
+  if (Platform.OS !== 'android') return;
 
   try {
     const channelId = await notifee.createChannel({
-      id: 'messages',
-      name: 'Messages',
+      id: 'messages_priority',
+      name: 'Direct Messages',
       vibration: true,
-      importance: 4, // 4 = HIGH priority, required for heads-up alerts
+      importance: AndroidImportance.HIGH,
+      visibility: AndroidVisibility.PRIVATE,
     });
 
     const existingMessages = await getExistingMessages(chatId);
+    
+    // Add the new incoming message with person attribution
     existingMessages.push({
       text: messageText,
       timestamp: timestamp ? parseInt(timestamp, 10) : Date.now(),
+      person: { 
+        name: senderName,
+        icon: senderPhoto || 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png', // Fallback avatar
+      },
     });
 
+    // Cap history to last 10 messages for performance and UX
+    const history = existingMessages.slice(-10);
+
     await notifee.displayNotification({
-      id: chatId,     // Pin Notification to this specific chat
+      id: chatId, 
       title: senderName,
       body: messageText, 
       data: data,
       android: {
         channelId: channelId, 
         groupSummary: true,
-        groupId: 'chat_group', // WhatsApp style grouping
+        groupId: 'chat_group',
+        largeIcon: senderPhoto || 'ic_launcher',
+        circularLargeIcon: true,
+        color: '#4C2882',
+        pressAction: { id: 'default' }, // Opens app on click
         style: {
           type: AndroidStyle.MESSAGING,
-          person: { name: senderName },
-          messages: existingMessages,
+          person: { 
+            name: senderName,
+            icon: senderPhoto,
+          },
+          messages: history,
         },
         actions: [
           {
             title: 'Reply',
             pressAction: { id: 'reply' },
-            input: { allowFreeFormInput: true, placeholder: 'Reply...' },
+            input: { 
+              allowFreeFormInput: true, 
+              placeholder: `Reply to ${senderName}...` 
+            },
           },
         ],
       },
@@ -66,29 +87,47 @@ export async function updateNotificationWithReply(notification, replyText) {
   if (Platform.OS !== 'android') return;
 
   try {
-    const { chatId, senderName } = notification.data;
+    const { chatId, senderName, senderPhoto } = notification.data;
     const existingMessages = await getExistingMessages(chatId);
     
-    // Append current user's reply
+    // Append current user's reply with 'person' as 'You' for correct alignment
     existingMessages.push({
       text: replyText,
       timestamp: Date.now(),
-      person: { name: 'You' } // Supplying 'You' auto-aligns it dynamically in Android UI
+      person: { name: 'You' }
     });
+
+    const history = existingMessages.slice(-10);
 
     await notifee.displayNotification({
       id: notification.id,
       title: senderName,
-      body: `You: ${replyText}`,
+      body: `Me: ${replyText}`,
       data: notification.data,
       android: {
         channelId: notification.android.channelId,
+        largeIcon: senderPhoto || 'ic_launcher',
+        circularLargeIcon: true,
+        color: '#4C2882',
+        pressAction: { id: 'default' },
         style: {
           type: AndroidStyle.MESSAGING,
-          person: { name: senderName },
-          messages: existingMessages,
+          person: { 
+            name: senderName,
+            icon: senderPhoto 
+          },
+          messages: history,
         },
-        actions: [], // CRITICAL: Strip the reply button so they cannot background-spam
+        actions: [
+          {
+            title: 'Reply',
+            pressAction: { id: 'reply' },
+            input: { 
+              allowFreeFormInput: true, 
+              placeholder: `Send another to ${senderName}...` 
+            },
+          },
+        ],
       },
     });
   } catch(e) {
