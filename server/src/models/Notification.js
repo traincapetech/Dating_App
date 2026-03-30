@@ -1,53 +1,90 @@
 import mongoose from 'mongoose';
 
 /**
- * Notification log model.
- * Stores a record of every broadcast push notification sent via the admin panel.
- * The `data` field is a flexible JSON object so future interaction types don't
- * require schema migrations.
+ * Notification model for logging and scheduling push notifications.
  */
 const notificationSchema = new mongoose.Schema(
   {
-    title: { type: String, required: true },
-    body: { type: String, required: true },
-
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    body: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     /**
-     * High-level notification category.
-     * "timer"   → Live countdown / sale timer push
-     * "general" → Standard informational push
+     * Notification categories.
+     * "timer" is used for real-time interaction countdowns.
      */
     type: {
       type: String,
-      enum: ['general', 'timer', 'promo', 'announcement'],
-      default: 'general',
+      enum: ['normal', 'persistent', 'timer', 'promo', 'announcement'],
+      default: 'normal',
     },
-
     /**
-     * Audience selector sent from the admin panel.
-     * "all" | "Premium" | "Free" | "custom"
+     * Targeting audience.
      */
-    audience: { type: String, default: 'all' },
-
-    /** Whether this was sent with high-priority FCM flags */
-    isHighPriority: { type: Boolean, default: false },
-
+    audience: {
+      type: String,
+      enum: ['all', 'premium', 'free', 'custom', 'Premium', 'Free'], // Supporting both cases seen in diffs
+      required: true,
+    },
     /**
-     * Arbitrary key/value payload forwarded to the mobile client.
-     * For type=timer this will contain: { type, endTime, actionText }
+     * List of target user IDs (for audience='custom').
      */
-    data: { type: mongoose.Schema.Types.Mixed, default: {} },
-
-    /** Number of tokens the broadcast was dispatched to */
-    recipientCount: { type: Number, default: 0 },
-
-    /** Optional: admin ID who triggered the broadcast */
-    sentBy: { type: String },
+    userIds: [{
+      type: String, // Matching UUID string ID system
+    }],
+    /**
+     * Flexible JSON object for the payload data.
+     * For type="timer", this contains { type, endTime, actionText }.
+     */
+    data: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+    /** High priority flag for FCM */
+    isHighPriority: {
+      type: Boolean,
+      default: false,
+    },
+    scheduledAt: {
+      type: Date,
+    },
+    sentAt: {
+      type: Date,
+    },
+    status: {
+      type: String,
+      enum: ['pending', 'scheduled', 'sending', 'sent', 'failed'],
+      default: 'pending',
+    },
+    recipientCount: {
+      type: Number,
+      default: 0,
+    },
+    stats: {
+      totalSent: { type: Number, default: 0 },
+      success: { type: Number, default: 0 },
+      failed: { type: Number, default: 0 },
+    },
+    createdBy: {
+      type: String, // Admin ID
+      required: true,
+    },
   },
-  { timestamps: true },
+  {
+    timestamps: true,
+  },
 );
 
-const Notification =
-  mongoose.models.Notification ||
-  mongoose.model('Notification', notificationSchema);
+// Index for scheduler and filtering
+notificationSchema.index({ status: 1, scheduledAt: 1 });
+notificationSchema.index({ type: 1 });
+
+const Notification = mongoose.models.Notification || mongoose.model('Notification', notificationSchema);
 
 export default Notification;

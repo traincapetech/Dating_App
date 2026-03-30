@@ -688,7 +688,7 @@ const MediaUploadScreen = () => {
             [
               {
                 text: 'OK',
-                onPress: () => navigation.navigate(AppRoute.SubscriptionUpsell),
+                onPress: () => navigation.navigate(AppRoute.SubscriptionUpsell, { fromOnboarding: true }),
               },
             ],
           );
@@ -704,7 +704,7 @@ const MediaUploadScreen = () => {
               },
               {
                 text: 'Continue',
-                onPress: () => navigation.navigate(AppRoute.SubscriptionUpsell),
+                onPress: () => navigation.navigate(AppRoute.SubscriptionUpsell, { fromOnboarding: true }),
               },
             ],
           );
@@ -740,7 +740,7 @@ const MediaUploadScreen = () => {
         <View style={styles.headerTop}>
           <Text style={styles.title}>Pick your photos and videos</Text>
           <Pressable 
-            onPress={() => navigation.navigate(AppRoute.SubscriptionUpsell)}
+            onPress={() => navigation.navigate(AppRoute.SubscriptionUpsell, { fromOnboarding: true })}
             style={styles.skipButton}
           >
             <Text style={styles.skipText}>Skip</Text>

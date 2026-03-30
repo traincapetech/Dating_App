@@ -11,7 +11,7 @@ import {
   Dimensions,
   Platform,
 } from 'react-native';
-import {useNavigation} from '@react-navigation/native';
+import {useNavigation, useRoute} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {StripeProvider, useStripe} from '@stripe/stripe-react-native';
 import LinearGradient from 'react-native-linear-gradient';
@@ -36,6 +36,8 @@ const FEATURES = [
 
 const SubscriptionUpsellScreenContent = () => {
   const navigation = useNavigation();
+  const route = useRoute();
+  const fromOnboarding = route.params?.fromOnboarding;
   const stripe = useStripe();
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [plans, setPlans] = useState([]);
@@ -104,7 +106,25 @@ const SubscriptionUpsellScreenContent = () => {
       if (presentError) { if (presentError.code === 'Canceled') return; throw new Error(presentError.message); }
       const verifyResponse = await verifyPaymentAndCreateSubscription(currentUserId, selectedPlan, paymentOrder.orderId, paymentOrder.orderId, '', 'stripe', paymentOrder.currency || 'USD', true);
       if (verifyResponse?.success) {
-        Alert.alert('Congratulations!', 'Your subscription is active!', [{text: 'Great!', onPress: () => navigation.navigate(AppRoute.HomeTabs)}]);
+        Alert.alert(
+          'Congratulations!',
+          'Your subscription is active!',
+          [
+            {
+              text: 'Great!',
+              onPress: () => {
+                if (fromOnboarding) {
+                  navigation.reset({
+                    index: 0,
+                    routes: [{ name: AppRoute.HomeTabs }],
+                  });
+                } else {
+                  navigation.navigate(AppRoute.HomeTabs);
+                }
+              }
+            }
+          ]
+        );
       } else throw new Error(verifyResponse?.message || 'Verification failed');
     } catch (error) { Alert.alert('Payment Error', error.message); }
     finally { setProcessing(false); }
@@ -125,8 +145,24 @@ const SubscriptionUpsellScreenContent = () => {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerContainer}>
           <View style={styles.headerTop}>
-            <View style={styles.pricingPill}><Text style={styles.pricingPillText}>Pricing Plan</Text></View>
-            <Pressable onPress={() => navigation.goBack()} style={styles.backButton}><MaterialCommunityIcons name="close" size={20} color="#fff" /></Pressable>
+            <View style={styles.pricingPill}>
+              <Text style={styles.pricingPillText}>Pricing Plan</Text>
+            </View>
+            <Pressable 
+              onPress={() => {
+                if (fromOnboarding) {
+                  navigation.reset({
+                    index: 0,
+                    routes: [{ name: AppRoute.HomeTabs }],
+                  });
+                } else {
+                  navigation.goBack();
+                }
+              }} 
+              style={styles.backButton}
+            >
+               <MaterialCommunityIcons name="close" size={20} color="#fff" />
+            </Pressable>
           </View>
           <Text style={styles.heroTitle}>Access Premium{'\n'}Features on Every Plan</Text>
           <Text style={styles.pryvoUpgradeText}>Upgrade to <Text style={styles.pryvoGold}>Pryvo</Text> Premium</Text>
