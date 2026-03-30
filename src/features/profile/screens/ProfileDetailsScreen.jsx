@@ -12,8 +12,10 @@ import {
   TextInput,
   Animated,
   FlatList,
+  PermissionsAndroid,
   Platform,
 } from 'react-native';
+import Geolocation from 'react-native-geolocation-service';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {colors, typography, spacing} from '../../../theme';
@@ -51,6 +53,7 @@ const ProfileDetailsScreen = () => {
   const [editedProfile, setEditedProfile] = useState({});
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [scrollEnabled, setScrollEnabled] = useState(true);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -188,6 +191,61 @@ const ProfileDetailsScreen = () => {
     }
   };
 
+  // Auto-detect GPS location and reverse geocode to city name
+  const handleDetectLocation = async () => {
+    try {
+      if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {title: 'Location Permission', message: 'Pryvo needs your location to show nearby matches.', buttonPositive: 'Allow'},
+        );
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          Alert.alert('Permission Denied', 'Please enable location in device settings.');
+          return;
+        }
+      }
+      setIsDetectingLocation(true);
+      const position = await new Promise((resolve, reject) =>
+        Geolocation.getCurrentPosition(resolve, reject, {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000}),
+      );
+      const {latitude, longitude} = position.coords;
+      // Reverse geocode using open API (no key required)
+      try {
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
+          {headers: {'Accept-Language': 'en'}},
+        );
+        const data = await res.json();
+        const city =
+          data.address?.city ||
+          data.address?.town ||
+          data.address?.village ||
+          data.address?.state ||
+          'Your Location';
+        const locationStr = data.address?.state
+          ? `${city}, ${data.address.state}`
+          : city;
+        setEditedProfile(prev => ({
+          ...prev,
+          location: locationStr,
+          locationDetails: {lat: latitude, lng: longitude, source: 'gps', timestamp: Date.now()},
+        }));
+        Alert.alert('📍 Location Detected', locationStr);
+      } catch {
+        // Fallback: just store coordinates as label
+        setEditedProfile(prev => ({
+          ...prev,
+          location: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+          locationDetails: {lat: latitude, lng: longitude, source: 'gps', timestamp: Date.now()},
+        }));
+      }
+    } catch (error) {
+      Alert.alert('Location Error', 'Could not detect location. Make sure GPS is enabled.');
+    } finally {
+      setIsDetectingLocation(false);
+    }
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -229,6 +287,10 @@ const ProfileDetailsScreen = () => {
       }
       if (editedProfile.location !== undefined) {
         payload.basicInfo.location = editedProfile.location.trim();
+      }
+      // Also sync GPS coordinates if available
+      if (editedProfile.locationDetails?.lat && editedProfile.locationDetails?.lng) {
+        payload.basicInfo.locationDetails = editedProfile.locationDetails;
       }
       if (editedProfile.gender) {
         payload.basicInfo.gender = editedProfile.gender;
@@ -964,9 +1026,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   heroWrapper: {
-    width: SCREEN_WIDTH,
     height: HERO_HEIGHT,
-    backgroundColor: '#000',
+    width: SCREEN_WIDTH,
+    position: 'relative',
+    overflow: 'hidden',
   },
   heroSlide: {
     width: SCREEN_WIDTH,
@@ -1053,51 +1116,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
   },
-  simpleEditHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    backgroundColor: 'transparent',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
-  },
-  headerSideContainer: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  headerCenterContainer: {
-    flex: 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitleTxt: {
-    fontSize: 18,
-    fontFamily: typography.fontFamilyBold,
-    color: '#000000',
-    fontWeight: '800',
-  },
-  headerIconBtn: {
-    padding: 4,
-  },
-  headerSaveBtnWrapper: {
-    zIndex: 10,
-  },
-  headerSavePill: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerSaveTxt: {
-    fontSize: 15,
-    fontFamily: typography.fontFamilyBold,
-    color: '#FFF',
-    fontWeight: '700',
-  },
   bodyContent: {
     paddingHorizontal: 20,
     paddingTop: 10,
@@ -1128,7 +1146,6 @@ const styles = StyleSheet.create({
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.08,
     shadowRadius: 12,
-    // Removed elevation: 4 to fix Android 'ghost plate' artifacts on semi-transparent backgrounds
   },
   entryRow: {
     marginBottom: 14,
@@ -1218,7 +1235,7 @@ const styles = StyleSheet.create({
   pillContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10, // Wider gap
+    gap: 10,
     marginTop: 4,
   },
   staticPill: {
@@ -1370,6 +1387,52 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontFamily: typography.fontFamilyBold,
     marginLeft: 10,
+  },
+  // Simple Edit Header
+  simpleEditHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    paddingBottom: 15,
+    backgroundColor: 'transparent',
+  },
+  headerSideContainer: {
+    flex: 1,
+  },
+  headerCenterContainer: {
+    flex: 2,
+    alignItems: 'center',
+  },
+  headerIconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitleTxt: {
+    fontSize: 18,
+    fontFamily: typography.fontFamilyBold,
+    color: '#000',
+  },
+  headerSaveBtnWrapper: {
+    alignSelf: 'flex-end',
+  },
+  headerSavePill: {
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  headerSaveTxt: {
+    color: '#FFF',
+    fontFamily: typography.fontFamilyBold,
+    fontSize: 14,
+  },
+  editModule: {
+    marginTop: 0,
   },
 });
 

@@ -21,7 +21,13 @@ import {useAuth} from '../../../context/AuthContext';
 import google from '../../../assets/images/google.png';
 
 // Premium Animated Button Wrapper
-const AnimatedPressable = ({onPress, style, children, disabled, buttonStyle}) => {
+const AnimatedPressable = ({
+  onPress,
+  style,
+  children,
+  disabled,
+  buttonStyle,
+}) => {
   const scaleValue = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
@@ -59,7 +65,7 @@ const AnimatedPressable = ({onPress, style, children, disabled, buttonStyle}) =>
 const SplashScreen = ({navigation}) => {
   const {width, height} = useWindowDimensions();
   const {isAuthenticated, profile, loading: authLoading} = useAuth();
-  
+
   // Sizing logic
   const heroImageSize = Math.min(width * 0.4, 180);
   const heroFontSize = Math.min(36, Math.max(28, width * 0.09));
@@ -96,10 +102,14 @@ const SplashScreen = ({navigation}) => {
       if (isAuthenticated) {
         // NAVIGATE IMMEDIATELY if authenticated
         if (profile) {
-          console.log('[SplashScreen] Session found with profile, navigating to Home');
+          console.log(
+            '[SplashScreen] Session found with profile, navigating to Home',
+          );
           navigation?.reset({index: 0, routes: [{name: AppRoute.HomeTabs}]});
         } else {
-          console.log('[SplashScreen] Session found but no profile, navigating to Onboarding');
+          console.log(
+            '[SplashScreen] Session found but no profile, navigating to Onboarding',
+          );
           navigation?.reset({index: 0, routes: [{name: AppRoute.Welcome}]});
         }
       } else {
@@ -131,9 +141,14 @@ const SplashScreen = ({navigation}) => {
       }
     } catch (error) {
       console.error('Google Sign-In error:', error);
-      const isCancelled = error?.code === 'SIGN_IN_CANCELLED' || error?.message?.includes('cancel');
+      const isCancelled =
+        error?.code === 'SIGN_IN_CANCELLED' ||
+        error?.message?.includes('cancel');
       if (!isCancelled) {
-        Alert.alert('Sign-In Failed', error?.message || 'Something went wrong. Please try again.');
+        Alert.alert(
+          'Sign-In Failed',
+          error?.message || 'Something went wrong. Please try again.',
+        );
       }
     } finally {
       setGoogleLoading(false);
@@ -143,7 +158,7 @@ const SplashScreen = ({navigation}) => {
   return (
     <View style={styles.container}>
       {/* Background Video - Disabled for emulator stability testing */}
-      {/* <Video
+      <Video
         source={require('../../../assets/videos/landing.mp4')}
         style={StyleSheet.absoluteFillObject}
         resizeMode="cover"
@@ -152,8 +167,8 @@ const SplashScreen = ({navigation}) => {
         paused={false} // TEST: Pause video to troubleshoot emulator crash
         playWhenInactive={true}
         shutterColor="transparent"
-      /> */}
-      
+      />
+
       {/* Dark overlay for readability */}
       <LinearGradient
         colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.8)']}
@@ -163,12 +178,14 @@ const SplashScreen = ({navigation}) => {
       <SafeAreaView style={styles.safeArea}>
         <Animated.ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.scrollContent, {justifyContent: 'flex-end'}]}
+          contentContainerStyle={[
+            styles.scrollContent,
+            {justifyContent: 'flex-end'},
+          ]}
           style={{
             opacity: uiFadeAnim,
             transform: [{translateY: uiTranslateY}],
           }}>
-
           {/* Buttons — no glass card, floating directly on gradient */}
           {/* Buttons — only show if NOT authenticated and NOT loading */}
           {!isAuthenticated && !authLoading && (
@@ -178,7 +195,11 @@ const SplashScreen = ({navigation}) => {
                 onPress={handleGoogleSignIn}
                 disabled={googleLoading}
                 style={{width: '100%', marginBottom: 12}}>
-                <View style={[styles.googleButton, googleLoading && {opacity: 0.7}]}>
+                <View
+                  style={[
+                    styles.googleButton,
+                    googleLoading && {opacity: 0.7},
+                  ]}>
                   {googleLoading ? (
                     <ActivityIndicator size="small" color="#000" />
                   ) : (
@@ -191,7 +212,9 @@ const SplashScreen = ({navigation}) => {
               </AnimatedPressable>
 
               {/* Log In Button (Gradient) */}
-              <AnimatedPressable onPress={handleCreateAccount} style={{width: '100%', marginBottom: 16}}>
+              <AnimatedPressable
+                onPress={handleCreateAccount}
+                style={{width: '100%', marginBottom: 16}}>
                 <LinearGradient
                   colors={['#7C3AED', '#C084FC']}
                   start={{x: 0, y: 0}}
@@ -202,13 +225,22 @@ const SplashScreen = ({navigation}) => {
               </AnimatedPressable>
 
               {/* Sign Up Text link */}
-              <Pressable onPress={handleSignIn} style={({pressed}) => [{opacity: pressed ? 0.7 : 1, marginTop: 8}]}>
+              <Pressable
+                onPress={handleSignIn}
+                style={({pressed}) => [
+                  {opacity: pressed ? 0.7 : 1, marginTop: 8},
+                ]}>
                 <Text style={styles.signUpPrompt}>
-                  Don't have an account? <Text style={styles.signUpHighlight}>Sign Up</Text>
+                  Don't have an account?{' '}
+                  <Text style={styles.signUpHighlight}>Sign Up</Text>
                 </Text>
               </Pressable>
 
-              <Text style={[styles.legalText, {maxWidth: Math.min(width - 40, 360)}]}>
+              <Text
+                style={[
+                  styles.legalText,
+                  {maxWidth: Math.min(width - 40, 360)},
+                ]}>
                 By continuing, you agree to our{' '}
                 <Text
                   style={styles.legalLink}
@@ -227,9 +259,9 @@ const SplashScreen = ({navigation}) => {
 
           {/* Optional: Add a simple loader if authenticated but waiting for navigation */}
           {isAuthenticated && (
-             <View style={{ marginBottom: 100 }}>
-                <ActivityIndicator color={colors.primary} size="large" />
-             </View>
+            <View style={{marginBottom: 100}}>
+              <ActivityIndicator color={colors.primary} size="large" />
+            </View>
           )}
         </Animated.ScrollView>
       </SafeAreaView>

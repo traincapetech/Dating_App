@@ -6,7 +6,7 @@ import LinearGradient from 'react-native-linear-gradient';
  * Global Background Wrapper for Premium Theme
  * Soft lavender/purple watercolor gradient
  */
-const ThemeBackground = ({ children, style, colors = ['#f3e8ff', '#e9d5ff', '#d8b4fe'] }) => {
+const ThemeBackground = ({ children, style, colors = ['#FFE2F3', '#E9D5FF', '#D4E2FF'] }) => {
   return (
     <LinearGradient
       colors={colors}

@@ -374,7 +374,6 @@ const ProfileScreen = () => {
                   <Text style={styles.strengthHint}>
                     Add more details to find your perfect match
                   </Text>
-                  <Icon name="lightning-bolt" size={16} color="#F59E0B" />
                 </View>
                 <View style={styles.strengthProgressContainer}>
                   <View style={styles.strengthProgressBg}>

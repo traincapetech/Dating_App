@@ -163,7 +163,7 @@ const TabNavigator = () => {
         },
       }}>
       <Tab.Screen
-        name="Home"
+        name="Discover"
         component={HomeScreen}
         options={{
           tabBarIcon: ({color, size}) => (

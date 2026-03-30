@@ -287,7 +287,7 @@ const LikesScreen = ({navigation}) => {
   return (
     <ThemeBackground>
       <SafeAreaView style={styles.containerUnified} edges={['top']}>
-        <StatusBar barStyle="dark-content" />
+        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
         <Animated.View style={[styles.flexFullUnified, {opacity: screenFadeAnim}]}>
           {/* Main Dominant Header */}
           <View style={styles.mainActionBarUnified}>
