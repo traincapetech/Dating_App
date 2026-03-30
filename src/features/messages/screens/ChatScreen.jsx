@@ -226,8 +226,9 @@ const ChatScreen = ({route, navigation}) => {
         const socket = initSocket(user.id);
         socketRef.current = socket;
 
-        // --- ATTACH LISTENERS BEFORE JOINING ---
-        
+        // Join chat room
+        joinChatRoom(matchId, user.id);
+
         // Listen for new messages
         socket.on('receiveMessage', msg => {
           if (msg.matchId === matchId) {
@@ -296,14 +297,6 @@ const ChatScreen = ({route, navigation}) => {
           );
         });
 
-        // Listen for user online/offline status
-        socket.on('userStatusChanged', ({userId, status}) => {
-          if (userId === theirId) {
-            console.log(`[ChatScreen] User ${userId} status changed to: ${status}`);
-            setIsUserOnlineNow(status === 'online');
-          }
-        });
-
         // Real-time streak updates
         socket.on('streak:update', data => {
           const ourPairId = [user.id, theirId].sort().join('_');
@@ -312,9 +305,6 @@ const ChatScreen = ({route, navigation}) => {
             setShowStreakWarning(false); // New activity clears the warning
           }
         });
-
-        // Join chat room
-        joinChatRoom(matchId, user.id);
       } else {
         navigation.goBack();
       }
@@ -340,7 +330,7 @@ const ChatScreen = ({route, navigation}) => {
     }
   }, [messages.length]);
 
-  const sendMessage = async (textToSubmit) => {
+  const sendMessage = async textToSubmit => {
     if (!textToSubmit?.trim() || !currentUserId || sending) return false;
 
     setSending(true);
@@ -361,7 +351,11 @@ const ChatScreen = ({route, navigation}) => {
       return true;
     } catch (e) {
       console.log('Send message error', e);
-      Alert.alert('Error', 'Failed to send message. Please try again.');
+      if (e.status === 400) {
+        Alert.alert('Caution', e.message || 'Please keep the conversation respectful.');
+      } else {
+        Alert.alert('Error', 'Failed to send message. Please try again.');
+      }
       return false;
     } finally {
       setSending(false);
@@ -640,8 +634,6 @@ const ChatScreen = ({route, navigation}) => {
     });
   };
 
-
-
   const handleOpenImage = url => {
     if (!url) return;
     setFullScreenImageUrl(url);
@@ -720,7 +712,7 @@ const ChatScreen = ({route, navigation}) => {
             </View>
           )}
 
-          <Pressable
+            <Pressable
             onPress={() =>
               item.mediaUrl ? handleOpenImage(item.mediaUrl) : null
             }
@@ -731,9 +723,13 @@ const ChatScreen = ({route, navigation}) => {
               isMe ? styles.bubbleRight : styles.bubbleLeft,
             ]}>
             {isMe ? (
-              <View style={[styles.bubbleGradient, styles.bubbleRight]}>
+              <LinearGradient
+                colors={['#8E2DE2', '#4A00E0']}
+                start={{x: 0, y: 0}}
+                end={{x: 1, y: 1}}
+                style={styles.bubbleGradient}>
                 {renderBubbleContent(item, isMe, isGif, isGift)}
-              </View>
+              </LinearGradient>
             ) : (
               <View style={styles.bubbleContentThem}>
                 {renderBubbleContent(item, isMe, isGif, isGift)}
@@ -829,7 +825,7 @@ const ChatScreen = ({route, navigation}) => {
 
   return (
     <ThemeBackground>
-      <SafeAreaView style={styles.safe} edges={['top']}>
+      <SafeAreaView style={styles.safe} edges={['left', 'right']}>
         <StatusBar
           translucent
           backgroundColor="transparent"
@@ -840,11 +836,8 @@ const ChatScreen = ({route, navigation}) => {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}>
           {/* Header */}
-          <View style={styles.headerContainer}>
-            <LinearGradient
-              colors={['#ffffff', '#f8f9fa']}
-              style={styles.headerBackground}
-            />
+          <View style={[styles.headerContainer, { paddingTop: insets.top }]}>
+            <View style={styles.headerBackground} />
             <View style={styles.headerContent}>
               <Pressable
                 onPress={() => navigation.goBack()}
@@ -894,7 +887,6 @@ const ChatScreen = ({route, navigation}) => {
               </View>
 
               <View style={styles.headerActions}>
-
                 <Pressable
                   onPress={() => setShowUnmatchModal(true)}
                   style={({pressed}) => ({
@@ -1072,8 +1064,6 @@ const ChatScreen = ({route, navigation}) => {
           userId={currentUserId}
         />
 
-
-
         {/* Unmatch Modal */}
         <Modal
           visible={showUnmatchModal}
@@ -1231,11 +1221,7 @@ const ChatScreen = ({route, navigation}) => {
                   end={{x: 1, y: 1}}
                   style={styles.previewSendGradient}>
                   <Text style={styles.previewSendText}>Send Image</Text>
-                  <Icon
-                    size={18}
-                    color="#fff"
-                    style={{marginLeft: 8}}
-                  />
+                  <Icon size={18} color="#fff" style={{marginLeft: 8}} />
                 </LinearGradient>
               </TouchableOpacity>
             </View>
@@ -1302,19 +1288,22 @@ const styles = StyleSheet.create({
 
   // Header
   headerContainer: {
-    height: 64,
     width: '100%',
     zIndex: 10,
     backgroundColor: 'transparent',
+    overflow: 'hidden',
   },
   headerBackground: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'transparent',
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.3)',
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
+    height: 70,
     justifyContent: 'space-between',
   },
   headerTitleContainer: {
@@ -1397,11 +1386,13 @@ const styles = StyleSheet.create({
   dateSeparatorText: {
     fontSize: 12,
     fontFamily: typography.fontFamilyMedium,
-    color: colors.textTertiary,
-    backgroundColor: '#eee',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
+    color: '#666',
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.6)',
     overflow: 'hidden',
   },
   messageRow: {
@@ -1433,14 +1424,19 @@ const styles = StyleSheet.create({
     color: colors.primary,
   },
   bubbleContainer: {
-    borderRadius: 20,
+    borderRadius: 22,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+    elevation: 2,
   },
   bubbleLeft: {
-    backgroundColor: 'rgba(255, 255, 255, 0.75)',
+    backgroundColor: 'rgba(255, 255, 255, 0.45)',
     borderBottomLeftRadius: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.8)',
   },
   bubbleRight: {
     borderBottomRightRadius: 4,
@@ -1449,6 +1445,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(124, 58, 237, 0.75)',
     padding: spacing.sm,
     paddingHorizontal: spacing.md,
+    borderRadius: 22,
+    borderBottomRightRadius: 4,
   },
   bubbleContentThem: {
     padding: spacing.sm,
@@ -1496,21 +1494,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     padding: spacing.sm,
-    backgroundColor: 'rgba(255, 255, 255, 0.65)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.35)',
+    borderTopWidth: 1.5,
+    borderTopColor: 'rgba(255, 255, 255, 0.5)',
   },
   inputWrapper: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+    backgroundColor: 'rgba(255, 255, 255, 0.5)',
     borderRadius: 24,
     paddingHorizontal: 16,
     paddingVertical: Platform.OS === 'ios' ? 10 : 4,
     marginRight: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.7)',
   },
   input: {
     flex: 1,

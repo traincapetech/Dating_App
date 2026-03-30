@@ -35,6 +35,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../../context/AuthContext';
+import ThemeBackground from '../../../components/layout/ThemeBackground';
 
 import {
   likeUser,
@@ -43,7 +44,6 @@ import {
 import MatchPopup from '../../../components/profile/MatchPopup.js';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
-const PHOTO_SIZE = (SCREEN_WIDTH - 4) / 3; // 3-column grid with 1px gaps
 
 // ─── UserProfileViewScreen ────────────────────────────────────────────────────
 // Displays another user's public profile. Mirrors ProfileScreen structure
@@ -227,7 +227,6 @@ const UserProfileViewScreen = ({navigation, route}) => {
       taurus: 'zodiac-taurus',
       gemini: 'zodiac-gemini',
       cancer: 'zodiac-cancer',
-      leo: 'zodiac-leo',
       virgo: 'zodiac-virgo',
       libra: 'zodiac-libra',
       scorpio: 'zodiac-scorpio',
@@ -235,6 +234,7 @@ const UserProfileViewScreen = ({navigation, route}) => {
       capricorn: 'zodiac-capricorn',
       aquarius: 'zodiac-aquarius',
       pisces: 'zodiac-pisces',
+      leo: 'zodiac-leo',
     };
     return map[sign?.toLowerCase()] || 'star-face';
   };
@@ -290,14 +290,13 @@ const UserProfileViewScreen = ({navigation, route}) => {
         
         if (res.isMatch && res.match) {
           // It's a match!
-          // Get MY photo from AuthContext
           const myPhoto = myProfile?.media?.media?.[0]?.url || myProfile?.photos?.[0] || null;
 
           setMatchInfo({
             visible: true,
             myPhoto: myPhoto,
             theirPhoto: photos[0] || null,
-            theirName: name, // Dynamic name from the profile view
+            theirName: name,
             theirAge: age,
             matchId: res.match._id,
           });
@@ -333,329 +332,333 @@ const UserProfileViewScreen = ({navigation, route}) => {
       <Text style={styles.headerTitle} numberOfLines={1}>
         {name.toLowerCase() || 'profile'}
       </Text>
-      {/* Spacer */}
-      <View style={styles.headerIconBtn} />
+      {/* Right Spacer for Header Balance (Transparent) */}
+      <View style={styles.headerSpacer} />
     </View>
   );
 
   // ── Loading state ────────────────────────────────────────────────────────────
   if (loading) {
     return (
-      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-        {renderHeader()}
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={styles.loadingText}>Loading profile…</Text>
-        </View>
-      </SafeAreaView>
+      <ThemeBackground>
+        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+          <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+          {renderHeader()}
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.loadingText}>Loading profile…</Text>
+          </View>
+        </SafeAreaView>
+      </ThemeBackground>
     );
   }
 
   // ── Main render ──────────────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-      {renderHeader()}
+    <ThemeBackground>
+      <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+        {renderHeader()}
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}>
-        {/* ── Profile Header Row (Avatar + Quick Stats) ── */}
-        <View style={styles.profileHeaderRow}>
-          {/* Avatar */}
-          <View style={styles.avatarWrapper}>
-            {photos.length > 0 ? (
-              <Image source={{uri: photos[0]}} style={styles.avatar} />
-            ) : (
-              <View style={[styles.avatar, styles.avatarPlaceholder]}>
-                <Icon name="account" size={40} color="#CCC" />
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}>
+          
+          {/* 🔥 Hero Section: Centered Avatar with Overlapping Name (Redesigned) */}
+          <View style={styles.heroSection}>
+            <View style={styles.avatarGlowWrapper}>
+              <LinearGradient
+                colors={[colors.primary, '#E040C8']}
+                style={styles.avatarGradientBorder}>
+                <View style={styles.avatarInnerContainer}>
+                  {photos.length > 0 ? (
+                    <Image
+                      source={{uri: photos[0]}}
+                      style={styles.headerAvatar}
+                    />
+                  ) : (
+                    <View style={styles.headerAvatarPlaceholder}>
+                      <Icon
+                        name="account"
+                        size={48}
+                        color="#CCC"
+                      />
+                    </View>
+                  )}
+                </View>
+              </LinearGradient>
+              {profile?.isActiveToday && (
+                <View style={styles.onlineStatusDot} />
+              )}
+            </View>
+
+            {/* User Identity block with Overlap */}
+            <View style={styles.identityBlockOverlay}>
+              <View style={styles.nameRowCentered}>
+                <Text style={styles.heroName}>
+                  {name}
+                  {age ? `, ${age}` : ''}
+                </Text>
+                <Icon
+                  name="check-decagram"
+                  size={20}
+                  color={colors.primary}
+                  style={styles.verificationIcon}
+                />
+              </View>
+              <Text style={styles.heroBio} numberOfLines={2}>
+                {bio || 'Ready to explore matches...'}
+              </Text>
+            </View>
+
+            {/* Combined CTA Block */}
+            <View style={styles.actionButtonsRow}>
+               {/* Main Match Button (Replaces Complete Profile placement) */}
+               {showMatchButton && (
+                  <View style={styles.matchButtonWrapper}>
+                    <Animated.View style={animatedButtonStyle}>
+                      <Pressable
+                        disabled={interactionStatus.isLiked || isSendingLike}
+                        onPressIn={() => (buttonScale.value = withSpring(0.96))}
+                        onPressOut={() => (buttonScale.value = withSpring(1))}
+                        onPress={handleSendLike}
+                        style={styles.primaryCtaBtn}>
+                        <LinearGradient
+                          colors={interactionStatus.isLiked ? ['#F3F4F6', '#E5E7EB'] : [colors.primary, '#8E2DE2']}
+                          start={{x: 0, y: 0}}
+                          end={{x: 1, y: 0}}
+                          style={styles.ctaGradient}>
+                          <Icon
+                            name={interactionStatus.isLiked ? "check-circle" : "heart"}
+                            size={20}
+                            color={interactionStatus.isLiked ? colors.textSecondary : "#FFF"}
+                            style={{marginRight: 10}}
+                          />
+                          <Text style={[
+                              styles.ctaText,
+                              interactionStatus.isLiked && {color: colors.textSecondary}
+                          ]}>
+                            {isSendingLike ? '...' : (interactionStatus.isLiked ? 'Request Sent' : 'Send Match')}
+                          </Text>
+                        </LinearGradient>
+                      </Pressable>
+                    </Animated.View>
+                  </View>
+               )}
+            </View>
+
+            {/* Dating Intention Badge (Below main CTA) */}
+            {datingIntention && (
+              <View style={styles.intentWrapper}>
+                <LinearGradient
+                  colors={['rgba(142, 45, 226, 0.1)', 'rgba(74, 0, 224, 0.05)']}
+                  style={styles.intentBadge}
+                  start={{x: 0, y: 0}}
+                  end={{x: 1, y: 0}}>
+                  <Icon
+                    name="heart-flash"
+                    size={14}
+                    color={colors.primary}
+                    style={{marginRight: 6}}
+                  />
+                  <Text style={[styles.intentBadgeText, {color: colors.primary}]}>
+                    Looking for {datingIntention}
+                  </Text>
+                </LinearGradient>
               </View>
             )}
-            {profile?.isActiveToday && <View style={styles.onlineDot} />}
           </View>
 
-          {/* Quick stats */}
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{photos.length}</Text>
-              <Text style={styles.statLabel}>Photos</Text>
+          {/* 📊 Stats Row: Refined Hierarchy (Photos, Streak, Joined) */}
+          <View style={styles.statsContainer}>
+            <View style={styles.statBox}>
+              <Text style={styles.statNumber}>{photos.length}</Text>
+              <Text style={styles.statSublabel}>Photos</Text>
             </View>
             <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>
-                {streak?.streakCount ||
-                  streak?.count ||
-                  profile?.streakCount ||
-                  0}
+            <View style={styles.statBox}>
+              <Text style={styles.statNumber}>
+                {streak?.streakCount || streak?.count || profile?.streakCount || 0}
                 {'  '}
                 <Text style={styles.statEmoji}>🔥</Text>
               </Text>
-              <Text style={styles.statLabel}>Streak</Text>
+              <Text style={styles.statSublabel}>Streak</Text>
             </View>
             <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue} numberOfLines={1}>
+            <View style={styles.statBox}>
+              <Text style={styles.statNumber} numberOfLines={1}>
                 {joinedDate}
               </Text>
-              <Text style={styles.statLabel}>Joined</Text>
+              <Text style={styles.statSublabel}>Joined</Text>
             </View>
           </View>
-        </View>
 
-        {/* ── Name + Bio ── */}
-        <View style={styles.bioSection}>
-          <Text style={styles.nameText}>
-            {name}
-            {age ? `, ${age}` : ''}
-          </Text>
-
-          {jobTitle || school ? (
-            <Text style={styles.occupationText}>
-              {[jobTitle, school].filter(Boolean).join(' at ')}
-            </Text>
-          ) : null}
-
-          {bio ? <Text style={styles.bioText}>{bio}</Text> : null}
-        </View>
-
-        {/* ── Dating Intention Badge ── */}
-        {datingIntention ? (
-          <View style={styles.intentWrapper}>
-            <LinearGradient
-              colors={['#8E2DE2', '#4A00E0']}
-              start={{x: 0, y: 0}}
-              end={{x: 1, y: 0}}
-              style={styles.intentBadge}>
+          {/* Tabs Selection */}
+          <View style={styles.tabsWrapper}>
+            <Pressable
+              onPress={() => setActiveTab('gallery')}
+              style={[
+                styles.tabBtn,
+                activeTab === 'gallery' && styles.activeTabBtn,
+              ]}>
               <Icon
-                name="heart-flash"
-                size={15}
-                color="#FFF"
-                style={{marginRight: 6}}
+                name="grid"
+                size={22}
+                color={activeTab === 'gallery' ? colors.primary : '#8E8E8E'}
               />
-              <Text style={styles.intentBadgeText}>
-                Looking for {datingIntention}
-              </Text>
-            </LinearGradient>
+            </Pressable>
+            <Pressable
+              onPress={() => setActiveTab('details')}
+              style={[
+                styles.tabBtn,
+                activeTab === 'details' && styles.activeTabBtn,
+              ]}>
+              <Icon
+                name="account-details-outline"
+                size={22}
+                color={activeTab === 'details' ? colors.primary : '#8E8E8E'}
+              />
+            </Pressable>
           </View>
-        ) : null}
 
-        {/* ── Tabs ── */}
-        <View style={styles.tabsWrapper}>
-          <Pressable
-            onPress={() => setActiveTab('gallery')}
-            style={[
-              styles.tabBtn,
-              activeTab === 'gallery' && styles.activeTabBtn,
-            ]}>
-            <Icon
-              name="grid"
-              size={22}
-              color={activeTab === 'gallery' ? colors.primary : '#8E8E8E'}
-            />
-          </Pressable>
-          <Pressable
-            onPress={() => setActiveTab('details')}
-            style={[
-              styles.tabBtn,
-              activeTab === 'details' && styles.activeTabBtn,
-            ]}>
-            <Icon
-              name="account-details-outline"
-              size={22}
-              color={activeTab === 'details' ? colors.primary : '#8E8E8E'}
-            />
-          </Pressable>
-        </View>
-
-        {activeTab === 'gallery' ? (
-          /* ── Photo Grid Tab ── */
-          photos.length > 0 ? (
+          {activeTab === 'gallery' ? (
+            /* ── Photo Grid Tab ── */
             <View style={styles.photoGrid}>
-              {photos.map((uri, idx) => {
-                const pId = photoSocialService.generatePhotoId(uri);
-                const photoStats = photosStats[pId] || { likes: 0, commentsCount: 0, isLiked: false };
-                const isOwner = currentUserId === userId;
+              {photos.length > 0 ? (
+                photos.map((uri, idx) => {
+                  const pId = photoSocialService.generatePhotoId(uri);
+                  const photoStats = photosStats[pId] || { likes: 0, commentsCount: 0, isLiked: false };
+                  const isOwner = currentUserId === userId;
 
-                console.log(`[UserProfileViewScreen] Grid Photo ${idx} stats:`, photoStats);
-
-                return (
-                  <Pressable 
-                    key={idx} 
-                    style={styles.photoCell}
-                    onPress={() => {
-                      setSelectedPhoto(uri);
-                      setViewerVisible(true);
-                    }}
-                  >
-                    <Image
-                      source={{uri}}
-                      style={styles.gridPhoto}
-                      resizeMode="cover"
-                    />
-                    {/* 📸 Social Interaction Indicator Badges (Mini) - ONLY visible to OWNER */}
-                    {isOwner && (photoStats.likes > 0 || photoStats.commentsCount > 0) && (
-                      <View style={styles.miniStatsOverlay}>
-                        {photoStats.likes > 0 && (
-                          <View style={styles.miniStat}>
-                            <Icon name="heart" size={12} color="#fff" />
-                            <Text style={styles.miniStatText}>{photoStats.likes}</Text>
+                  return (
+                    <View key={idx} style={styles.gridPhotoWrapper}>
+                      <Pressable
+                        style={styles.gridPhoto}
+                        onPress={() => {
+                          setSelectedPhoto(uri);
+                          setViewerVisible(true);
+                        }}
+                      >
+                        <Image
+                          source={{uri}}
+                          style={styles.gridPhoto}
+                          resizeMode="cover"
+                        />
+                        {/* 📸 Social interaction badges (mini) */}
+                        {isOwner && (photoStats.likes > 0 || photoStats.commentsCount > 0) && (
+                          <View style={styles.miniStatsOverlay}>
+                            {photoStats.likes > 0 && (
+                              <View style={styles.miniStat}>
+                                <Icon name="heart" size={10} color="#fff" />
+                                <Text style={styles.miniStatText}>{photoStats.likes}</Text>
+                              </View>
+                            )}
+                            {photoStats.commentsCount > 0 && (
+                              <View style={styles.miniStat}>
+                                <Icon name="comment" size={10} color="#fff" />
+                                <Text style={styles.miniStatText}>{photoStats.commentsCount}</Text>
+                              </View>
+                            )}
                           </View>
                         )}
-                        {photoStats.commentsCount > 0 && (
-                          <View style={styles.miniStat}>
-                            <Icon name="comment" size={12} color="#fff" />
-                            <Text style={styles.miniStatText}>{photoStats.commentsCount}</Text>
-                          </View>
-                        )}
-                      </View>
-                    )}
-                  </Pressable>
-                );
-              })}
+                      </Pressable>
+                    </View>
+                  );
+                })
+              ) : (
+                  <View style={styles.emptyGridPlaceholder}>
+                      <Icon name="image-off-outline" size={48} color="#DDD" />
+                      <Text style={styles.emptyGridText}>No photos shared yet</Text>
+                  </View>
+              )}
             </View>
           ) : (
-            <View style={styles.emptyState}>
-              <Icon name="image-off-outline" size={48} color="#DDD" />
-              <Text style={styles.emptyStateText}>No photos to display</Text>
+            /* ── Details Tab (Mapped to ProfileScreen Grid Style) ── */
+            <View style={styles.insightsWrapper}>
+              
+              {/* Work & Education */}
+              {(jobTitle || school) && (
+                  <View style={styles.basicsGridSection}>
+                      <Text style={styles.insightSectionTitle}>Work & Education</Text>
+                      <View style={styles.basicsGrid}>
+                          {jobTitle && (
+                              <View style={styles.basicGridItem}>
+                                  <Icon name="briefcase-outline" size={18} color={colors.primary} />
+                                  <Text style={styles.basicGridLabel}>{jobTitle}</Text>
+                              </View>
+                          )}
+                          {school && (
+                              <View style={styles.basicGridItem}>
+                                  <Icon name="school-outline" size={18} color={colors.primary} />
+                                  <Text style={styles.basicGridLabel}>{school}</Text>
+                              </View>
+                          )}
+                      </View>
+                  </View>
+              )}
+
+              {/* Basics Grid */}
+              {basicsItems.length > 0 && (
+                  <View style={styles.basicsGridSection}>
+                      <Text style={styles.insightSectionTitle}>About Me</Text>
+                      <View style={styles.basicsGrid}>
+                          {basicsItems.map((item, idx) => (
+                              <View key={idx} style={styles.basicGridItem}>
+                                  <Icon name={item.icon} size={18} color={colors.primary} />
+                                  <Text style={styles.basicGridLabel}>{item.label}</Text>
+                              </View>
+                          ))}
+                      </View>
+                  </View>
+              )}
+
+              {/* Prompts Section */}
+              {profile?.profilePrompts && (
+                  <View style={styles.promptsSection}>
+                      {Object.values(profile.profilePrompts).filter(p => p.question && p.answer).map((prompt, idx) => (
+                          <View key={idx} style={styles.promptCard}>
+                              <Text style={styles.promptQuestion}>{prompt.question}</Text>
+                              <Text style={styles.promptAnswer}>{prompt.answer}</Text>
+                          </View>
+                      ))}
+                  </View>
+              )}
             </View>
-          )
-        ) : (
-          /* ── Details Tab ── */
-          <View style={styles.detailsSection}>
-            {/* Work & Education card */}
-            {jobTitle || school ? (
-              <View style={styles.detailCard}>
-                <Text style={styles.detailCardTitle}>Work & Education</Text>
-                {jobTitle ? (
-                  <View style={styles.detailRow}>
-                    <Icon
-                      name="briefcase-outline"
-                      size={18}
-                      color={colors.primary}
-                      style={styles.detailIcon}
-                    />
-                    <Text style={styles.detailText}>{jobTitle}</Text>
-                  </View>
-                ) : null}
-                {school ? (
-                  <View style={styles.detailRow}>
-                    <Icon
-                      name="school-outline"
-                      size={18}
-                      color={colors.primary}
-                      style={styles.detailIcon}
-                    />
-                    <Text style={styles.detailText}>{school}</Text>
-                  </View>
-                ) : null}
-              </View>
-            ) : null}
+          )}
+        </ScrollView>
 
-            {/* Basics card */}
-            {basicsItems.length > 0 ? (
-              <View style={styles.detailCard}>
-                <Text style={styles.detailCardTitle}>My Basics</Text>
-                <View style={styles.basicsGrid}>
-                  {basicsItems.map((item, idx) => (
-                    <View key={idx} style={styles.basicChip}>
-                      <Icon name={item.icon} size={16} color={colors.primary} />
-                      <Text style={styles.basicChipText}>{item.label}</Text>
-                    </View>
-                  ))}
-                </View>
-              </View>
-            ) : null}
+        <MatchPopup
+          visible={matchInfo.visible}
+          myPhoto={matchInfo.myPhoto}
+          theirPhoto={matchInfo.theirPhoto}
+          theirName={matchInfo.theirName}
+          onContinue={() => setMatchInfo(prev => ({...prev, visible: false}))}
+          onMessage={() => {
+              const { matchId, theirName, theirPhoto, theirAge } = matchInfo;
+              const theirId = userId;
+              setMatchInfo(prev => ({...prev, visible: false}));
+              if (matchId && theirId) {
+                navigation.navigate('ChatScreen', {
+                  matchId, 
+                  theirId, 
+                  theirName, 
+                  theirPhoto, 
+                  theirAge
+                });
+              }
+          }}
+        />
 
-            {/* Empty details */}
-            {!jobTitle && !school && basicsItems.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Icon name="information-outline" size={48} color="#DDD" />
-                <Text style={styles.emptyStateText}>
-                  No additional details available
-                </Text>
-              </View>
-            ) : null}
-          </View>
-        )}
-      </ScrollView>
-
-      {/* ── Fixed Bottom CTA Footer ── */}
-      {showMatchButton && (
-        <View style={[
-          styles.footerContainer, 
-          { paddingBottom: Math.max(insets.bottom, 20) }
-        ]}>
-          <Animated.View style={[styles.matchButtonWrapper, animatedButtonStyle]}>
-            <LinearGradient
-              colors={interactionStatus.isLiked ? ['#F3F4F6', '#E5E7EB'] : ['#8E2DE2', '#4A00E0']}
-              start={{x: 0, y: 0}}
-              end={{x: 1, y: 0}}
-              style={styles.matchButtonGradient}>
-              <Pressable
-                disabled={interactionStatus.isLiked || isSendingLike}
-                onPressIn={() => (buttonScale.value = withSpring(0.96))}
-                onPressOut={() => (buttonScale.value = withSpring(1))}
-                onPress={handleSendLike}
-                style={({pressed}) => [
-                  styles.matchButton,
-                  pressed && !interactionStatus.isLiked && {opacity: 0.9},
-                ]}>
-                {isSendingLike ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <View style={styles.buttonContent}>
-                    <Icon
-                      name={interactionStatus.isLiked ? "check-circle" : "heart"}
-                      size={24}
-                      color={interactionStatus.isLiked ? colors.textSecondary : "#FFF"}
-                      style={styles.buttonIcon}
-                    />
-                    <Text style={[
-                        styles.matchButtonText,
-                        interactionStatus.isLiked && {color: colors.textSecondary}
-                    ]}>
-                      {interactionStatus.isLiked ? 'Request Sent' : 'Send Match'}
-                    </Text>
-                  </View>
-                )}
-              </Pressable>
-            </LinearGradient>
-          </Animated.View>
-        </View>
-      )}
-
-      <MatchPopup
-        visible={matchInfo.visible}
-        myPhoto={matchInfo.myPhoto}
-        theirPhoto={matchInfo.theirPhoto}
-        theirName={matchInfo.theirName}
-        onContinue={() => setMatchInfo(prev => ({...prev, visible: false}))}
-        onMessage={() => {
-            const { matchId, theirName, theirPhoto, theirAge } = matchInfo;
-            const theirId = userId;
-            setMatchInfo(prev => ({...prev, visible: false}));
-            if (matchId && theirId) {
-              navigation.navigate('ChatScreen', {
-                matchId, 
-                theirId, 
-                theirName, 
-                theirPhoto, 
-                theirAge
-              });
-            }
-        }}
-      />
-
-      <PhotoInteractionViewer
-        visible={viewerVisible}
-        onClose={() => setViewerVisible(false)}
-        photoUrl={selectedPhoto}
-        targetUserId={userId}
-        currentUserId={currentUserId}
-        navigation={navigation}
-      />
-    </SafeAreaView>
+        <PhotoInteractionViewer
+          visible={viewerVisible}
+          onClose={() => setViewerVisible(false)}
+          photoUrl={selectedPhoto}
+          targetUserId={userId}
+          currentUserId={currentUserId}
+          navigation={navigation}
+        />
+      </SafeAreaView>
+    </ThemeBackground>
   );
 };
 
@@ -664,180 +667,233 @@ const UserProfileViewScreen = ({navigation, route}) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: 'transparent',
   },
   scrollContent: {
-    paddingBottom: 120, // Enough space to scroll past the fixed footer
+    paddingBottom: 100,
   },
-
-  // ── Header ──────────────────────────────────────────────────────────────────
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 8,
+    alignItems: 'center',
+    paddingHorizontal: 16,
     paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: '#EFEFEF',
+    backgroundColor: 'transparent',
   },
   headerTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 17,
+    fontSize: 18,
     fontFamily: typography.fontFamilyBold,
     color: '#000',
     textTransform: 'lowercase',
-    marginHorizontal: 4,
   },
   headerIconBtn: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.6)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-
-  // ── Loading ──────────────────────────────────────────────────────────────────
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 14,
-  },
-  loadingText: {
-    fontSize: 14,
-    fontFamily: typography.fontFamilyRegular,
-    color: colors.textSecondary,
-  },
-
-  // ── Profile Header Row ───────────────────────────────────────────────────────
-  profileHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 14,
-  },
-  avatarWrapper: {
-    position: 'relative',
-    width: 86,
-    height: 86,
-    marginRight: 20,
-  },
-  avatar: {
-    width: 86,
-    height: 86,
-    borderRadius: 43,
     borderWidth: 1,
-    borderColor: '#EFEFEF',
-    backgroundColor: '#FAFAFA',
+    borderColor: 'rgba(255, 255, 255, 0.4)',
   },
-  avatarPlaceholder: {
+  headerSpacer: {
+    width: 44,
+    height: 44,
+  },
+  heroSection: {
+    alignItems: 'center',
+    paddingTop: 24,
+    paddingBottom: 24,
+  },
+  avatarGlowWrapper: {
+    padding: 4,
+    shadowColor: colors.primary,
+    shadowOffset: {width: 0, height: 12},
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 15,
+    zIndex: 2,
+  },
+  avatarGradientBorder: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    padding: 3,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  onlineDot: {
-    position: 'absolute',
-    bottom: 4,
-    right: 4,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: '#4ADE80',
-    borderWidth: 2,
-    borderColor: '#FFF',
+  avatarInnerContainer: {
+    width: 114,
+    height: 114,
+    borderRadius: 57,
+    backgroundColor: '#FFF',
+    padding: 2,
+    overflow: 'hidden',
   },
-  statsRow: {
-    flex: 1,
+  headerAvatar: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 55,
+  },
+  headerAvatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#F9FAFB',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  onlineStatusDot: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#22C55E',
+    borderWidth: 3,
+    borderColor: '#FFF',
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  identityBlockOverlay: {
+    alignItems: 'center',
+    marginTop: -16,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 24,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 5,
+    zIndex: 1,
+    minWidth: '60%',
+  },
+  nameRowCentered: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
+    gap: 6,
   },
-  statItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statValue: {
-    fontSize: 16,
+  heroName: {
+    fontSize: 24,
     fontFamily: typography.fontFamilyBold,
-    color: '#000',
+    color: '#111',
   },
-  statLabel: {
-    fontSize: 12,
-    fontFamily: typography.fontFamilyRegular,
-    color: '#8E8E8E',
+  verificationIcon: {
     marginTop: 2,
   },
-  statEmoji: {
+  heroBio: {
     fontSize: 13,
-  },
-  statDivider: {
-    width: 0.5,
-    height: 28,
-    backgroundColor: '#EFEFEF',
-  },
-
-  // ── Bio Section ──────────────────────────────────────────────────────────────
-  bioSection: {
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-  },
-  nameText: {
-    fontSize: 17,
-    fontFamily: typography.fontFamilyBold,
-    color: '#262626',
-    marginBottom: 2,
-  },
-  occupationText: {
-    fontSize: 14,
     fontFamily: typography.fontFamilyRegular,
-    color: '#8E8E8E',
-    marginBottom: 6,
-  },
-  bioText: {
-    fontSize: 14,
-    fontFamily: typography.fontFamilyRegular,
-    color: '#262626',
-    lineHeight: 20,
-  },
-
-  // ── Dating Intention ─────────────────────────────────────────────────────────
-  intentWrapper: {
-    paddingHorizontal: 20,
-    marginBottom: 14,
+    color: '#71717A',
+    textAlign: 'center',
     marginTop: 4,
+    lineHeight: 20,
+    paddingHorizontal: 20,
+  },
+  actionButtonsRow: {
+    marginTop: 20,
+    width: '100%',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  matchButtonWrapper: {
+    width: '100%',
+    maxWidth: 320,
+    shadowColor: colors.primary,
+    shadowOffset: {width: 0, height: 8},
+    shadowOpacity: 0.2,
+    shadowRadius: 15,
+    elevation: 8,
+  },
+  primaryCtaBtn: {
+    borderRadius: 30,
+    width: '100%',
+  },
+  ctaGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 30,
+  },
+  ctaText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontFamily: typography.fontFamilyBold,
+  },
+  intentWrapper: {
+    marginTop: 16,
+    paddingHorizontal: 20,
+    alignItems: 'center',
   },
   intentBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#8E2DE2',
-        shadowOffset: {width: 0, height: 3},
-        shadowOpacity: 0.25,
-        shadowRadius: 6,
-      },
-      android: {elevation: 4},
-    }),
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.primary + '20',
   },
   intentBadgeText: {
-    color: '#FFF',
     fontSize: 13,
     fontFamily: typography.fontFamilyBold,
+    color: colors.primary,
   },
-
-  // ── Tabs ─────────────────────────────────────────────────────────────────────
+  statsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFF',
+    marginHorizontal: 16,
+    paddingVertical: 20,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+    marginVertical: 12,
+  },
+  statBox: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statNumber: {
+    fontSize: 20,
+    fontFamily: typography.fontFamilyBold,
+    color: '#111',
+  },
+  statSublabel: {
+    fontSize: 12,
+    fontFamily: typography.fontFamilyMedium,
+    color: '#9CA3AF',
+    marginTop: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  statDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#F3F4F6',
+  },
+  statEmoji: {
+    fontSize: 16,
+  },
   tabsWrapper: {
     flexDirection: 'row',
     borderTopWidth: 0.5,
     borderTopColor: '#DBDBDB',
+    marginTop: 10,
   },
   tabBtn: {
     flex: 1,
-    height: 46,
+    height: 48,
     justifyContent: 'center',
     alignItems: 'center',
     borderBottomWidth: 2,
@@ -846,176 +902,128 @@ const styles = StyleSheet.create({
   activeTabBtn: {
     borderBottomColor: colors.primary,
   },
-
-  // ── Photo Grid ───────────────────────────────────────────────────────────────
   photoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginTop: 2,
   },
-  photoCell: {
-    width: PHOTO_SIZE,
-    height: PHOTO_SIZE,
-    margin: 0.5,
-    backgroundColor: '#F0F0F0',
+  gridPhotoWrapper: {
+    width: SCREEN_WIDTH / 3,
+    height: SCREEN_WIDTH / 3,
+    padding: 1,
   },
   gridPhoto: {
-    width: '100%',
-    height: '100%',
-  },
-  miniStatsOverlay: {
-    position: 'absolute',
-    bottom: 4,
-    right: 4,
-    flexDirection: 'row',
-    gap: 4,
-  },
-  miniStat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-    gap: 2,
-  },
-  miniStatText: {
-    color: '#fff',
-    fontSize: 10,
-    fontFamily: typography.fontFamilyBold,
-  },
-
-  // ── Details Tab ──────────────────────────────────────────────────────────────
-  detailsSection: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    gap: 14,
-  },
-  detailCard: {
-    backgroundColor: '#FAFAFA',
-    borderRadius: 16,
-    padding: 18,
-    borderWidth: 0.5,
-    borderColor: '#EFEFEF',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: {width: 0, height: 2},
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-      },
-      android: {elevation: 1},
-    }),
-  },
-  detailCardTitle: {
-    fontSize: 13,
-    fontFamily: typography.fontFamilyBold,
-    color: '#8E8E8E',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 14,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  detailIcon: {
-    marginRight: 10,
-    width: 22,
-  },
-  detailText: {
-    fontSize: 15,
-    fontFamily: typography.fontFamilyMedium,
-    color: '#262626',
     flex: 1,
+    backgroundColor: '#FAFAFA',
+  },
+  emptyGridPlaceholder: {
+    height: 200,
+    width: SCREEN_WIDTH,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  emptyGridText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#999',
+    fontFamily: typography.fontFamilyRegular,
+    textAlign: 'center',
+  },
+  insightsWrapper: {
+    paddingTop: 20,
+    paddingBottom: 60,
+  },
+  insightSectionTitle: {
+    fontSize: 14,
+    fontFamily: typography.fontFamilyBold,
+    color: '#9CA3AF',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 16,
+    paddingHorizontal: 20,
+  },
+  basicsGridSection: {
+    marginBottom: 28,
   },
   basicsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-  },
-  basicChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    gap: 6,
-    borderWidth: 0.5,
-    borderColor: '#E5E7EB',
-  },
-  basicChipText: {
-    fontSize: 13,
-    fontFamily: typography.fontFamilyMedium,
-    color: '#374151',
-  },
-
-  // ── Empty State ──────────────────────────────────────────────────────────────
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
+    paddingHorizontal: 20,
     gap: 12,
   },
-  emptyStateText: {
-    fontSize: 14,
-    fontFamily: typography.fontFamilyRegular,
-    color: '#AAAAAA',
-    textAlign: 'center',
-  },
-  footerContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#F3F4F6',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.08,
-        shadowRadius: 10,
-      },
-      android: { elevation: 12 },
-    }),
-  },
-  matchButtonWrapper: {
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  matchButtonGradient: {
-    borderRadius: 33,
-    width: '100%',
-    overflow: 'hidden',
-  },
-  matchButton: {
-    height: 66,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  buttonContent: {
+  basicGridItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
+    backgroundColor: '#FFF',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    minWidth: (SCREEN_WIDTH - 52) / 2,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 1},
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  buttonIcon: {
-    marginRight: 10,
+  basicGridLabel: {
+    fontSize: 14,
+    fontFamily: typography.fontFamilyMedium,
+    color: '#374151',
+    marginLeft: 10,
   },
-  matchButtonText: {
-    color: '#FFF',
-    fontSize: 20,
+  promptsSection: {
+    paddingHorizontal: 20,
+    marginTop: 10,
+  },
+  promptCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  promptQuestion: {
+    fontSize: 12,
     fontFamily: typography.fontFamilyBold,
-    letterSpacing: 0.4,
-    paddingVertical: 4, // Added vertical breathing room
+    color: '#9CA3AF',
+    marginBottom: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  promptAnswer: {
+    fontSize: 16,
+    fontFamily: typography.fontFamilyMedium,
+    color: '#1F2937',
+    lineHeight: 24,
+  },
+  miniStatsOverlay: {
+    position: 'absolute',
+    bottom: 5,
+    right: 5,
+    flexDirection: 'row',
+    gap: 8,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  miniStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  miniStatText: {
+    color: '#FFF',
+    fontSize: 10,
+    fontFamily: typography.fontFamilyBold,
   },
 });
 

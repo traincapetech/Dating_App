@@ -189,8 +189,13 @@ const ProfileModal = ({
 
   const allPhotos = profile.photos || [];
 
-  // 📸 Integrated Social Engagement Hook for Home Modal
-  const {photosStats, handleLike} = usePhotoSocial(profile.id || profile._id);
+    // 📸 Integrated Social Engagement Hook for Home Modal
+    const {photosStats, handleLike} = usePhotoSocial(profile.id || profile._id);
+
+    // 📝 Structured Prompts Mapping for discovery (profilePrompts object -> array)
+    const prompts = profile?.profilePrompts
+      ? Object.values(profile.profilePrompts).filter(p => p && (p.question || p.answer))
+      : profile?.prompts || [];
 
   const PhotoItem = ({photoUri, index}) => {
     const photoId = photoSocialService.generatePhotoId(photoUri);
@@ -456,14 +461,13 @@ const ProfileModal = ({
                 </View>
               ) : null}
 
-              {/* Prompts */}
-              {profile.prompts &&
-                profile.prompts.length > 0 &&
-                profile.prompts.map((prompt, i) =>
+              {/* Prompts Integrated Mapping */}
+              {prompts.length > 0 &&
+                prompts.map((prompt, i) =>
                   prompt && prompt.answer ? (
                     <View key={i} style={modalStyles.profileSectionCard}>
                       <Text style={modalStyles.sectionLabel}>
-                        {prompt.prompt || 'My thoughts'}
+                        {prompt.question || prompt.prompt || "My thoughts"}
                       </Text>
                       <Text style={modalStyles.promptAnswer}>
                         {prompt.answer}
@@ -2091,22 +2095,24 @@ const modalStyles = StyleSheet.create({
   },
   profileSectionCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
-    marginTop: 20,
+    borderRadius: 16,
+    padding: 24,
+    marginTop: 16,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 3,
+    shadowOffset: {width: 0, height: 6},
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.03)',
   },
   sectionLabel: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: typography.fontFamilyBold,
-    color: '#9CA3AF',
-    letterSpacing: 1.2,
+    color: '#7C3AED', // Use primary color for labels to make it pop
+    letterSpacing: 1.5,
     textTransform: 'uppercase',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   bioText: {
     fontSize: 16,

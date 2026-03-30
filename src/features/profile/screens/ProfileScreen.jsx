@@ -21,8 +21,8 @@ import {useInitialLoad} from '../../../context/InitialLoadContext';
 import FullScreenLoader from '../../../components/layout/FullScreenLoader';
 import ThemeBackground from '../../../components/layout/ThemeBackground';
 import {useAuth} from '../../../context/AuthContext';
-import { usePhotoSocial } from '../../../hooks/usePhotoSocial';
-import { photoSocialService } from '../../../services/photoSocialService';
+import {usePhotoSocial} from '../../../hooks/usePhotoSocial';
+import {photoSocialService} from '../../../services/photoSocialService';
 import PhotoInteractionViewer from '../../../components/profile/PhotoInteractionViewer';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -39,12 +39,12 @@ const ProfileScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [userId, setUserId] = useState(null);
   const [activeTab, setActiveTab] = useState('gallery'); // gallery or insights
-  
+
   // 📸 Social Interaction Engagement
-  const { photosStats } = usePhotoSocial(userId);
+  const {photosStats} = usePhotoSocial(userId);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [viewerVisible, setViewerVisible] = useState(false);
-  
+
   const {visited, markVisited} = useInitialLoad();
 
   useFocusEffect(
@@ -223,12 +223,7 @@ const ProfileScreen = () => {
   ].filter(b => b.visible);
 
   if (loading && !visited.profile) {
-    return (
-      <FullScreenLoader 
-        visible={true} 
-        message="Setting up your space…" 
-      />
-    );
+    return <FullScreenLoader visible={true} message="Setting up your space…" />;
   }
 
   return (
@@ -244,80 +239,99 @@ const ProfileScreen = () => {
               colors={[colors.primary]}
             />
           }>
-        {/* Top Header */}
-        <View style={styles.header}>
-          <Pressable
-            style={styles.headerIconBtn}
-            onPress={() => navigation.navigate('Wallet')}>
-            <Icon
-              name="wallet-outline"
-              size={24}
-              color={colors.textPrimary}
-            />
-          </Pressable>
-          <Text style={styles.headerTitle}>
-            {firstName.toLowerCase() || 'profile'}
-          </Text>
-          <View style={styles.headerActions}>
+          {/* Top Header */}
+          <View style={styles.header}>
             <Pressable
               style={styles.headerIconBtn}
-              onPress={() => navigation.navigate('Settings')}>
-              <Icon name="menu" size={26} color={colors.textPrimary} />
+              onPress={() => navigation.navigate('Wallet')}>
+              <Icon
+                name="wallet-outline"
+                size={24}
+                color={colors.textPrimary}
+              />
             </Pressable>
-          </View>
-        </View>
-
-        {/* Hero Section: Centered Avatar with Overlapping Name */}
-        <View style={styles.heroSection}>
-          <View style={styles.avatarGlowWrapper}>
-            <LinearGradient
-              colors={[colors.primary, '#E040C8']}
-              style={styles.avatarGradientBorder}>
-              <View style={styles.avatarInnerContainer}>
-                {photos.length > 0 ? (
-                  <Image source={{uri: photos[0]}} style={styles.headerAvatar} />
-                ) : (
-                  <View style={styles.headerAvatarPlaceholder}>
-                    <Icon name="account" size={48} color={colors.textTertiary} />
-                  </View>
-                )}
-              </View>
-            </LinearGradient>
-            {profile?.isActiveToday && <View style={styles.onlineStatusDot} />}
-          </View>
-
-          {/* User Identity block with Overlap */}
-          <View style={styles.identityBlockOverlay}>
-            <View style={styles.nameRowCentered}>
-              <Text style={styles.heroName}>
-                {name}
-                {age ? `, ${age}` : ''}
-              </Text>
-              <Icon name="check-decagram" size={20} color={colors.primary} style={styles.verificationIcon} />
-            </View>
-            <Text style={styles.heroBio} numberOfLines={2}>
-              {profile?.bio ||
-                profile?.profilePrompts?.aboutMe?.answer ||
-                'Express yourself with a bio...'}
+            <Text style={styles.headerTitle}>
+              {firstName.toLowerCase() || 'profile'}
             </Text>
+            <View style={styles.headerActions}>
+              <Pressable
+                style={styles.headerIconBtn}
+                onPress={() => navigation.navigate('Settings')}>
+                <Icon name="menu" size={26} color={colors.textPrimary} />
+              </Pressable>
+            </View>
           </View>
 
-          {/* Primary CTA: Dating Intention */}
-          {profile?.datingPreferences?.datingIntention && (
-            <Pressable style={styles.primaryCtaBtn}>
+          {/* Hero Section: Centered Avatar with Overlapping Name */}
+          <View style={styles.heroSection}>
+            <View style={styles.avatarGlowWrapper}>
               <LinearGradient
-                colors={[colors.primary, '#8E2DE2']}
-                start={{x: 0, y: 0}}
-                end={{x: 1, y: 0}}
-                style={styles.ctaGradient}>
-                <Icon name="heart-flash" size={18} color="#FFF" style={{marginRight: 8}} />
-                <Text style={styles.ctaText}>
-                  Looking for {profile.datingPreferences.datingIntention}
-                </Text>
+                colors={[colors.primary, '#E040C8']}
+                style={styles.avatarGradientBorder}>
+                <View style={styles.avatarInnerContainer}>
+                  {photos.length > 0 ? (
+                    <Image
+                      source={{uri: photos[0]}}
+                      style={styles.headerAvatar}
+                    />
+                  ) : (
+                    <View style={styles.headerAvatarPlaceholder}>
+                      <Icon
+                        name="account"
+                        size={48}
+                        color={colors.textTertiary}
+                      />
+                    </View>
+                  )}
+                </View>
               </LinearGradient>
-            </Pressable>
-          )}
-        </View>
+              {profile?.isActiveToday && (
+                <View style={styles.onlineStatusDot} />
+              )}
+            </View>
+
+            {/* User Identity block with Overlap */}
+            <View style={styles.identityBlockOverlay}>
+              <View style={styles.nameRowCentered}>
+                <Text style={styles.heroName}>
+                  {name}
+                  {age ? `, ${age}` : ''}
+                </Text>
+                <Icon
+                  name="check-decagram"
+                  size={20}
+                  color={colors.primary}
+                  style={styles.verificationIcon}
+                />
+              </View>
+              <Text style={styles.heroBio} numberOfLines={2}>
+                {profile?.bio ||
+                  profile?.profilePrompts?.aboutMe?.answer ||
+                  'Express yourself with a bio...'}
+              </Text>
+            </View>
+
+            {/* Primary CTA: Dating Intention */}
+            {profile?.datingPreferences?.datingIntention && (
+              <Pressable style={styles.primaryCtaBtn}>
+                <LinearGradient
+                  colors={[colors.primary, '#8E2DE2']}
+                  start={{x: 0, y: 0}}
+                  end={{x: 1, y: 0}}
+                  style={styles.ctaGradient}>
+                  <Icon
+                    name="heart-flash"
+                    size={18}
+                    color="#FFF"
+                    style={{marginRight: 8}}
+                  />
+                  <Text style={styles.ctaText}>
+                    Looking for {profile.datingPreferences.datingIntention}
+                  </Text>
+                </LinearGradient>
+              </Pressable>
+            )}
+          </View>
 
         {/* Stats Row: Refined Hierarchy */}
         <View style={styles.statsContainer}>
@@ -342,185 +356,206 @@ const ProfileScreen = () => {
         </View>
 
         {/* Profile Strength Strategy (Floating Card) */}
-        {completionPercentage < 100 && (
-          <Pressable
-            onPress={() => navigation.navigate('ProfileDetails', {userId})}
-            style={styles.floatingStrengthCard}>
-            <View style={styles.strengthCardBody}>
-              <View style={styles.strengthContent}>
-                <View style={styles.strengthTextRow}>
-                  <Text style={styles.strengthStatusText}>
-                    Profile Strength: <Text style={{color: colors.primary}}>{completionPercentage}%</Text>
+          {completionPercentage < 100 && (
+            <Pressable
+              onPress={() => navigation.navigate('ProfileDetails', {userId})}
+              style={styles.floatingStrengthCard}>
+              <View style={styles.strengthCardBody}>
+                <View style={styles.strengthContent}>
+                  <View style={styles.strengthTextRow}>
+                    <Text style={styles.strengthStatusText}>
+                      Profile Strength:{' '}
+                      <Text style={{color: colors.primary}}>
+                        {completionPercentage}%
+                      </Text>
+                    </Text>
+                    <Icon name="lightning-bolt" size={16} color="#F59E0B" />
+                  </View>
+                  <Text style={styles.strengthHint}>
+                    Add more details to find your perfect match
                   </Text>
                   <Icon name="lightning-bolt" size={16} color="#F59E0B" />
                 </View>
-                <Text style={styles.strengthHint}>
-                  Add more details to find your perfect match
-                </Text>
-              </View>
-              <View style={styles.strengthProgressContainer}>
-                <View style={styles.strengthProgressBg}>
-                  <View
-                    style={[
-                      styles.strengthProgressFill,
-                      {width: `${completionPercentage}%`},
-                    ]}
-                  />
+                <View style={styles.strengthProgressContainer}>
+                  <View style={styles.strengthProgressBg}>
+                    <View
+                      style={[
+                        styles.strengthProgressFill,
+                        {width: `${completionPercentage}%`},
+                      ]}
+                    />
+                  </View>
+                </View>
+                <View style={styles.strengthChevronCircle}>
+                  <Icon name="chevron-right" size={20} color={colors.primary} />
                 </View>
               </View>
-              <View style={styles.strengthChevronCircle}>
-                <Icon name="chevron-right" size={20} color={colors.primary} />
-              </View>
-            </View>
-          </Pressable>
-        )}
+            </Pressable>
+          )}
 
-        {/* Tabs Selection */}
-        <View style={styles.tabsWrapper}>
-          <Pressable
-            onPress={() => setActiveTab('gallery')}
-            style={[
-              styles.tabBtn,
-              activeTab === 'gallery' && styles.activeTabBtn,
-            ]}>
-            <Ionicons
-              name="grid-outline"
-              size={22}
-              color={activeTab === 'gallery' ? colors.primary : '#A1A1AA'}
-            />
-          </Pressable>
-          <Pressable
-            onPress={() => setActiveTab('insights')}
-            style={[
-              styles.tabBtn,
-              activeTab === 'insights' && styles.activeTabBtn,
-            ]}>
-            <Ionicons
-              name="list-outline"
-              size={24}
-              color={activeTab === 'insights' ? colors.primary : '#A1A1AA'}
-            />
-          </Pressable>
-        </View>
-
-        {activeTab === 'gallery' ? (
-          /* Media Grid */
-          <View style={styles.gridContainer}>
-            {photos.length > 0 ? (
-              <View style={styles.photoGrid}>
-                {photos.map((photo, index) => {
-                  const photoId = photoSocialService.generatePhotoId(photo);
-                  const stats = photosStats[photoId] || { likes: 0, commentsCount: 0 };
-                  return (
-                    <Pressable
-                      key={index}
-                      style={styles.gridPhotoWrapper}
-                      onPress={() => {
-                        setSelectedPhoto(photo);
-                        setViewerVisible(true);
-                      }}>
-                      <Image source={{uri: photo}} style={styles.gridPhoto} />
-                      {/* 📸 Social Notification Badges for Owner */}
-                      {(stats.likes > 0 || stats.commentsCount > 0) && (
-                        <View style={styles.miniStatsOverlay}>
-                          {stats.likes > 0 && (
-                            <View style={styles.miniStat}>
-                              <Icon name="heart" size={12} color="#fff" />
-                              <Text style={styles.miniStatText}>{stats.likes}</Text>
-                            </View>
-                          )}
-                          {stats.commentsCount > 0 && (
-                            <View style={styles.miniStat}>
-                              <Icon name="comment" size={12} color="#fff" />
-                              <Text style={styles.miniStatText}>{stats.commentsCount}</Text>
-                            </View>
-                          )}
-                        </View>
-                      )}
-                    </Pressable>
-                  );
-                })}
-              </View>
-            ) : (
-              <Pressable
-                style={styles.emptyGridPlaceholder}
-                onPress={() => navigation.navigate('ProfileDetails', {userId})}>
-                <Icon
-                  name="camera-plus-outline"
-                  size={40}
-                  color={colors.textTertiary}
-                />
-                <Text style={styles.emptyGridText}>
-                  Add photos to showcase your vibe
-                </Text>
-              </Pressable>
-            )}
+          {/* Tabs Selection */}
+          <View style={styles.tabsWrapper}>
+            <Pressable
+              onPress={() => setActiveTab('gallery')}
+              style={[
+                styles.tabBtn,
+                activeTab === 'gallery' && styles.activeTabBtn,
+              ]}>
+              <Ionicons
+                name="grid-outline"
+                size={22}
+                color={activeTab === 'gallery' ? colors.primary : '#A1A1AA'}
+              />
+            </Pressable>
+            <Pressable
+              onPress={() => setActiveTab('insights')}
+              style={[
+                styles.tabBtn,
+                activeTab === 'insights' && styles.activeTabBtn,
+              ]}>
+              <Ionicons
+                name="list-outline"
+                size={24}
+                color={activeTab === 'insights' ? colors.primary : '#A1A1AA'}
+              />
+            </Pressable>
           </View>
-        ) : (
-          /* Insights / Prompts & Music Section */
-          <View style={styles.insightsWrapper}>
-            {/* My Basics Grid */}
-            {basicsItems.length > 0 && (
-              <View style={styles.basicsGridSection}>
-                <Text style={styles.insightSectionTitle}>My Basics</Text>
-                <View style={styles.basicsGrid}>
-                  {basicsItems.map((item, idx) => (
-                    <View key={idx} style={styles.basicGridItem}>
-                      <Icon name={item.icon} size={20} color={colors.primary} />
-                      <Text style={styles.basicGridLabel}>{item.label}</Text>
+
+          {activeTab === 'gallery' ? (
+            /* Media Grid */
+            <View style={styles.gridContainer}>
+              {photos.length > 0 ? (
+                <View style={styles.photoGrid}>
+                  {photos.map((photo, index) => {
+                    const photoId = photoSocialService.generatePhotoId(photo);
+                    const stats = photosStats[photoId] || {
+                      likes: 0,
+                      commentsCount: 0,
+                    };
+                    return (
+                      <Pressable
+                        key={index}
+                        style={styles.gridPhotoWrapper}
+                        onPress={() => {
+                          setSelectedPhoto(photo);
+                          setViewerVisible(true);
+                        }}>
+                        <Image source={{uri: photo}} style={styles.gridPhoto} />
+                        {/* 📸 Social Notification Badges for Owner */}
+                        {(stats.likes > 0 || stats.commentsCount > 0) && (
+                          <View style={styles.miniStatsOverlay}>
+                            {stats.likes > 0 && (
+                              <View style={styles.miniStat}>
+                                <Icon name="heart" size={12} color="#fff" />
+                                <Text style={styles.miniStatText}>
+                                  {stats.likes}
+                                </Text>
+                              </View>
+                            )}
+                            {stats.commentsCount > 0 && (
+                              <View style={styles.miniStat}>
+                                <Icon name="comment" size={12} color="#fff" />
+                                <Text style={styles.miniStatText}>
+                                  {stats.commentsCount}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              ) : (
+                <Pressable
+                  style={styles.emptyGridPlaceholder}
+                  onPress={() =>
+                    navigation.navigate('ProfileDetails', {userId})
+                  }>
+                  <Icon
+                    name="camera-plus-outline"
+                    size={40}
+                    color={colors.textTertiary}
+                  />
+                  <Text style={styles.emptyGridText}>
+                    Add photos to showcase your vibe
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          ) : (
+            /* Insights / Prompts & Music Section */
+            <View style={styles.insightsWrapper}>
+              {/* My Basics Grid */}
+              {basicsItems.length > 0 && (
+                <View style={styles.basicsGridSection}>
+                  <Text style={styles.insightSectionTitle}>My Basics</Text>
+                  <View style={styles.basicsGrid}>
+                    {basicsItems.map((item, idx) => (
+                      <View key={idx} style={styles.basicGridItem}>
+                        <Icon
+                          name={item.icon}
+                          size={20}
+                          color={colors.primary}
+                        />
+                        <Text style={styles.basicGridLabel}>{item.label}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {prompts.length > 0 && (
+                <View style={styles.promptsSection}>
+                  {prompts.map((prompt, idx) => (
+                    <View key={idx} style={styles.promptCard}>
+                      <Text style={styles.promptQuestion}>
+                        {prompt.question}
+                      </Text>
+                      <Text style={styles.promptAnswer}>{prompt.answer}</Text>
                     </View>
                   ))}
                 </View>
-              </View>
-            )}
+              )}
 
-            {prompts.length > 0 && (
-              <View style={styles.promptsSection}>
-                {prompts.map((prompt, idx) => (
-                  <View key={idx} style={styles.promptCard}>
-                    <Text style={styles.promptQuestion}>{prompt.question}</Text>
-                    <Text style={styles.promptAnswer}>{prompt.answer}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {/* Music Mockup Section */}
-            <View style={styles.musicSection}>
-              <View style={styles.musicHeader}>
-                <Icon name="spotify" size={24} color="#1DB954" />
-                <Text style={styles.musicTitle}>My Anthem</Text>
-              </View>
-              <View style={styles.musicCard}>
-                <Image
-                  source={{
-                    uri: 'https://i.scdn.co/image/ab67616d0000b27341e3093952945d81232c9676',
-                  }}
-                  style={styles.albumArt}
-                />
-                <View style={styles.musicInfo}>
-                  <Text style={styles.songName}>Starboy</Text>
-                  <Text style={styles.artistName}>The Weeknd • Daft Punk</Text>
+              {/* Music Mockup Section */}
+              <View style={styles.musicSection}>
+                <View style={styles.musicHeader}>
+                  <Icon name="spotify" size={24} color="#1DB954" />
+                  <Text style={styles.musicTitle}>My Anthem</Text>
                 </View>
-                <Icon name="play-circle" size={32} color={colors.primary} />
+                <View style={styles.musicCard}>
+                  <Image
+                    source={{
+                      uri: 'https://i.scdn.co/image/ab67616d0000b27341e3093952945d81232c9676',
+                    }}
+                    style={styles.albumArt}
+                  />
+                  <View style={styles.musicInfo}>
+                    <Text style={styles.songName}>Starboy</Text>
+                    <Text style={styles.artistName}>
+                      The Weeknd • Daft Punk
+                    </Text>
+                  </View>
+                  <Icon name="play-circle" size={32} color={colors.primary} />
+                </View>
               </View>
             </View>
+          )}
+
+          <View style={styles.footerInfo}>
+            <Text style={styles.versionText}>Pryvo Version 1.0.0</Text>
           </View>
-        )}
+        </ScrollView>
 
-        <View style={styles.footerInfo}>
-          <Text style={styles.versionText}>Pryvo Version 1.0.0</Text>
-        </View>
-      </ScrollView>
-
-      <PhotoInteractionViewer
-        visible={viewerVisible}
-        onClose={() => setViewerVisible(false)}
-        photoUrl={selectedPhoto}
-        targetUserId={userId}
-        currentUserId={userId}
-        navigation={navigation}
-      />
+        <PhotoInteractionViewer
+          visible={viewerVisible}
+          onClose={() => setViewerVisible(false)}
+          photoUrl={selectedPhoto}
+          targetUserId={userId}
+          currentUserId={userId}
+          navigation={navigation}
+        />
       </SafeAreaView>
     </ThemeBackground>
   );
@@ -646,7 +681,7 @@ const styles = StyleSheet.create({
   avatarGlowWrapper: {
     padding: 4,
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 12 },
+    shadowOffset: {width: 0, height: 12},
     shadowOpacity: 0.15,
     shadowRadius: 20,
     elevation: 15,
@@ -692,7 +727,7 @@ const styles = StyleSheet.create({
     borderColor: '#FFF',
     zIndex: 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
@@ -704,7 +739,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     borderRadius: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.06,
     shadowRadius: 12,
     elevation: 5,
@@ -736,7 +771,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
     borderRadius: 30,
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: {width: 0, height: 6},
     shadowOpacity: 0.25,
     shadowRadius: 12,
     elevation: 8,
@@ -761,7 +796,7 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     borderRadius: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 2,
@@ -795,7 +830,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.08,
     shadowRadius: 12,
     elevation: 4,

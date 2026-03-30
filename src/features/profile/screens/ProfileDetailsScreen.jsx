@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,9 @@ import {
   Alert,
   Dimensions,
   TextInput,
+  Animated,
+  FlatList,
+  Platform,
 } from 'react-native';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -23,13 +26,16 @@ import {
 import {launchImageLibrary} from 'react-native-image-picker';
 import {DraggableGrid} from 'react-native-draggable-grid';
 import {useAuth} from '../../../context/AuthContext';
-import { usePhotoSocial } from '../../../hooks/usePhotoSocial';
-import { photoSocialService } from '../../../services/photoSocialService';
+import {usePhotoSocial} from '../../../hooks/usePhotoSocial';
+import {photoSocialService} from '../../../services/photoSocialService';
 import PhotoInteractionViewer from '../../../components/profile/PhotoInteractionViewer';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import LinearGradient from 'react-native-linear-gradient';
+import ThemeBackground from '../../../components/layout/ThemeBackground';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 const PHOTO_SIZE = (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm * 2) / 3;
+const HERO_HEIGHT = Dimensions.get('window').height * 0.55; // Taller hero section
 
 const ProfileDetailsScreen = () => {
   const navigation = useNavigation();
@@ -43,26 +49,48 @@ const ProfileDetailsScreen = () => {
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [scrollEnabled, setScrollEnabled] = useState(true);
 
+  // Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const contentY = useRef(new Animated.Value(20)).current;
+
   const userId = route.params?.userId || profile?._id || profile?.id;
 
   // 📸 Social Interaction System
-  const { photosStats } = usePhotoSocial(userId);
+  const {photosStats} = usePhotoSocial(userId);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [viewerVisible, setViewerVisible] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
 
   useEffect(() => {
     loadProfile();
-    
+
     // Refresh profile whenever screen is focused
     const unsubscribe = navigation.addListener('focus', () => {
       // Use the actual profile ID we have if userId param is missing
       const currentTarget = route.params?.userId || profile?._id || profile?.id;
       loadProfile(currentTarget);
     });
-    
+
     return unsubscribe;
   }, [navigation, route.params?.userId, profile?._id, profile?.id]);
+
+  useEffect(() => {
+    if (!loading) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 600,
+          useNativeDriver: true,
+        }),
+        Animated.spring(contentY, {
+          toValue: 0,
+          tension: 20,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [loading]);
 
   const loadProfile = async (specificTargetId = null) => {
     try {
@@ -94,7 +122,6 @@ const ProfileDetailsScreen = () => {
       const profileData = response?.profile || response;
       setProfile(profileData);
 
-      // Check if it's the current user's profile
       // Check if it's the current user's profile
       const userData = await AsyncStorage.getItem('@pryvo_user');
       if (userData && userData !== 'undefined') {
@@ -137,11 +164,6 @@ const ProfileDetailsScreen = () => {
       });
 
       // Pad photos with placeholders for the grid if needed (up to 6)
-      // Actually, DraggableGrid works best with existing items. We can handle "Add" separately or as a special item type?
-      // For simplicity, let's just initialize with existing photos.
-      // If we want empty slots to be draggable or droppable, we'd need them in the data array.
-      // But usually "Add Photo" is a static slot or a specific action.
-      // Let's populate up to 6 slots.
       const existingPhotos =
         profileData?.photos ||
         profileData?.media?.media?.map(m => m.url).filter(Boolean) ||
@@ -280,14 +302,8 @@ const ProfileDetailsScreen = () => {
       };
 
       if (mediaPayload.media.length > 0 || profile?.photos?.length > 0) {
-        // Only update if we have photos or had photos (allow deleting all)
         await updateMedia(mediaPayload);
       }
-
-      console.log(
-        '[ProfileDetails] Updating profile with payload:',
-        JSON.stringify(payload, null, 2),
-      );
 
       await updateProfileApi(payload);
       Alert.alert('Success', 'Profile updated successfully');
@@ -301,16 +317,13 @@ const ProfileDetailsScreen = () => {
       loadProfile();
     } catch (error) {
       console.error('[ProfileDetails] Update error:', error);
-      const errorMessage =
-        error?.message || error?.data?.error || 'Failed to update profile';
-      Alert.alert('Error', errorMessage);
+      Alert.alert('Error', error?.message || 'Failed to update profile');
     } finally {
       setSaving(false);
     }
   };
 
   const handleDeletePhoto = index => {
-    // Check if deleting this photo would drop them below 5 photos total
     const currentValidPhotosCount = editedProfile.photos.filter(
       p => p.url,
     ).length;
@@ -331,26 +344,12 @@ const ProfileDetailsScreen = () => {
         onPress: () => {
           setEditedProfile(prev => {
             const newPhotos = [...prev.photos];
-            // Remove the photo url but keep the slot
             newPhotos[index] = {
               ...newPhotos[index],
               url: null,
             };
 
-            // Shift photos to fill the gap?
-            // Or just leave empty slot?
-            // "Drag and drop" suggests we want them compact.
-            // Let's shift up.
             const validPhotos = newPhotos.filter(p => p.url);
-            const emptySlots = newPhotos.filter(p => !p.url);
-            // Reconstruct with valid photos first, then empty slots
-            const compacted = [...validPhotos, ...emptySlots].map((p, i) => ({
-              ...p, // keep existing key/id structure if possible, but actually pure index might be safer for grid
-              // Actually DraggableGrid relies on stable keys.
-              // Let's just create a new array ensuring 6 items.
-            }));
-
-            // Re-create the 6-item array with new order
             const reordered = Array(6)
               .fill(null)
               .map((_, i) => ({
@@ -378,52 +377,41 @@ const ProfileDetailsScreen = () => {
 
       if (result.assets && result.assets[0]) {
         const asset = result.assets[0];
-
-        // Get user ID
-        let currentUserId = userId;
-        if (!currentUserId) {
+        let targetUserId = userId;
+        if (!targetUserId) {
           const userData = await AsyncStorage.getItem('@pryvo_user');
           if (userData && userData !== 'undefined') {
             const user = JSON.parse(userData);
-            currentUserId = user.id;
+            targetUserId = user.id;
           }
         }
 
-        if (!currentUserId) {
+        if (!targetUserId) {
           Alert.alert('Error', 'User ID not found');
           return;
         }
 
-        // Show loading
         setSaving(true);
 
         try {
-          // Upload the image
           const uploadResult = await uploadProfileImage(
-            currentUserId,
+            targetUserId,
             asset,
             asset.fileName || `photo_${index}_${Date.now()}.jpg`,
           );
 
-          console.log(
-            '[ProfileDetails] Photo uploaded successfully:',
-            uploadResult,
-          );
-
           if (isEditing) {
-            // In edit mode, update the local state without reloading everything
             setEditedProfile(prev => {
               const newPhotos = [...prev.photos];
               newPhotos[index] = {
                 ...newPhotos[index],
-                url: uploadResult.url, // Assuming uploadResult returns { url: ... }
+                url: uploadResult.url,
               };
               return {...prev, photos: newPhotos};
             });
             Alert.alert('Success', 'Photo uploaded');
           } else {
             Alert.alert('Success', 'Photo uploaded successfully');
-            // Refresh profile to show new photo
             loadProfile();
           }
         } catch (uploadError) {
@@ -439,11 +427,33 @@ const ProfileDetailsScreen = () => {
     }
   };
 
+  const renderSectionHeader = (title, icon) => (
+    <View style={styles.sectionHeader}>
+      <MaterialCommunityIcons
+        name={icon}
+        size={18}
+        color="#C084FC"
+        style={{marginRight: 8}}
+      />
+      <Text style={styles.sectionTitle}>{title.toUpperCase()}</Text>
+    </View>
+  );
+
+  const renderInfoItem = (label, value, icon) => (
+    <View style={styles.entryRow}>
+      <View style={styles.entryLabelLine}>
+        <MaterialCommunityIcons name={icon} size={14} color="#1A1A1A" />
+        <Text style={styles.entryLabelText}>{label}</Text>
+      </View>
+      <Text style={styles.entryValueText}>{value || 'Not set'}</Text>
+    </View>
+  );
+
   if (loading) {
     return (
-      <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
+      <ThemeBackground style={styles.centerContent}>
+        <ActivityIndicator size="large" color="#C084FC" />
+      </ThemeBackground>
     );
   }
 
@@ -457,8 +467,8 @@ const ProfileDetailsScreen = () => {
     profile?.personalDetails?.age ||
     profile?.age ||
     null;
-  const bio = profile?.bio || '';
-  const interests = profile?.interests || [];
+  const bio = profile?.bio || profile?.profilePrompts?.aboutMe?.answer || '';
+  const interests = profile?.interests || profile?.lifestyle?.interests || [];
   const location = profile?.basicInfo?.location || '';
   const occupation = profile?.personalDetails?.jobTitle || '';
   const education = profile?.personalDetails?.school || '';
@@ -468,429 +478,469 @@ const ProfileDetailsScreen = () => {
   const relationshipType = profile?.datingPreferences?.relationshipType || '';
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}>
-          <Text style={styles.backText}>←</Text>
-        </Pressable>
-        <Text style={styles.headerTitle}>
-          {isOwnProfile ? 'My Profile' : profile?.name || 'Profile'}
-        </Text>
-        <View style={styles.headerRight}>
-          {isOwnProfile && (
-            <Pressable
-              onPress={() => (isEditing ? handleSave() : setIsEditing(true))}
-              style={styles.editButton}>
-              <Text style={styles.editText}>
-                {saving ? 'Saving...' : isEditing ? 'Done' : 'Edit'}
-              </Text>
-            </Pressable>
-          )}
-        </View>
-      </View>
-
-      <ScrollView
+    <ThemeBackground>
+      <Animated.ScrollView
         showsVerticalScrollIndicator={false}
-        scrollEnabled={scrollEnabled}>
-        {/* Photos Grid */}
-        <View style={styles.photosSection}>
-          {isEditing ? (
-            <View style={{height: (PHOTO_SIZE * 1.3 + spacing.sm) * 2}}>
-              <DraggableGrid
-                numColumns={3}
-                renderItem={(item, index) => (
-                  <View style={styles.photoSlot}>
-                    {item.url ? (
-                      <>
-                        <Image
-                          source={{uri: item.url}}
-                          style={styles.photo}
-                        />
-                        <Pressable
-                          style={styles.deletePhotoButton}
-                          onPress={() => handleDeletePhoto(index)}>
-                          <Text style={styles.deletePhotoText}>✕</Text>
-                        </Pressable>
-                      </>
-                    ) : (
-                      <Pressable
-                        style={styles.emptyPhoto}
-                        onPress={() => handleAddPhoto(index)}>
-                        <Text style={styles.addPhotoIcon}>📷</Text>
-                        <Text style={styles.addPhotoText}>Add a photo</Text>
-                      </Pressable>
-                    )}
-                    {index === 0 && (
-                      <View style={styles.mainPhotoBadge}>
-                        <Text style={styles.mainPhotoBadgeText}>Main</Text>
-                      </View>
-                    )}
-                  </View>
-                )}
-                data={editedProfile.photos || []}
-                onDragStart={() => setScrollEnabled(false)}
-                onDragRelease={data => {
-                  setScrollEnabled(true);
-                  setEditedProfile(prev => ({...prev, photos: data}));
-                }}
-                itemHeight={PHOTO_SIZE * 1.3}
-                style={{zIndex: 100}}
-              />
-            </View>
-          ) : (
-            <View style={styles.photosGrid}>
-              {[0, 1, 2, 3, 4, 5].map(index => {
-                const photoUrl = photos[index];
-                if (!isOwnProfile && !photoUrl) return null;
-                const photoId = photoSocialService.generatePhotoId(photoUrl);
-                const photoStats = photosStats[photoId] || { likes: 0, commentsCount: 0 };
-
-                return (
-                  <Pressable
-                    key={index}
-                    style={styles.photoSlot}
-                    onPress={() => {
-                      if (photoUrl) {
-                        setSelectedPhoto(photoUrl);
-                        setViewerVisible(true);
-                      } else if (isOwnProfile) {
-                        handleAddPhoto(index);
-                      }
-                    }}
-                  >
-                    {photoUrl ? (
-                      <>
-                        <Image
-                          source={{uri: photoUrl}}
-                          style={styles.photo}
-                        />
-                        {/* 📸 Social Notification Badges (Owner can see them) */}
-                        {(photoStats.likes > 0 || photoStats.commentsCount > 0) && (
-                          <View style={styles.miniStatsOverlay}>
-                            {photoStats.likes > 0 && (
-                              <View style={styles.miniStat}>
-                                <MaterialCommunityIcons name="heart" size={10} color="#fff" />
-                                <Text style={styles.miniStatText}>{photoStats.likes}</Text>
-                              </View>
-                            )}
-                            {photoStats.commentsCount > 0 && (
-                              <View style={styles.miniStat}>
-                                <MaterialCommunityIcons name="comment" size={10} color="#fff" />
-                                <Text style={styles.miniStatText}>{photoStats.commentsCount}</Text>
-                              </View>
-                            )}
-                          </View>
-                        )}
-                      </>
-                    ) : (
-                      <View style={styles.emptyPhoto}>
-                        <Text style={styles.addPhotoIcon}>📷</Text>
-                        <Text style={styles.addPhotoText}>Add a photo</Text>
-                      </View>
-                    )}
-                    {index === 0 && isOwnProfile && (
-                      <View style={styles.mainPhotoBadge}>
-                        <Text style={styles.mainPhotoBadgeText}>Main</Text>
-                      </View>
-                    )}
-                  </Pressable>
-                );
-              })}
-            </View>
-          )}
-        </View>
-
-        {/* Name, DOB, Age */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Name</Text>
-          {isEditing ? (
-            <>
-              <TextInput
-                style={styles.input}
-                value={editedProfile.firstName}
-                onChangeText={text =>
-                  setEditedProfile(prev => ({...prev, firstName: text}))
-                }
-                placeholder="First name"
-              />
-              <TextInput
-                style={[styles.input, {marginTop: spacing.sm}]}
-                value={editedProfile.lastName}
-                onChangeText={text =>
-                  setEditedProfile(prev => ({...prev, lastName: text}))
-                }
-                placeholder="Last name"
-              />
-              <TextInput
-                style={[styles.input, {marginTop: spacing.sm}]}
-                value={editedProfile.dob}
-                onChangeText={text =>
-                  setEditedProfile(prev => ({...prev, dob: text}))
-                }
-                placeholder="Date of birth (YYYY-MM-DD)"
-              />
-            </>
-          ) : (
-            <Text style={styles.nameText}>
-              {name}
-              {age ? `, ${age}` : ''}
-            </Text>
-          )}
-        </View>
-
-        {/* Location */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>📍 Location</Text>
-          {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={editedProfile.location}
-              onChangeText={text =>
-                setEditedProfile(prev => ({...prev, location: text}))
-              }
-              placeholder="Add your location"
-            />
-          ) : (
-            <Text style={styles.valueText}>
-              {location || 'Add your location'}
-            </Text>
-          )}
-        </View>
-
-        {/* Bio */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>About Me</Text>
-          {isEditing ? (
-            <TextInput
-              style={[styles.input, styles.bioInput]}
-              value={editedProfile.bio}
-              onChangeText={text =>
-                setEditedProfile(prev => ({...prev, bio: text}))
-              }
-              placeholder="Tell others about yourself"
-              multiline
-              numberOfLines={4}
-            />
-          ) : (
-            <Pressable style={styles.emptyField}>
-              <Text style={bio ? styles.valueText : styles.placeholderText}>
-                {bio || 'Add a bio to tell others about yourself'}
-              </Text>
-            </Pressable>
-          )}
-        </View>
-
-        {/* Occupation */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>💼 Work</Text>
-          {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={editedProfile.occupation}
-              onChangeText={text =>
-                setEditedProfile(prev => ({...prev, occupation: text}))
-              }
-              placeholder="Add your occupation"
-            />
-          ) : (
-            <Text style={styles.valueText}>
-              {occupation || 'Add your occupation'}
-            </Text>
-          )}
-        </View>
-
-        {/* Education */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>🎓 Education</Text>
-          {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={editedProfile.education}
-              onChangeText={text =>
-                setEditedProfile(prev => ({...prev, education: text}))
-              }
-              placeholder="Add your education"
-            />
-          ) : (
-            <Text style={styles.valueText}>
-              {education || 'Add your education'}
-            </Text>
-          )}
-        </View>
-
-        {/* Interests */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Interests</Text>
-          {isEditing ? (
-            <TextInput
-              style={[styles.input, styles.bioInput]}
-              value={editedProfile.interests}
-              onChangeText={text =>
-                setEditedProfile(prev => ({...prev, interests: text}))
-              }
-              placeholder="Add interests separated by commas"
-              multiline
-            />
-          ) : interests.length > 0 ? (
-            <View style={styles.interestsContainer}>
-              {interests.map((interest, index) => (
-                <View key={index} style={styles.interestTag}>
-                  <Text style={styles.interestText}>{interest}</Text>
+        scrollEnabled={scrollEnabled}
+        style={{opacity: fadeAnim, transform: [{translateY: contentY}]}}>
+        {!isEditing ? (
+          <View style={styles.heroWrapper}>
+            <FlatList
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              data={photos.length > 0 ? photos : [null]}
+              keyExtractor={(_, index) => index.toString()}
+              renderItem={({item}) => (
+                <View style={styles.heroSlide}>
+                  {item ? (
+                    <Image source={{uri: item}} style={styles.heroImg} />
+                  ) : (
+                    <View style={[styles.heroImg, styles.heroPlaceholder]}>
+                      <MaterialCommunityIcons
+                        name="account"
+                        size={100}
+                        color="rgba(255,255,255,0.2)"
+                      />
+                    </View>
+                  )}
+                  <LinearGradient
+                    colors={[
+                      'transparent',
+                      'rgba(0,0,0,0.4)',
+                      'rgba(0,0,0,0.8)',
+                    ]}
+                    style={styles.heroFade}
+                  />
                 </View>
-              ))}
-            </View>
-          ) : (
-            <Pressable style={styles.emptyField}>
-              <Text style={styles.placeholderText}>
-                Add interests to find better matches
-              </Text>
-            </Pressable>
-          )}
-        </View>
-
-        {/* Gender */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Gender</Text>
-          {isEditing ? (
-            <View style={styles.chipRow}>
-              {['Man', 'Woman', 'Non Binary'].map(option => (
-                <Pressable
-                  key={option}
-                  style={[
-                    styles.chip,
-                    editedProfile.gender === option && styles.chipSelected,
-                  ]}
-                  onPress={() =>
-                    setEditedProfile(prev => ({...prev, gender: option}))
-                  }>
-                  <Text
-                    style={[
-                      styles.chipText,
-                      editedProfile.gender === option &&
-                        styles.chipTextSelected,
-                    ]}>
-                    {option}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : (
-            <Text style={styles.valueText}>{gender || 'Not set'}</Text>
-          )}
-        </View>
-
-        {/* Dating Preferences */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Who you want to date</Text>
-          {isEditing ? (
-            <View style={styles.chipRow}>
-              {['Men', 'Women', 'Nonbinary People', 'Everyone'].map(option => (
-                <Pressable
-                  key={option}
-                  style={[
-                    styles.chip,
-                    editedProfile.whoToDate?.includes(option) &&
-                      styles.chipSelected,
-                  ]}
-                  onPress={() => {
-                    const current = editedProfile.whoToDate || [];
-                    let next = [];
-                    if (option === 'Everyone') {
-                      next = ['Everyone'];
-                    } else if (current.includes(option)) {
-                      next = current.filter(i => i !== option);
-                    } else {
-                      next = [...current.filter(i => i !== 'Everyone'), option];
-                    }
-                    setEditedProfile(prev => ({...prev, whoToDate: next}));
-                  }}>
-                  <Text
-                    style={[
-                      styles.chipText,
-                      editedProfile.whoToDate?.includes(option) &&
-                        styles.chipTextSelected,
-                    ]}>
-                    {option}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : (
-            <Text style={styles.valueText}>
-              {whoToDate.join(', ') || 'Not set'}
-            </Text>
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Dating intention</Text>
-          {isEditing ? (
-            <TextInput
-              style={styles.input}
-              value={editedProfile.datingIntention}
-              onChangeText={text =>
-                setEditedProfile(prev => ({...prev, datingIntention: text}))
-              }
-              placeholder="e.g., Long-term relationship"
+              )}
             />
-          ) : (
-            <Text style={styles.valueText}>{datingIntention || 'Not set'}</Text>
-          )}
-        </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Relationship type</Text>
-          {isEditing ? (
-            <View style={styles.chipRow}>
-              {['Monogamy', 'Non-Monogamy'].map(option => (
-                <Pressable
-                  key={option}
-                  style={[
-                    styles.chip,
-                    editedProfile.relationshipType === option &&
-                      styles.chipSelected,
-                  ]}
-                  onPress={() =>
-                    setEditedProfile(prev => ({
-                      ...prev,
-                      relationshipType:
-                        prev.relationshipType === option ? '' : option,
-                    }))
-                  }>
-                  <Text
-                    style={[
-                      styles.chipText,
-                      editedProfile.relationshipType === option &&
-                        styles.chipTextSelected,
-                    ]}>
-                    {option}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-          ) : (
-            <Text style={styles.valueText}>
-              {relationshipType || 'Not set'}
-            </Text>
-          )}
-        </View>
-
-        {/* Premium Upsell */}
-        {isOwnProfile && (
-          <View style={styles.premiumSection}>
-            <Pressable style={styles.premiumButton}>
-              <Text style={styles.premiumButtonText}>
-                💎 Upgrade to Premium
+            <View style={styles.heroText}>
+              <View style={styles.nameLine}>
+                <Text style={styles.nameHeader}>
+                  {name}
+                  {age ? `, ${age}` : ''}
+                </Text>
+                <MaterialCommunityIcons
+                  name="check-decagram"
+                  size={24}
+                  color="#4AA9FF"
+                  style={{marginLeft: 8}}
+                />
+              </View>
+              <Text style={styles.locHeader}>
+                <MaterialCommunityIcons
+                  name="map-marker"
+                  size={16}
+                  color="#FFF"
+                />{' '}
+                {location || 'Add location'}
               </Text>
+            </View>
+
+            {isOwnProfile && (
+              <Pressable
+                style={styles.heroEditAction}
+                onPress={() => setIsEditing(true)}>
+                <LinearGradient
+                  colors={['#C084FC', '#E040C8']}
+                  style={styles.editActionPill}>
+                  <MaterialCommunityIcons
+                    name="pencil"
+                    size={18}
+                    color="#FFF"
+                  />
+                  <Text style={styles.editActionTxt}>Edit</Text>
+                </LinearGradient>
+              </Pressable>
+            )}
+
+            <Pressable
+              onPress={() => navigation.goBack()}
+              style={styles.heroBackBtn}>
+              <View style={styles.blurCircle}>
+                <MaterialCommunityIcons
+                  name="chevron-left"
+                  size={28}
+                  color="#FFF"
+                />
+              </View>
             </Pressable>
+          </View>
+        ) : (
+          <View style={styles.simpleEditHeader}>
+            <View style={styles.headerSideContainer}>
+              <Pressable
+                onPress={() => setIsEditing(false)}
+                style={styles.headerIconBtn}>
+                <MaterialCommunityIcons
+                  name="close"
+                  size={26}
+                  color="#000000"
+                />
+              </Pressable>
+            </View>
+
+            <View style={styles.headerCenterContainer}>
+              <Text style={styles.headerTitleTxt}>Edit Profile</Text>
+            </View>
+
+            <View
+              style={[styles.headerSideContainer, {alignItems: 'flex-end'}]}>
+              <Pressable
+                onPress={handleSave}
+                disabled={saving}
+                style={styles.headerSaveBtnWrapper}>
+                {saving ? (
+                  <ActivityIndicator size="small" color="#9333EA" />
+                ) : (
+                  <LinearGradient
+                    colors={['#C084FC', '#E040C8']}
+                    style={styles.headerSavePill}
+                    start={{x: 0, y: 0}}
+                    end={{x: 1, y: 1}}>
+                    <Text style={styles.headerSaveTxt}>Save</Text>
+                  </LinearGradient>
+                )}
+              </Pressable>
+            </View>
           </View>
         )}
 
-        <View style={{height: 100}} />
-      </ScrollView>
+        <View style={styles.bodyContent}>
+          {isEditing && (
+            <View style={styles.editModule}>
+              {renderSectionHeader('Photos', 'camera')}
+              <View style={{height: (PHOTO_SIZE * 1.3 + 12) * 2}}>
+                <DraggableGrid
+                  numColumns={3}
+                  renderItem={(item, index) => (
+                    <View style={styles.profilePhotoSlot}>
+                      {item.url ? (
+                        <>
+                          <Image
+                            source={{uri: item.url}}
+                            style={styles.profilePhotoImg}
+                          />
+                          <Pressable
+                            style={styles.photoRemoveBtn}
+                            onPress={() => handleDeletePhoto(index)}>
+                            <MaterialCommunityIcons
+                              name="close"
+                              size={12}
+                              color="#FFF"
+                            />
+                          </Pressable>
+                        </>
+                      ) : (
+                        <Pressable
+                          style={styles.photoPlaceholderBtn}
+                          onPress={() => handleAddPhoto(index)}>
+                          <MaterialCommunityIcons
+                            name="plus"
+                            size={32}
+                            color="#000000"
+                          />
+                        </Pressable>
+                      )}
+                      {index === 0 && (
+                        <View style={styles.featuredBadge}>
+                          <Text style={styles.featuredBadgeTxt}>Main</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
+                  data={editedProfile.photos || []}
+                  onDragStart={() => setScrollEnabled(false)}
+                  onDragRelease={data => {
+                    setScrollEnabled(true);
+                    setEditedProfile(prev => ({...prev, photos: data}));
+                  }}
+                  itemHeight={PHOTO_SIZE * 1.3}
+                  style={{zIndex: 10}}
+                />
+              </View>
+            </View>
+          )}
+
+          {/* About Me Section */}
+          {renderSectionHeader('About Me', 'account')}
+          <View style={styles.structuredCard}>
+            {isEditing ? (
+              <TextInput
+                style={styles.bioTextEntry}
+                value={editedProfile.bio}
+                onChangeText={text =>
+                  setEditedProfile(prev => ({...prev, bio: text}))
+                }
+                multiline
+                placeholder="Tell us about yourself..."
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                underlineColorAndroid="transparent"
+              />
+            ) : (
+              <Text style={bio ? styles.primaryBioTxt : styles.mutedEmptyTxt}>
+                {bio || 'Add a bio to tell others about yourself'}
+              </Text>
+            )}
+          </View>
+
+          {/* Work & Education Section */}
+          {renderSectionHeader('Work & Education', 'briefcase')}
+          <View style={styles.structuredCard}>
+            <View style={styles.horizontalSplit}>
+              <View style={styles.splitCol}>
+                {isEditing ? (
+                  <View style={styles.stackedInput}>
+                    <Text style={styles.miniLabel}>Job Title</Text>
+                    <TextInput
+                      style={styles.cleanBottomInput}
+                      value={editedProfile.occupation}
+                      onChangeText={text =>
+                        setEditedProfile(prev => ({...prev, occupation: text}))
+                      }
+                      placeholder="Title"
+                      placeholderTextColor="rgba(255,255,255,0.3)"
+                      underlineColorAndroid="transparent"
+                    />
+                  </View>
+                ) : (
+                  renderInfoItem('Job Title', occupation, 'briefcase-outline')
+                )}
+              </View>
+              <View style={styles.splitCol}>
+                {isEditing ? (
+                  <View style={styles.stackedInput}>
+                    <Text style={styles.miniLabel}>School</Text>
+                    <TextInput
+                      style={styles.cleanBottomInput}
+                      value={editedProfile.education}
+                      onChangeText={text =>
+                        setEditedProfile(prev => ({...prev, education: text}))
+                      }
+                      placeholder="School"
+                      placeholderTextColor="rgba(255,255,255,0.3)"
+                      underlineColorAndroid="transparent"
+                    />
+                  </View>
+                ) : (
+                  renderInfoItem('School', education, 'school-outline')
+                )}
+              </View>
+            </View>
+          </View>
+
+          {/* Interests Section */}
+          {renderSectionHeader('Interests', 'star')}
+          <View style={styles.structuredCard}>
+            {isEditing ? (
+              <TextInput
+                style={styles.cleanBottomInput}
+                value={editedProfile.interests}
+                onChangeText={text =>
+                  setEditedProfile(prev => ({...prev, interests: text}))
+                }
+                placeholder="Comma separated interests"
+                placeholderTextColor="rgba(255,255,255,0.3)"
+                underlineColorAndroid="transparent"
+              />
+            ) : (
+              <View style={styles.pillContainer}>
+                {interests.length > 0 ? (
+                  interests.map((interest, idx) => (
+                    <View key={idx} style={styles.staticPill}>
+                      <Text style={styles.staticPillTxt}>{interest}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.mutedEmptyTxt}>No interests added</Text>
+                )}
+              </View>
+            )}
+          </View>
+
+          {/* Preferences Section */}
+          {renderSectionHeader('Preferences', 'heart')}
+          <View style={styles.structuredCard}>
+            <View style={styles.fieldUnit}>
+              <Text style={styles.miniLabel}>Gender</Text>
+              {isEditing ? (
+                <View style={styles.pillContainer}>
+                  {['Man', 'Woman', 'Non Binary'].map(opt => (
+                    <Pressable
+                      key={opt}
+                      onPress={() =>
+                        setEditedProfile(prev => ({...prev, gender: opt}))
+                      }>
+                      <LinearGradient
+                        colors={
+                          editedProfile.gender === opt
+                            ? ['#C084FC', '#E040C8']
+                            : [
+                                'rgba(255,255,255,0.08)',
+                                'rgba(255,255,255,0.08)',
+                              ]
+                        }
+                        style={styles.choicePillGradient}>
+                        <Text
+                          style={[
+                            styles.choiceLabel,
+                            editedProfile.gender === opt && styles.chosenLabel,
+                          ]}>
+                          {opt}
+                        </Text>
+                      </LinearGradient>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.staticValueTxt}>{gender || 'Not set'}</Text>
+              )}
+            </View>
+
+            <View style={styles.fieldUnit}>
+              <Text style={styles.miniLabel}>Looking for</Text>
+              {isEditing ? (
+                <View style={styles.pillContainer}>
+                  {['Men', 'Women', 'Everyone'].map(opt => (
+                    <Pressable
+                      key={opt}
+                      onPress={() => {
+                        let next = editedProfile.whoToDate || [];
+                        if (next.includes(opt))
+                          next = next.filter(i => i !== opt);
+                        else next = [...next, opt];
+                        setEditedProfile(prev => ({...prev, whoToDate: next}));
+                      }}>
+                      <LinearGradient
+                        colors={
+                          editedProfile.whoToDate?.includes(opt)
+                            ? ['#C084FC', '#E040C8']
+                            : [
+                                'rgba(255,255,255,0.08)',
+                                'rgba(255,255,255,0.1)',
+                              ]
+                        }
+                        style={styles.choicePillGradient}>
+                        <Text
+                          style={[
+                            styles.choiceLabel,
+                            editedProfile.whoToDate?.includes(opt) &&
+                              styles.chosenLabel,
+                          ]}>
+                          {opt}
+                        </Text>
+                      </LinearGradient>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : (
+                <View style={styles.pillContainer}>
+                  {whoToDate.map((item, idx) => (
+                    <View key={idx} style={styles.accentBadge}>
+                      <Text style={styles.accentBadgeTxt}>{item}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            <View style={styles.horizontalSplitSpacing}>
+              <View style={styles.splitCol}>
+                <Text style={styles.miniLabel}>Intention</Text>
+                {isEditing ? (
+                  <TextInput
+                    style={styles.cleanBottomInput}
+                    value={editedProfile.datingIntention}
+                    onChangeText={text =>
+                      setEditedProfile(prev => ({
+                        ...prev,
+                        datingIntention: text,
+                      }))
+                    }
+                    placeholder="e.g. Long-term"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    underlineColorAndroid="transparent"
+                  />
+                ) : (
+                  <Text style={styles.staticValueTxt}>
+                    {datingIntention || 'Not set'}
+                  </Text>
+                )}
+              </View>
+              <View style={styles.splitCol}>
+                <Text style={styles.miniLabel}>Type</Text>
+                {isEditing ? (
+                  <View style={styles.pillContainer}>
+                    {['Monogamy', 'Non-Monogamy'].map(opt => (
+                      <Pressable
+                        key={opt}
+                        onPress={() =>
+                          setEditedProfile(prev => ({
+                            ...prev,
+                            relationshipType: opt,
+                          }))
+                        }>
+                        <LinearGradient
+                          colors={
+                            editedProfile.relationshipType === opt
+                              ? ['#C084FC', '#E040C8']
+                              : [
+                                  'rgba(255,255,255,0.08)',
+                                  'rgba(255,255,255,0.1)',
+                                ]
+                          }
+                          style={styles.microChoicePillGradient}>
+                          <Text
+                            style={[
+                              styles.microChoiceLabel,
+                              editedProfile.relationshipType === opt &&
+                                styles.chosenLabel,
+                            ]}>
+                            {opt === 'Non-Monogamy' ? 'Non-Mono' : opt}
+                          </Text>
+                        </LinearGradient>
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : (
+                  <Text style={styles.staticValueTxt}>
+                    {relationshipType || 'Not set'}
+                  </Text>
+                )}
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <View style={{height: 120}} />
+      </Animated.ScrollView>
+
+      {isEditing && (
+        <View style={styles.floatingActionFooter}>
+          <Pressable onPress={handleSave} disabled={saving}>
+            <LinearGradient
+              colors={['#C084FC', '#E040C8']}
+              start={{x: 0, y: 0}}
+              end={{x: 1, y: 0}}
+              style={styles.mainActionButton}>
+              {saving ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <>
+                  <MaterialCommunityIcons
+                    name="check-bold"
+                    size={20}
+                    color="#FFF"
+                  />
+                  <Text style={styles.mainActionTxt}>Update Profile</Text>
+                </>
+              )}
+            </LinearGradient>
+          </Pressable>
+        </View>
+      )}
 
       <PhotoInteractionViewer
         visible={viewerVisible}
@@ -899,256 +949,402 @@ const ProfileDetailsScreen = () => {
         targetUserId={userId}
         currentUserId={currentUserId}
       />
-    </View>
+    </ThemeBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
   centerContent: {
     justifyContent: 'center',
     alignItems: 'center',
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  heroWrapper: {
+    width: SCREEN_WIDTH,
+    height: HERO_HEIGHT,
+    backgroundColor: '#000',
+  },
+  heroSlide: {
+    width: SCREEN_WIDTH,
+    height: HERO_HEIGHT,
+  },
+  heroImg: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  heroPlaceholder: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
   },
-  backButton: {
-    width: 60,
-    padding: spacing.sm,
+  heroFade: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '60%',
   },
-  headerLeft: {
-    width: 60,
+  heroText: {
+    position: 'absolute',
+    bottom: 40,
+    left: 20,
+    right: 20,
   },
-  headerRight: {
-    width: 60,
-    alignItems: 'flex-end',
+  nameLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  backText: {
-    fontSize: 24,
-    color: '#1a1a1a',
-  },
-  headerTitle: {
-    flex: 1,
-    textAlign: 'center',
-    fontSize: 18,
+  nameHeader: {
+    fontSize: 32,
     fontFamily: typography.fontFamilyBold,
-    color: '#1a1a1a',
+    color: '#FFF',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: {width: 0, height: 2},
+    textShadowRadius: 6,
   },
-  editButton: {
-    padding: spacing.sm,
-  },
-  editText: {
+  locHeader: {
     fontSize: 16,
     fontFamily: typography.fontFamilyMedium,
-    color: colors.primary,
+    color: 'rgba(255,255,255,0.95)',
+    marginTop: 6,
   },
-  photosSection: {
-    padding: spacing.lg,
-    backgroundColor: '#f8f8f8',
+  heroEditAction: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 40,
+    right: 20,
+    zIndex: 10,
   },
-  photosGrid: {
+  editActionPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 30,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  editActionTxt: {
+    color: '#FFF',
+    fontFamily: typography.fontFamilyBold,
+    fontSize: 15,
+    marginLeft: 6,
+  },
+  heroBackBtn: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 40,
+    left: 20,
+    zIndex: 10,
+  },
+  blurCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  simpleEditHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    backgroundColor: 'transparent',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+  },
+  headerSideContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  headerCenterContainer: {
+    flex: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitleTxt: {
+    fontSize: 18,
+    fontFamily: typography.fontFamilyBold,
+    color: '#000000',
+    fontWeight: '800',
+  },
+  headerIconBtn: {
+    padding: 4,
+  },
+  headerSaveBtnWrapper: {
+    zIndex: 10,
+  },
+  headerSavePill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerSaveTxt: {
+    fontSize: 15,
+    fontFamily: typography.fontFamilyBold,
+    color: '#FFF',
+    fontWeight: '700',
+  },
+  bodyContent: {
+    paddingHorizontal: 20,
+    paddingTop: 10,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 24,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontFamily: typography.fontFamilyBold,
+    color: '#9333EA',
+    letterSpacing: 2,
+    fontWeight: '800',
+  },
+  structuredCard: {
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: 24,
+    paddingTop: 18,
+    paddingBottom: 18,
+    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(30, 27, 75, 0.15)',
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    // Removed elevation: 4 to fix Android 'ghost plate' artifacts on semi-transparent backgrounds
+  },
+  entryRow: {
+    marginBottom: 14,
+  },
+  entryLabelLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  entryLabelText: {
+    fontSize: 14,
+    fontFamily: typography.fontFamilyBold,
+    color: 'rgba(30, 27, 75, 0.85)',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginLeft: 6,
+  },
+  entryValueText: {
+    fontSize: 18,
+    fontFamily: typography.fontFamilyBold,
+    color: '#000000',
+    marginLeft: 20,
+  },
+  primaryBioTxt: {
+    fontSize: 18,
+    fontFamily: typography.fontFamilyMedium,
+    color: '#000000',
+    lineHeight: 28,
+  },
+  bioTextEntry: {
+    fontSize: 18,
+    fontFamily: typography.fontFamilyMedium,
+    color: '#000000',
+    minHeight: 140,
+    textAlignVertical: 'top',
+    padding: 0,
+    backgroundColor: 'transparent',
+  },
+  mutedEmptyTxt: {
+    fontSize: 16,
+    fontFamily: typography.fontFamilyRegular,
+    color: 'rgba(30, 27, 75, 0.5)',
+    fontStyle: 'italic',
+  },
+  horizontalSplit: {
+    flexDirection: 'row',
+    gap: 20,
+  },
+  horizontalSplitSpacing: {
+    flexDirection: 'row',
+    gap: 20,
+    marginTop: 10,
+  },
+  splitCol: {
+    flex: 1,
+  },
+  stackedInput: {
+    marginBottom: 8,
+  },
+  miniLabel: {
+    fontSize: 14,
+    fontFamily: typography.fontFamilyBold,
+    color: 'rgba(30, 27, 75, 0.85)',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 10,
+  },
+  cleanBottomInput: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(30, 27, 75, 0.2)',
+    fontSize: 18,
+    color: '#000000',
+    fontFamily: typography.fontFamilyBold,
+    paddingVertical: 10,
+    paddingHorizontal: 0,
+    backgroundColor: 'transparent',
+  },
+  fieldUnit: {
+    marginBottom: 24,
+  },
+  staticValueTxt: {
+    fontSize: 18,
+    fontFamily: typography.fontFamilyBold,
+    color: '#000000',
+    lineHeight: 24,
+  },
+  pillContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.sm,
+    gap: 10, // Wider gap
+    marginTop: 4,
   },
-  photoSlot: {
+  staticPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.4)',
+    borderWidth: 1,
+    borderColor: 'rgba(30, 27, 75, 0.15)',
+  },
+  staticPillTxt: {
+    fontSize: 14,
+    fontFamily: typography.fontFamilyBold,
+    color: '#000000',
+  },
+  choicePillGradient: {
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: 'rgba(30, 27, 75, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  microChoicePillGradient: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(30, 27, 75, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  choiceLabel: {
+    fontSize: 15,
+    color: 'rgba(0, 0, 0, 0.6)',
+    fontFamily: typography.fontFamilyBold,
+  },
+  microChoiceLabel: {
+    fontSize: 13,
+    color: 'rgba(0, 0, 0, 0.6)',
+    fontFamily: typography.fontFamilyBold,
+  },
+  chosenLabel: {
+    color: '#FFF',
+    fontFamily: typography.fontFamilyBold,
+  },
+  accentBadge: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: 'rgba(147, 51, 234, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(147, 51, 234, 0.25)',
+  },
+  accentBadgeTxt: {
+    fontSize: 14,
+    fontFamily: typography.fontFamilyBold,
+    color: '#000000',
+  },
+  profilePhotoSlot: {
     width: PHOTO_SIZE,
     height: PHOTO_SIZE * 1.3,
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
+    backgroundColor: 'rgba(255,255,255,0.05)',
   },
-  photo: {
+  profilePhotoImg: {
     width: '100%',
     height: '100%',
   },
-  emptyPhoto: {
+  photoPlaceholderBtn: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-  },
-  addPhotoIcon: {
-    fontSize: 32,
-    marginBottom: spacing.xs,
-  },
-  addPhotoText: {
-    fontSize: 12,
-    fontFamily: typography.fontFamilyMedium,
-    color: '#999',
-  },
-  mainPhotoBadge: {
-    position: 'absolute',
-    bottom: 8,
-    left: 8,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  mainPhotoBadgeText: {
-    fontSize: 10,
-    fontFamily: typography.fontFamilyBold,
-    color: '#fff',
-  },
-  section: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f5f5f5',
-  },
-  sectionLabel: {
-    fontSize: 14,
-    fontFamily: typography.fontFamilyBold,
-    color: '#1a1a1a',
-    marginBottom: spacing.sm,
-  },
-  nameText: {
-    fontSize: 24,
-    fontFamily: typography.fontFamilyBold,
-    color: '#1a1a1a',
-  },
-  valueText: {
-    fontSize: 16,
-    fontFamily: typography.fontFamilyRegular,
-    color: '#1a1a1a',
-    lineHeight: 24,
-  },
-  placeholderText: {
-    fontSize: 16,
-    fontFamily: typography.fontFamilyRegular,
-    color: '#999',
-  },
-  input: {
-    fontSize: 16,
-    fontFamily: typography.fontFamilyRegular,
-    color: '#1a1a1a',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: spacing.md,
-    backgroundColor: '#f8f8f8',
-  },
-  bioInput: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  emptyField: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    backgroundColor: '#f8f8f8',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#eee',
     borderStyle: 'dashed',
+    borderWidth: 2,
+    borderColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.08)',
   },
-  deletePhotoButton: {
+  photoRemoveBtn: {
     position: 'absolute',
-    top: 5,
-    right: 5,
+    top: 8,
+    right: 8,
     backgroundColor: 'rgba(0,0,0,0.5)',
     width: 24,
     height: 24,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 10,
+    zIndex: 20,
   },
-  deletePhotoText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  miniStatsOverlay: {
+  featuredBadge: {
     position: 'absolute',
-    bottom: 4,
-    left: 4,
-    flexDirection: 'row',
-    gap: 4,
-  },
-  miniStat: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingHorizontal: 5,
-    paddingVertical: 1,
+    bottom: 8,
+    left: 8,
+    backgroundColor: 'rgba(192, 132, 252, 0.8)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: 6,
-    gap: 2,
   },
-  miniStatText: {
-    color: '#fff',
-    fontSize: 9,
+  featuredBadgeTxt: {
+    fontSize: 10,
     fontFamily: typography.fontFamilyBold,
+    color: '#FFF',
+    textTransform: 'uppercase',
   },
-  chipRow: {
+  floatingActionFooter: {
+    position: 'absolute',
+    bottom: Platform.OS === 'ios' ? 40 : 25,
+    left: 20,
+    right: 20,
+  },
+  mainActionButton: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  chip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    backgroundColor: '#f8f8f8',
-  },
-  chipSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.secondary,
-  },
-  chipText: {
-    fontSize: 14,
-    fontFamily: typography.fontFamilyMedium,
-    color: '#1a1a1a',
-  },
-  chipTextSelected: {
-    color: colors.primary,
-    fontFamily: typography.fontFamilyBold,
-  },
-  interestsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-  },
-  interestTag: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 20,
-    backgroundColor: '#f0f0f0',
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  interestText: {
-    fontSize: 14,
-    fontFamily: typography.fontFamilyMedium,
-    color: '#1a1a1a',
-  },
-  premiumSection: {
-    padding: spacing.xl,
-  },
-  premiumButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.lg,
-    borderRadius: 30,
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    borderRadius: 35,
+    shadowColor: '#C084FC',
+    shadowOffset: {width: 0, height: 8},
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  premiumButtonText: {
-    fontSize: 16,
+  mainActionTxt: {
+    color: '#FFF',
+    fontSize: 17,
     fontFamily: typography.fontFamilyBold,
-    color: '#fff',
+    marginLeft: 10,
   },
 });
 

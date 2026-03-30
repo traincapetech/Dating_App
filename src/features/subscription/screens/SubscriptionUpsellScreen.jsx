@@ -9,14 +9,13 @@ import {
   ActivityIndicator,
   StatusBar,
   Dimensions,
-  Animated,
-  FlatList,
-  Easing,
+  Platform,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {StripeProvider, useStripe} from '@stripe/stripe-react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
 import {
@@ -25,15 +24,13 @@ import {
   verifyPaymentAndCreateSubscription,
   getSubscriptionStatus,
 } from '../../../services/subscription/subscriptionService';
-import {useAuth} from '../../../context/AuthContext';
+import { Animated, Easing } from 'react-native';
 
-const {width: SW} = Dimensions.get('window');
-const CARD_W = SW * 0.72;
-const CARD_MARGIN = 12;
-const FULL_CARD_W = CARD_W + CARD_MARGIN;
-const SIDE_OPACITY = 0.65;
+const FULL_CARD_W = width * 0.75;
 const SIDE_SCALE = 0.9;
-const CARD_SIDE_OFFSET = (SW - CARD_W) / 2;
+const SIDE_OPACITY = 0.6;
+
+const {width, height} = Dimensions.get('window');
 
 // ─── Feature data ───────────────────────────────────────────────
 const FEATURES = [
@@ -64,8 +61,18 @@ const FeatureItem = ({icon, label, sub, delay}) => {
         {
           opacity: anim,
           transform: [
-            {translateY: anim.interpolate({inputRange: [0, 1], outputRange: [20, 0]})},
-            {scale: anim.interpolate({inputRange: [0, 1], outputRange: [0.95, 1]})},
+            {
+              translateY: anim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [20, 0],
+              }),
+            },
+            {
+              scale: anim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0.95, 1],
+              }),
+            },
           ],
         },
       ]}>
@@ -90,7 +97,16 @@ const FeatureItem = ({icon, label, sub, delay}) => {
 };
 
 // ─── Plan Card (horizontal carousel item) ────────────────────────
-const PlanCard = ({plan, isSelected, isCurrent, isDowngrade, proRated, onPress, scrollX, index}) => {
+const PlanCard = ({
+  plan,
+  isSelected,
+  isCurrent,
+  isDowngrade,
+  proRated,
+  onPress,
+  scrollX,
+  index,
+}) => {
   const disabled = isCurrent || isDowngrade;
 
   const inputRange = [
@@ -126,20 +142,19 @@ const PlanCard = ({plan, isSelected, isCurrent, isDowngrade, proRated, onPress, 
   const hasDiscount = proRated < plan.price;
 
   return (
-    <Animated.View style={[
-      styles.planCardWrap,
-      {
-        opacity,
-        zIndex: isSelected ? 10 : 1,
-        transform: [
-          {perspective: 1000},
-          {scale},
-          {translateX},
-          {rotateY},
-        ],
-      }
-    ]}>
-      <Pressable disabled={disabled} onPress={onPress} style={styles.planCardPressable}>
+    <Animated.View
+      style={[
+        styles.planCardWrap,
+        {
+          opacity,
+          zIndex: isSelected ? 10 : 1,
+          transform: [{perspective: 1000}, {scale}, {translateX}, {rotateY}],
+        },
+      ]}>
+      <Pressable
+        disabled={disabled}
+        onPress={onPress}
+        style={styles.planCardPressable}>
         <LinearGradient
           colors={
             isSelected && !isCurrent
@@ -156,7 +171,6 @@ const PlanCard = ({plan, isSelected, isCurrent, isDowngrade, proRated, onPress, 
             isSelected && !isCurrent && styles.selectedPlanCard,
             isCurrent && styles.currentPlanCard,
           ]}>
-
           {/* Inner Highlight Overlay */}
           <LinearGradient
             colors={['rgba(255,255,255,0.3)', 'rgba(255,255,255,0)']}
@@ -176,25 +190,45 @@ const PlanCard = ({plan, isSelected, isCurrent, isDowngrade, proRated, onPress, 
           )}
           {isDowngrade && (
             <View style={styles.planBadgeLock}>
-              <Text style={[styles.planBadgeText, {color: '#999'}]}>🔒 Locked</Text>
+              <Text style={[styles.planBadgeText, {color: '#999'}]}>
+                🔒 Locked
+              </Text>
             </View>
           )}
 
           <View style={styles.planCardBody}>
-            <Text style={[styles.planCardName, (isSelected || isCurrent) && {color: '#fff'}]}>
+            <Text
+              style={[
+                styles.planCardName,
+                (isSelected || isCurrent) && {color: '#fff'},
+              ]}>
               {plan.name}
             </Text>
 
             <View style={styles.planPriceBlock}>
               {hasDiscount && (
-                <Text style={[styles.planOldPrice, (isSelected || isCurrent) && {color: 'rgba(255,255,255,0.55)'}]}>
+                <Text
+                  style={[
+                    styles.planOldPrice,
+                    (isSelected || isCurrent) && {
+                      color: 'rgba(255,255,255,0.55)',
+                    },
+                  ]}>
                   ${plan.price}
                 </Text>
               )}
-              <Text style={[styles.planNewPrice, (isSelected || isCurrent) && {color: '#fff'}]}>
+              <Text
+                style={[
+                  styles.planNewPrice,
+                  (isSelected || isCurrent) && {color: '#fff'},
+                ]}>
                 ${proRated.toFixed(2)}
               </Text>
-              <Text style={[styles.planPer, (isSelected || isCurrent) && {color: 'rgba(255,255,255,0.7)'}]}>
+              <Text
+                style={[
+                  styles.planPer,
+                  (isSelected || isCurrent) && {color: 'rgba(255,255,255,0.7)'},
+                ]}>
                 /{plan.period}
               </Text>
             </View>
@@ -221,7 +255,6 @@ const PlanCard = ({plan, isSelected, isCurrent, isDowngrade, proRated, onPress, 
 const SubscriptionUpsellScreenContent = () => {
   const navigation = useNavigation();
   const stripe = useStripe();
-  const {pendingIntent, setPendingIntent} = useAuth();
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [plans, setPlans] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -245,7 +278,8 @@ const SubscriptionUpsellScreenContent = () => {
     const init = async () => {
       setLoading(true);
       const userId = await loadUserId();
-      if (userId) await Promise.all([loadPlans(), loadSubscriptionStatus(userId)]);
+      if (userId)
+        await Promise.all([loadPlans(), loadSubscriptionStatus(userId)]);
       setLoading(false);
     };
     init();
@@ -350,7 +384,7 @@ const SubscriptionUpsellScreenContent = () => {
     }
   }, [loading]);
 
-  const handlePressIn = (scale) => {
+  const handlePressIn = scale => {
     Animated.timing(scale, {
       toValue: 0.95,
       duration: 150,
@@ -358,7 +392,7 @@ const SubscriptionUpsellScreenContent = () => {
     }).start();
   };
 
-  const handlePressOut = (scale) => {
+  const handlePressOut = scale => {
     Animated.spring(scale, {
       toValue: 1,
       friction: 4,
@@ -374,15 +408,20 @@ const SubscriptionUpsellScreenContent = () => {
         setCurrentUserId(user.id);
         return user.id;
       }
-    } catch (e) {console.error(e);}
+    } catch (e) {
+      console.error(e);
+    }
     return null;
   };
 
   const loadSubscriptionStatus = async userId => {
     try {
       const response = await getSubscriptionStatus(userId);
-      if (response?.success && response?.subscription) setCurrentSubscription(response.subscription);
-    } catch (e) {console.error(e);}
+      if (response?.success && response?.subscription)
+        setCurrentSubscription(response.subscription);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const loadPlans = async () => {
@@ -393,36 +432,53 @@ const SubscriptionUpsellScreenContent = () => {
         const popular = response.plans.find(p => p.popular);
         if (popular) setSelectedPlan(popular.id);
       }
-    } catch (e) {console.error(e);}
+    } catch (e) {
+      console.error(e);
+    }
   };
 
-  const calculateProRatedPrice = plan => {
-    if (!currentSubscription) return plan.price;
-    const currentPlan = plans.find(p => p.id === currentSubscription.planId);
-    if (!currentPlan || plan.rank <= currentPlan.rank) return plan.price;
-    const now = new Date();
-    const remaining = Math.max(0, Math.ceil((new Date(currentSubscription.expiresAt) - now) / 86400000));
-    const credit = (remaining / (currentPlan.duration || 30)) * currentPlan.price;
-    return Math.round(Math.max(0, plan.price - credit) * 100) / 100;
-  };
+
 
   const handleCheckout = async () => {
-    if (!selectedPlan || !currentUserId) {Alert.alert('Error', 'Please select a plan'); return;}
-    if (!stripe) {Alert.alert('Error', 'Payment system is initializing.'); return;}
+    if (!selectedPlan || !currentUserId) {
+      Alert.alert('Error', 'Please select a plan');
+      return;
+    }
+    if (!stripe) {
+      Alert.alert('Error', 'Payment system is initializing.');
+      return;
+    }
     try {
       setProcessing(true);
-      const orderResponse = await createPaymentOrder(currentUserId, selectedPlan);
+      const orderResponse = await createPaymentOrder(
+        currentUserId,
+        selectedPlan,
+      );
       if (!orderResponse?.success || !orderResponse?.paymentOrder)
-        throw new Error(orderResponse?.message || 'Failed to create payment order');
+        throw new Error(
+          orderResponse?.message || 'Failed to create payment order',
+        );
 
       const {paymentOrder, plan} = orderResponse;
       if (plan.isUpgrade) {
-        const confirmed = await new Promise(resolve => Alert.alert(
-          'Confirm Upgrade',
-          `Upgrading to ${plan.name}.\n\nCredit: $${plan.upgradeCredit.toFixed(2)}\nFinal: $${plan.proRatedPrice.toFixed(2)}`,
-          [{text: 'Cancel', onPress: () => resolve(false), style: 'cancel'}, {text: 'Proceed', onPress: () => resolve(true)}],
-        ));
-        if (!confirmed) {setProcessing(false); return;}
+        const confirmed = await new Promise(resolve =>
+          Alert.alert(
+            'Confirm Upgrade',
+            `Upgrading to ${
+              plan.name
+            }.\n\nCredit: $${plan.upgradeCredit.toFixed(
+              2,
+            )}\nFinal: $${plan.proRatedPrice.toFixed(2)}`,
+            [
+              {text: 'Cancel', onPress: () => resolve(false), style: 'cancel'},
+              {text: 'Proceed', onPress: () => resolve(true)},
+            ],
+          ),
+        );
+        if (!confirmed) {
+          setProcessing(false);
+          return;
+        }
       }
 
       const {error: initError} = await stripe.initPaymentSheet({
@@ -434,29 +490,37 @@ const SubscriptionUpsellScreenContent = () => {
 
       const {error: presentError} = await stripe.presentPaymentSheet();
       if (presentError) {
-        if (presentError.code === 'Canceled') {setProcessing(false); return;}
+        if (presentError.code === 'Canceled') {
+          setProcessing(false);
+          return;
+        }
         throw new Error(presentError.message);
       }
 
       const verifyResponse = await verifyPaymentAndCreateSubscription(
-        currentUserId, selectedPlan, paymentOrder.orderId,
-        paymentOrder.orderId, '', 'stripe', paymentOrder.currency || 'USD', true,
+        currentUserId,
+        selectedPlan,
+        paymentOrder.orderId,
+        paymentOrder.orderId,
+        '',
+        'stripe',
+        paymentOrder.currency || 'USD',
+        true,
       );
 
       if (verifyResponse?.success) {
-        const nav = () => {
-          if (pendingIntent?.type === 'profile_view' && pendingIntent?.userId) {
-            const id = pendingIntent.userId;
-            setPendingIntent(null);
-            navigation.replace('UserProfileView', {userId: id});
-          } else {
-            setPendingIntent(null);
-            navigation.navigate(AppRoute.HomeTabs);
-          }
-        };
-        Alert.alert('Welcome to Premium! 🎉',
-          plan.isUpgrade ? 'Your plan has been upgraded!' : 'You are now a Pryvo Premium member!',
-          [{text: "Let's Go! 🚀", onPress: nav}]);
+        Alert.alert(
+          'Congratulations!',
+          plan.isUpgrade
+            ? 'Your subscription has been upgraded successfully!'
+            : 'You are now a Premium subscriber!',
+          [
+            {
+              text: 'Great!',
+              onPress: () => navigation.navigate(AppRoute.HomeTabs),
+            },
+          ],
+        );
       } else {
         throw new Error(verifyResponse?.message || 'Verification failed');
       }
@@ -467,10 +531,37 @@ const SubscriptionUpsellScreenContent = () => {
     }
   };
 
-  // ── Loading ─────────────────────────────────────────────────────
+  const calculateProRatedPrice = plan => {
+    if (!currentSubscription) return plan.price;
+
+    const currentPlan = plans.find(p => p.id === currentSubscription.planId);
+    if (!currentPlan) return plan.price;
+
+    // Check if new plan is higher rank
+    if (plan.rank > currentPlan.rank) {
+      const now = new Date();
+      const expiresAt = new Date(currentSubscription.expiresAt);
+      const remainingTime = expiresAt - now;
+      const remainingDays = Math.max(
+        0,
+        Math.ceil(remainingTime / (1000 * 60 * 60 * 24)),
+      );
+
+      // Credit = (remaining days / total days) * original price
+      const credit =
+        (remainingDays / (currentPlan.duration || 30)) * currentPlan.price;
+      const finalPrice = Math.max(0, plan.price - credit);
+      return Math.round(finalPrice * 100) / 100;
+    }
+
+    return plan.price;
+  };
+
   if (loading) {
     return (
-      <LinearGradient colors={['#2D0060', '#4A007A', '#6B0099']} style={styles.loadingContainer}>
+      <LinearGradient
+        colors={['#2D0060', '#4A007A', '#6B0099']}
+        style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#E0AAFF" />
         <Text style={styles.loadingText}>Preparing your experience…</Text>
       </LinearGradient>
@@ -478,471 +569,500 @@ const SubscriptionUpsellScreenContent = () => {
   }
 
   const selectedPlanData = plans.find(p => p.id === selectedPlan);
-  const displayPrice = selectedPlanData ? calculateProRatedPrice(selectedPlanData) : '0.00';
-  const currentPlanObj = plans.find(p => p.id === currentSubscription?.planId);
-  const isUpgrade = selectedPlanData && currentSubscription && selectedPlanData.rank > (currentPlanObj?.rank || 0);
-
-  const auraScale = auraPulse.interpolate({inputRange: [0, 1], outputRange: [1, 1.25]});
-  const auraOpacity = auraPulse.interpolate({inputRange: [0, 1], outputRange: [0.2, 0.45]});
-  const floatY = floatAnim.interpolate({inputRange: [0, 1], outputRange: [0, -8]});
-  const ctaS = ctaPulse.interpolate({inputRange: [0, 1], outputRange: [1, 1.04]});
-  const totalY = totalFloat.interpolate({inputRange: [0, 1], outputRange: [0, -6]});
-
-  const orb1X = orbAnim.interpolate({inputRange: [0, 1], outputRange: [-20, 40]});
-  const orb1Y = orbAnim.interpolate({inputRange: [0, 1], outputRange: [20, -30]});
-  const orb2X = orbAnim.interpolate({inputRange: [0, 1], outputRange: [60, -20]});
-  const orb2Y = orbAnim.interpolate({inputRange: [0, 1], outputRange: [-40, 50]});
 
   return (
-    <View style={styles.root}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      {/* High-Vibrancy Luminous Gradient Background */}
+    <View style={styles.mainContainer}>
+      <StatusBar
+        barStyle="light-content"
+        transparent
+        backgroundColor="transparent"
+      />
+
+      {/* Deep Dark Midnight Background matching screenshot */}
       <LinearGradient
-        colors={['#4A00E0', '#8E2DE2', '#FF0099']}
+        colors={['#0F051C', '#281052', '#0A0014']}
         start={{x: 0, y: 0}}
-        end={{x: 1, y: 1}}
+        end={{x: 0.5, y: 1}}
         style={StyleSheet.absoluteFillObject}
       />
-      {/* Reduced dark overlay for more brightness */}
-      <View style={[styles.darkOverlay, {backgroundColor: 'rgba(0,0,0,0.1)'}]} />
 
-      {/* Intensified Luminous Orbs */}
-      <Animated.View style={[styles.bgOrb, styles.orb1, {transform: [{translateX: orb1X}, {translateY: orb1Y}]}]}>
-        <LinearGradient colors={['rgba(255,255,255,0.4)', 'rgba(255,255,255,0)']} style={StyleSheet.absoluteFillObject} />
-      </Animated.View>
-      <Animated.View style={[styles.bgOrb, styles.orb2, {transform: [{translateX: orb2X}, {translateY: orb2Y}]}]}>
-        <LinearGradient colors={['rgba(255,122,217,0.3)', 'rgba(255,122,217,0)']} style={StyleSheet.absoluteFillObject} />
-      </Animated.View>
-
-      <View style={styles.topGlowOverlay} />
-
-      {/* Top bar */}
-      <View style={styles.topBar}>
-        <Animated.View style={{transform: [{scale: backPressScale}]}}>
-          <Pressable
-            onPressIn={() => handlePressIn(backPressScale)}
-            onPressOut={() => handlePressOut(backPressScale)}
-            onPress={() => navigation.goBack()}
-            style={styles.topBtn}>
-            <View style={styles.glassBackground} />
-            <Text style={styles.topBtnIcon}>←</Text>
-          </Pressable>
-        </Animated.View>
-
-        <Animated.View style={{transform: [{scale: skipPressScale}]}}>
-          <Pressable
-            onPressIn={() => handlePressIn(skipPressScale)}
-            onPressOut={() => handlePressOut(skipPressScale)}
-            onPress={() => navigation.navigate(AppRoute.HomeTabs)}
-            style={styles.skipBtn}>
-            <View style={styles.glassBackground} />
-            <Text style={styles.skipBtnText}>Skip</Text>
-          </Pressable>
-        </Animated.View>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-
-        {/* ── Hero ──────────────────────────────────────── */}
-        <Animated.View
-          style={[
-            styles.hero,
-            {
-              opacity: heroAnim,
-              transform: [{translateY: heroAnim.interpolate({inputRange: [0, 1], outputRange: [18, 0]})}],
-            },
-          ]}>
-          <View style={styles.glowAuraWrap}>
-            <Animated.View
-              style={[
-                styles.auraRing,
-                {
-                  opacity: auraOpacity,
-                  transform: [{scale: auraScale}],
-                },
-              ]}
-            />
-            <Animated.View style={{transform: [{translateY: floatY}]}}>
-              <LinearGradient colors={['#B040FF', '#D580FF', '#FF50CC']} style={styles.diamondRing}>
-                <Text style={styles.diamondEmoji}>💎</Text>
-              </LinearGradient>
-            </Animated.View>
-          </View>
-          <Text style={styles.heroTitle}>Pryvo Premium</Text>
-          <Text style={styles.heroTagline}>Find love faster. Stand out from the crowd.</Text>
-        </Animated.View>
-
-        {/* ── Current plan banner ──────────────────────── */}
-        {currentSubscription && (
-          <View style={styles.currentBanner}>
-            <View>
-              <Text style={styles.currentBannerLabel}>CURRENT PLAN</Text>
-              <Text style={styles.currentBannerName}>{currentSubscription.planName || 'Premium'}</Text>
-              <Text style={styles.currentBannerExpiry}>
-                Expires {new Date(currentSubscription.expiresAt).toLocaleDateString()}
-              </Text>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}>
+        {/* Header Section */}
+        <View style={styles.headerContainer}>
+          <View style={styles.headerTop}>
+            <View style={styles.pricingPill}>
+              <Text style={styles.pricingPillText}>Pricing Plan</Text>
             </View>
-            <View style={styles.activePill}>
-              <Text style={styles.activePillText}>● ACTIVE</Text>
-            </View>
+            <Pressable
+              onPress={() => navigation.goBack()}
+              style={styles.backButton}>
+              <MaterialCommunityIcons name="close" size={20} color="#fff" />
+            </Pressable>
           </View>
-        )}
 
-        {/* ── Plans — Horizontal Snapping Carousel ──────── */}
-        <Text style={styles.sectionHeading}>Choose Your Plan</Text>
-        <Animated.FlatList
-          data={plans}
-          keyExtractor={item => item.id}
-          horizontal
-          onScroll={Animated.event(
-            [{nativeEvent: {contentOffset: {x: scrollX}}}],
-            {useNativeDriver: true}
-          )}
-          scrollEventThrottle={16}
-          showsHorizontalScrollIndicator={false}
-          snapToInterval={FULL_CARD_W}
-          snapToAlignment="center"
-          decelerationRate="fast"
-          contentContainerStyle={styles.plansCarousel}
-          renderItem={({item: plan, index}) => {
-            const isCurrent = currentSubscription?.planId === plan.id;
-            const isDowngrade = currentSubscription && plan.rank < (currentPlanObj?.rank || 0);
-            const proRated = calculateProRatedPrice(plan);
-            return (
-              <PlanCard
-                plan={plan}
-                index={index}
-                scrollX={scrollX}
-                isSelected={selectedPlan === plan.id}
-                isCurrent={isCurrent}
-                isDowngrade={isDowngrade}
-                proRated={proRated}
-                onPress={() => setSelectedPlan(plan.id)}
-              />
-            );
-          }}
-        />
-
-        {/* ── Features ─────────────────────────────────── */}
-        <Text style={[styles.sectionHeading, {marginTop: 28}]}>What You Unlock</Text>
-        <View style={styles.featuresCard}>
-          {FEATURES.map((f, i) => (
-            <FeatureItem key={f.label} {...f} delay={200 + i * 80} />
-          ))}
+          <Text style={styles.heroTitle}>
+            Access Premium{'\n'}Features on Every Plan
+          </Text>
+          <Text style={styles.pryvoUpgradeText}>
+            Upgrade to <Text style={styles.pryvoGold}>Pryvo</Text> Premium
+          </Text>
         </View>
 
-        <View style={{height: 160}} />
-      </ScrollView>
-
-      {/* ── Sticky Footer CTA ──────────────────────────── */}
-      <View style={styles.footer}>
-        <LinearGradient
-          colors={['rgba(58,0,112,0)', 'rgba(58,0,112,0.97)', '#3A0070']}
-          style={StyleSheet.absoluteFillObject}
-          pointerEvents="none"
-        />
-        <View style={styles.footerContent}>
-          <Animated.View style={[
-            styles.totalCard,
-            {transform: [{translateY: totalY}]}
-          ]}>
+        {/* Feature Tiles */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.featuresScrollContainer}
+          snapToInterval={110 + 16}
+          decelerationRate="fast">
+          {FEATURES.map((f, i) => (
             <LinearGradient
-              colors={['rgba(255,255,255,0.2)', 'rgba(255,255,255,0.08)']}
-              style={StyleSheet.absoluteFillObject}
-            />
-            <View style={styles.totalCardInner}>
-              <Text style={styles.totalLabel}>Total to pay</Text>
-              <Text style={styles.totalPrice}>
-                ${typeof displayPrice === 'number' ? displayPrice.toFixed(2) : displayPrice}
+              key={i}
+              colors={[
+                'rgba(255, 255, 255, 0.08)',
+                'rgba(255, 255, 255, 0.02)',
+              ]}
+              start={{x: 0, y: 0}}
+              end={{x: 0, y: 1}}
+              style={styles.featureTile}>
+              <View style={styles.featureEmojiWrapper}>
+                <Text style={styles.featureEmoji}>{f.icon}</Text>
+              </View>
+              <Text style={styles.featureTileTitle} numberOfLines={2}>
+                {f.label}
               </Text>
-            </View>
-          </Animated.View>
+            </LinearGradient>
+          ))}
+        </ScrollView>
 
-          <Animated.View style={{transform: [{scale: ctaS}]}}>
-            <Pressable
-              disabled={processing || !selectedPlan}
-              onPress={handleCheckout}
-              style={({pressed}) => [
-                styles.ctaBtnContainer,
-                pressed && {opacity: 0.9}
-              ]}>
-              <LinearGradient
-                colors={processing || !selectedPlan ? ['#888', '#666'] : ['#FF0099', '#493240']}
-                start={{x: 0, y: 0}}
-                end={{x: 1, y: 1}}
-                style={styles.ctaBtn}>
-                {processing ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.ctaBtnText}>
-                    {isUpgrade ? '⬆ Upgrade Now' : currentSubscription ? '🔄 Extend Plan' : '🚀 Join Premium'}
+        {/* Segmented Control Pill */}
+        <View style={styles.segmentContainerWrapper}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.segmentContainer}>
+            {plans.map(plan => {
+              const isSelected = selectedPlan === plan.id;
+              return (
+                <Pressable
+                  key={plan.id}
+                  onPress={() => setSelectedPlan(plan.id)}
+                  style={[
+                    styles.segmentBtn,
+                    isSelected && styles.segmentBtnActive,
+                  ]}>
+                  <Text
+                    style={[
+                      styles.segmentText,
+                      isSelected && styles.segmentTextActive,
+                    ]}>
+                    {plan.name}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+
+        {/* Giant Glass Checkout Card */}
+        {selectedPlanData && (
+          <View style={styles.giantCardContainer}>
+            <LinearGradient
+              colors={['rgba(15, 10, 20, 0.7)', 'rgba(2, 0, 5, 0.95)']}
+              start={{x: 0, y: 0}}
+              end={{x: 0, y: 1}}
+              style={styles.giantCard}>
+              {/* Card Header Info */}
+              <View style={styles.giantCardTop}>
+                <Text style={styles.giantPlanName}>
+                  {selectedPlanData.name}
+                </Text>
+
+                <View style={styles.giantPriceRow}>
+                  <Text style={styles.giantDollar}>$</Text>
+                  <Text style={styles.giantPrice}>
+                    {selectedPlanData.price.toFixed(2).replace(/\.00$/, '')}
+                  </Text>
+                  <Text style={styles.giantPeriod}>
+                    /{selectedPlanData.period}
+                  </Text>
+                </View>
+
+                {/* Upgrade Credit Informational Banner */}
+                {calculateProRatedPrice(selectedPlanData) <
+                  selectedPlanData.price && (
+                  <Text
+                    style={{
+                      color: '#10B981',
+                      fontSize: 13,
+                      fontFamily: typography.fontFamilyMedium,
+                      marginTop: 8,
+                    }}>
+                    Upgrade today for only $
+                    {calculateProRatedPrice(selectedPlanData).toFixed(2)} with
+                    your existing plan credit!
                   </Text>
                 )}
-              </LinearGradient>
-              {!processing && selectedPlan && (
-                <View style={styles.ctaInnerHighlight} />
-              )}
-            </Pressable>
-          </Animated.View>
+              </View>
 
-          <Text style={styles.secureNote}>🔒 Secure payment via Stripe</Text>
-        </View>
-      </View>
+              {/* Action Button Row */}
+              <View style={styles.giantActionRow}>
+                <Pressable
+                  style={[
+                    styles.giantPayButton,
+                    processing && styles.payButtonDisabled,
+                  ]}
+                  onPress={handleCheckout}
+                  disabled={processing}>
+                  <LinearGradient
+                    colors={['#6C48FB', '#8A63FF']}
+                    start={{x: 0, y: 0}}
+                    end={{x: 1, y: 0}}
+                    style={styles.giantPayGradient}>
+                    {processing ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <View style={styles.btnContentRow}>
+                        <Text style={styles.giantPayText}>Get started</Text>
+                        <MaterialCommunityIcons
+                          name="arrow-top-right"
+                          size={16}
+                          color="#fff"
+                          style={styles.btnIcon}
+                        />
+                      </View>
+                    )}
+                  </LinearGradient>
+                </Pressable>
+              </View>
+
+              {/* Faint Divider */}
+              <View style={styles.giantDivider} />
+
+              {/* Bullet Points */}
+              <View style={styles.bulletsContainer}>
+                {features.map((f, i) => (
+                  <Text key={i} style={styles.bulletItem}>
+                    • {f.title}: {f.desc}
+                  </Text>
+                ))}
+                <Text style={styles.bulletItem}>
+                  • Billed securely via Stripe. Cancel anytime.
+                </Text>
+              </View>
+
+              {/* Custom Requests Row (aesthetic match) */}
+              <View style={styles.customRequestRow}>
+                <View style={styles.customLeft}>
+                  <MaterialCommunityIcons
+                    name="arrow-top-right"
+                    size={12}
+                    color="rgba(255,255,255,0.5)"
+                  />
+                  <Text style={styles.customText}>For Custom Requests</Text>
+                </View>
+                <View style={styles.customRight}>
+                  <Text style={styles.customLink}>Get started </Text>
+                  <MaterialCommunityIcons
+                    name="arrow-top-right"
+                    size={14}
+                    color="#6C48FB"
+                  />
+                </View>
+              </View>
+            </LinearGradient>
+          </View>
+        )}
+      </ScrollView>
     </View>
   );
 };
 
 // ─── Styles ──────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  root: {flex: 1, backgroundColor: '#1A1522'},
-  loadingContainer: {flex: 1, alignItems: 'center', justifyContent: 'center'},
-  loadingText: {color: 'rgba(255,255,255,0.7)', marginTop: 15, fontSize: 16, fontWeight: '600'},
-
-  darkOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.25)',
+  mainContainer: {
+    flex: 1,
+    backgroundColor: '#0A0014',
   },
-
-  bgOrb: {
-    position: 'absolute',
-    width: SW * 1.2,
-    height: SW * 1.2,
-    borderRadius: SW * 0.6,
-    opacity: 0.3,
+  scrollContent: {
+    paddingBottom: 60,
   },
-  orb1: {
-    top: -100,
-    left: -100,
-  },
-  orb2: {
-    bottom: -150,
-    right: -100,
-  },
-
-  topGlowOverlay: {
-    position: 'absolute', top: -120, left: SW / 2 - 200,
-    width: 400, height: 400, borderRadius: 200,
-    backgroundColor: '#C86BFA', opacity: 0.1,
-  },
-
-  topBar: {
-    position: 'absolute', top: 50, left: 0, right: 0,
-    flexDirection: 'row', justifyContent: 'space-between',
-    paddingHorizontal: 20, zIndex: 100,
-  },
-  topBtn: {
-    width: 46, height: 46, borderRadius: 23,
-    alignItems: 'center', justifyContent: 'center',
-    overflow: 'hidden',
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.22)',
-  },
-  glassBackground: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-  },
-  topBtnIcon: {fontSize: 24, color: '#fff', fontWeight: 'bold'},
-  skipBtn: {
-    paddingHorizontal: 22, paddingVertical: 12,
-    borderRadius: 24, overflow: 'hidden',
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.20)',
-    backgroundColor: 'rgba(255,255,255,0.14)',
-  },
-  skipBtnText: {color: '#fff', fontWeight: '800', fontSize: 14, letterSpacing: 0.5},
-
-  scrollContent: {paddingTop: 120, paddingHorizontal: 20},
-
-  // Hero
-  hero: {alignItems: 'center', marginBottom: 40, paddingTop: 10},
-  glowAuraWrap: {alignItems: 'center', justifyContent: 'center', marginBottom: 25},
-  auraRing: {
-    position: 'absolute', width: 160, height: 160, borderRadius: 80,
-    backgroundColor: '#C86BFA',
-    shadowColor: '#C86BFA', shadowOffset: {width: 0, height: 0},
-    shadowOpacity: 1, shadowRadius: 40, elevation: 0,
-  },
-  diamondRing: {
-    width: 110, height: 110, borderRadius: 55,
-    alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#C86BFA', shadowOffset: {width: 0, height: 12},
-    shadowOpacity: 0.6, shadowRadius: 25, elevation: 20,
-  },
-  diamondEmoji: {fontSize: 52},
-  heroTitle: {
-    fontSize: 34, fontWeight: '900', color: '#fff',
-    letterSpacing: -0.8, textAlign: 'center', marginBottom: 10,
-    textShadowColor: 'rgba(200,107,250,0.6)',
-    textShadowOffset: {width: 0, height: 4}, textShadowRadius: 20,
-  },
-  heroTagline: {
-    fontSize: 16, color: 'rgba(255,255,255,0.7)', textAlign: 'center',
-    paddingHorizontal: 30, lineHeight: 22, fontWeight: '500',
-  },
-
-  // Current plan
-  currentBanner: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.10)', borderRadius: 24,
-    padding: 18, marginBottom: 35,
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.18)',
-    shadowColor: '#000', shadowOffset: {width: 0, height: 8},
-    shadowOpacity: 0.2, shadowRadius: 15,
-  },
-  currentBannerLabel: {
-    fontSize: 11, fontWeight: '900', color: '#C86BFA',
-    letterSpacing: 2, textTransform: 'uppercase', marginBottom: 5,
-  },
-  currentBannerName: {fontSize: 20, fontWeight: '900', color: '#fff'},
-  currentBannerExpiry: {fontSize: 13, color: 'rgba(255,255,255,0.5)', marginTop: 4},
-  activePill: {
-    backgroundColor: 'rgba(46,204,113,0.20)', borderRadius: 20,
-    paddingHorizontal: 14, paddingVertical: 8,
-    borderWidth: 1.5, borderColor: 'rgba(46,204,113,0.5)',
-  },
-  activePillText: {fontSize: 12, fontWeight: '800', color: '#2ECC71'},
-
-  sectionHeading: {
-    fontSize: 14, fontWeight: '800', color: 'rgba(255,255,255,0.65)',
-    letterSpacing: 2.2, textTransform: 'uppercase', marginBottom: 20,
-    paddingLeft: 4,
-  },
-
-  // ── Plan Carousel ──────────────────────────────────────────────
-  plansCarousel: {
-    paddingLeft: CARD_SIDE_OFFSET,
-    paddingRight: CARD_SIDE_OFFSET,
-    paddingBottom: 40,
-  },
-  planCardWrap: {
-    width: CARD_W,
-    marginRight: CARD_MARGIN,
-  },
-  planCardPressable: {flex: 1},
-  planCard: {
-    borderRadius: 32, padding: 26, minHeight: 220,
-    justifyContent: 'space-between',
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.20)',
-    overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.12)',
-  },
-  selectedPlanCard: {
-    borderColor: 'rgba(255,255,255,0.8)',
-    shadowColor: '#FF00CC',
-    shadowOffset: {width: 0, height: 15},
-    shadowOpacity: 0.8,
-    shadowRadius: 30,
-    elevation: 25,
-  },
-  currentPlanCard: {
-    borderColor: '#00F260',
-  },
-  cardInnerShine: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.5,
-  },
-  planBadgeHot: {
-    alignSelf: 'flex-start', backgroundColor: '#FF00CC',
-    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, marginBottom: 15,
-    shadowColor: '#FF00CC', shadowOpacity: 0.8, shadowRadius: 10,
-  },
-  planBadgeSave: {
-    alignSelf: 'flex-start', backgroundColor: '#2ECC71',
-    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, marginBottom: 15,
-  },
-  planBadgeLock: {
-    alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.10)',
-    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20, marginBottom: 15,
-  },
-  planBadgeText: {fontSize: 12, fontWeight: '900', color: '#fff'},
-  planCardBody: {},
-  planCardName: {
-    fontSize: 22, fontWeight: '900', color: '#fff', marginBottom: 15,
-  },
-  planPriceBlock: {flexDirection: 'row', alignItems: 'baseline', flexWrap: 'wrap'},
-  planOldPrice: {
-    fontSize: 16, color: 'rgba(255,255,255,0.4)',
-    textDecorationLine: 'line-through', marginRight: 10,
-  },
-  planNewPrice: {fontSize: 36, fontWeight: '900', color: '#fff'},
-  planPer: {fontSize: 15, color: 'rgba(255,255,255,0.65)', marginLeft: 5},
-  currentPill: {
-    marginTop: 18, alignSelf: 'flex-start',
-    backgroundColor: 'rgba(46,204,113,0.25)',
-    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 14,
-    borderWidth: 1.5, borderColor: 'rgba(46,204,113,0.4)',
-  },
-  currentPillText: {fontSize: 13, fontWeight: '900', color: '#fff'},
-  selectedPill: {
-    marginTop: 18, alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    paddingHorizontal: 14, paddingVertical: 6, borderRadius: 14,
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)',
-  },
-  selectedPillText: {fontSize: 13, fontWeight: '900', color: '#fff'},
-
-  // Features
-  featuresCard: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 28, overflow: 'hidden',
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.18)',
-    marginBottom: 25,
-    shadowColor: '#000', shadowOffset: {width: 0, height: 10},
-    shadowOpacity: 0.2, shadowRadius: 20,
-  },
-  featureItem: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 18, paddingHorizontal: 22,
-  },
-  featureIconBubble: {
-    width: 52, height: 52, borderRadius: 26,
-    alignItems: 'center', justifyContent: 'center', marginRight: 18,
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.20)',
-  },
-  featureIconText: {fontSize: 26},
-  featureTextGroup: {flex: 1},
-  featureLabel: {fontSize: 17, fontWeight: '800', color: '#fff'},
-  featureSub: {fontSize: 14, color: 'rgba(255,255,255,0.65)', marginTop: 3},
-  featureTick: {
-    width: 28, height: 28, borderRadius: 14,
-    alignItems: 'center', justifyContent: 'center',
-    overflow: 'hidden',
-    shadowColor: '#C86BFA', shadowRadius: 5, shadowOpacity: 0.5,
-  },
-  featureTickText: {fontSize: 14, color: '#fff', fontWeight: '900'},
-
-  // Footer
-  footer: {position: 'absolute', bottom: 0, left: 0, right: 0, paddingTop: 45},
-  footerContent: {paddingHorizontal: 25, paddingBottom: 40, paddingTop: 10},
-  totalCard: {
-    borderRadius: 24,
+  headerContainer: {
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingHorizontal: 20,
     marginBottom: 20,
-    overflow: 'hidden',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.18)',
-    shadowColor: '#C86BFA',
-    shadowOffset: {width: 0, height: 8},
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    elevation: 8,
   },
-  totalCardInner: {
+  headerTop: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 18,
-    paddingHorizontal: 22,
+    marginBottom: 24,
   },
-  totalLabel: {fontSize: 15, color: 'rgba(255,255,255,0.7)', fontWeight: '800'},
-  totalPrice: {fontSize: 34, fontWeight: '900', color: '#fff'},
-
-  ctaBtnContainer: {
-    shadowColor: '#C86BFA', shadowOffset: {width: 0, height: 0},
-    shadowOpacity: 0.7, shadowRadius: 30, elevation: 25,
+  pricingPill: {
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
-  ctaBtn: {
-    height: 68, borderRadius: 34, alignItems: 'center', justifyContent: 'center',
+  pricingPillText: {
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 12,
+    fontFamily: typography.fontFamilyMedium,
+  },
+  backButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroTitle: {
+    fontSize: 28,
+    fontFamily: typography.fontFamilyBold,
+    color: '#fff',
+    lineHeight: 36,
+  },
+  pryvoUpgradeText: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.5)',
+    marginTop: 8,
+    fontFamily: typography.fontFamilyMedium,
+  },
+  pryvoGold: {
+    color: '#FFD700',
+    fontStyle: 'italic',
+    fontFamily: typography.fontFamilyBold,
+  },
+  featuresScrollContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    gap: 16,
+  },
+  featureTile: {
+    width: 110,
+    height: 110,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+    padding: 12,
+  },
+  featureEmojiWrapper: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  featureEmoji: {
+    fontSize: 24,
+  },
+  featureTileTitle: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 12,
+    textAlign: 'center',
+    fontFamily: typography.fontFamilyMedium,
+  },
+  segmentContainerWrapper: {
+    alignItems: 'center',
+    marginBottom: 30,
+    marginTop: 10,
+  },
+  segmentContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 30,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  segmentBtn: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 26,
+  },
+  segmentBtnActive: {
+    backgroundColor: '#6C48FB',
+    shadowColor: '#6C48FB',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  segmentText: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 13,
+    fontFamily: typography.fontFamilySemiBold,
+  },
+  segmentTextActive: {
+    color: '#fff',
+  },
+  giantCardContainer: {
+    paddingHorizontal: 20,
+  },
+  giantCard: {
+    borderRadius: 32,
+    borderWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    padding: 30,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 10},
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  giantCardTop: {
+    marginBottom: 24,
+  },
+  giantPlanName: {
+    color: '#fff',
+    fontSize: 24,
+    fontFamily: typography.fontFamilyBold,
+    marginBottom: 4,
+  },
+  giantSubtitle: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 13,
+    fontFamily: typography.fontFamilyRegular,
+    marginBottom: 16,
+  },
+  giantPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  giantDollar: {
+    color: '#fff',
+    fontSize: 26,
+    fontFamily: typography.fontFamilyBold,
+  },
+  giantPrice: {
+    color: '#fff',
+    fontSize: 52,
+    fontFamily: typography.fontFamilyBold,
+    letterSpacing: -1,
+  },
+  giantPeriod: {
+    color: 'rgba(255, 255, 255, 0.4)',
+    fontSize: 16,
+    fontFamily: typography.fontFamilyMedium,
+  },
+  giantActionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 30,
+  },
+  giantPayButton: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    height: 48,
+    width: 140,
+  },
+  giantPayGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  btnContentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  giantPayText: {
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: typography.fontFamilySemiBold,
+  },
+  btnIcon: {
+    backgroundColor: '#fff',
+    color: '#6C48FB',
+    borderRadius: 8,
+    padding: 2,
     overflow: 'hidden',
   },
-  ctaBtnText: {fontSize: 20, fontWeight: '900', color: '#fff', letterSpacing: 0.8},
+  giantDoneText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 12,
+    fontFamily: typography.fontFamilyMedium,
+  },
+  giantDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    marginBottom: 20,
+  },
+  bulletsContainer: {
+    gap: 12,
+    marginBottom: 24,
+  },
+  bulletItem: {
+    color: 'rgba(255, 255, 255, 0.4)',
+    fontSize: 12,
+    fontFamily: typography.fontFamilyMedium,
+    lineHeight: 18,
+  },
+  customRequestRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  customLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  customText: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 12,
+    fontFamily: typography.fontFamilyMedium,
+  },
+  customRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  customLink: {
+    color: '#6C48FB',
+    fontSize: 13,
+    fontFamily: typography.fontFamilySemiBold,
+  },
+  payButtonDisabled: {
+    opacity: 0.6,
+  },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0A0014',
+  },
+  loadingText: {
+    marginTop: spacing.md,
+    fontSize: typography.body.medium,
+    color: 'rgba(255, 255, 255, 0.5)',
+  },
+  ctaBtn: {
+    height: 68,
+    borderRadius: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  ctaBtnText: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: 0.8,
+  },
   ctaInnerHighlight: {
     ...StyleSheet.absoluteFillObject,
     borderWidth: 2,
@@ -950,19 +1070,29 @@ const styles = StyleSheet.create({
     borderRadius: 34,
     pointerEvents: 'none',
   },
-  secureNote: {textAlign: 'center', fontSize: 13, color: 'rgba(255,255,255,0.65)', marginTop: 18, fontWeight: '600'},
+  secureNote: {
+    textAlign: 'center',
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.65)',
+    marginTop: 18,
+    fontWeight: '600',
+  },
 });
 
 // ─── Stripe wrapper ──────────────────────────────────────────────
 const SubscriptionUpsellScreen = () => {
   const [publishableKey, setPublishableKey] = useState(null);
   useEffect(() => {
-    setPublishableKey('pk_test_51RNq3aQ0qRbELDrXrWQtGUARFShAyk2osAsJOFT9Cj2lvamEsGnRqqHdrwKhkMHFkqmt2OqeX91FDQfPdWK4FHSH00Xi0LTJft');
+    setPublishableKey(
+      'pk_test_51RNq3aQ0qRbELDrXrWQtGUARFShAyk2osAsJOFT9Cj2lvamEsGnRqqHdrwKhkMHFkqmt2OqeX91FDQfPdWK4FHSH00Xi0LTJft',
+    );
   }, []);
 
   if (!publishableKey) {
     return (
-      <LinearGradient colors={['#3A0070', '#5B0099', '#7B00BB']} style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
+      <LinearGradient
+        colors={['#3A0070', '#5B0099', '#7B00BB']}
+        style={{flex: 1, alignItems: 'center', justifyContent: 'center'}}>
         <ActivityIndicator size="large" color="#E0AAFF" />
       </LinearGradient>
     );

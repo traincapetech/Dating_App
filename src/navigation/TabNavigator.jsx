@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from 'react';
-import {Text, View, StyleSheet} from 'react-native';
+import {Text, View, StyleSheet, Platform, Dimensions} from 'react-native';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -140,17 +140,16 @@ const TabNavigator = () => {
         tabBarStyle: {
           backgroundColor: '#ffffff',
           position: 'absolute',
-          bottom: Platform.OS === 'ios' ? 25 : 20,
-          left: 20,
-          right: 20,
-          borderRadius: 30,
+          bottom: Platform.OS === 'ios' ? 32 : 24,
+          marginHorizontal: 24,
+          borderRadius: 32,
           borderTopWidth: 0,
           height: 64,
-          elevation: 10,
+          elevation: 12,
           shadowColor: '#000',
           shadowOffset: {width: 0, height: 8},
-          shadowOpacity: 0.1,
-          shadowRadius: 12,
+          shadowOpacity: 0.15,
+          shadowRadius: 16,
           overflow: 'hidden',
           paddingBottom: 0, // Centered vertically
         },
