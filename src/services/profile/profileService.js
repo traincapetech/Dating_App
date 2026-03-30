@@ -31,6 +31,12 @@ export async function getDiscoverProfiles(excludeUserId = null, options = {}) {
     params.limit = options.limit;
   }
 
+  // Send live GPS so the backend always filters from the real current position
+  if (options.latitude !== undefined && options.longitude !== undefined) {
+    params.lat = options.latitude;
+    params.lng = options.longitude;
+  }
+
   // Add advanced filters (premium feature)
   if (options.filters) {
     const filters = options.filters;

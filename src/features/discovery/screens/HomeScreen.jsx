@@ -51,7 +51,6 @@ import {useAuth} from '../../../context/AuthContext';
 import {triggerMediumHaptic} from '../../../utils/haptics';
 import ThemeBackground from '../../../components/layout/ThemeBackground';
 
-
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - spacing.xl * 2;
 const CARD_HEIGHT = SCREEN_HEIGHT * 0.70;
@@ -1136,28 +1135,13 @@ const HomeScreen = ({navigation, route}) => {
     runOnJS(setIsProfileFocused)(false);
   };
 
-  // ✨ Haptic feedback state for gesture threshold
-  const hasTriggeredHaptic = useSharedValue(false);
-
   const panGesture = Gesture.Pan()
     .activeOffsetX([-10, 10])
     .onUpdate(event => {
       translateX.value = event.translationX;
       translateY.value = event.translationY;
-
-      // 📳 Trigger haptic when crossing the swipe threshold
-      const absX = Math.abs(event.translationX);
-      if (absX >= SWIPE_THRESHOLD && !hasTriggeredHaptic.value) {
-        hasTriggeredHaptic.value = true;
-        runOnJS(triggerMediumHaptic)();
-      } else if (absX < SWIPE_THRESHOLD && hasTriggeredHaptic.value) {
-        // Reset if they pull back
-        hasTriggeredHaptic.value = false;
-      }
     })
     .onEnd(event => {
-      hasTriggeredHaptic.value = false; // Reset for next gesture
-      
       if (event.translationX > SWIPE_THRESHOLD || event.velocityX > 500) {
         runOnJS(processSwipe)('right');
       } else if (
@@ -1335,7 +1319,7 @@ const HomeScreen = ({navigation, route}) => {
     );
   }
 
-  // ── Empty state (REFINED 10/10 Polish) ───────────────────────────────────────
+  // ── Empty state ─────────────────────────────────────────────────────────────
   if (!currentProfile) {
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
@@ -1345,69 +1329,43 @@ const HomeScreen = ({navigation, route}) => {
         />
         {renderHeader()}
         <View style={styles.emptyContainer}>
-          <View style={styles.emptyIconCircle}>
-            <LinearGradient
-              colors={['#7C3AED', '#C026D3']}
-              style={StyleSheet.absoluteFill}
-              borderRadius={60}
-            />
+          <View style={{marginBottom: 20}}>
             <MaterialCommunityIcons
-              name="creation"
-              size={60}
-              color="#FFF"
+              name="account-search"
+              size={80}
+              color={colors.primary}
             />
           </View>
-          
-
-          <Text style={styles.emptyTitle}>Discovery Complete!</Text>
+          <Text style={styles.emptyTitle}>No more profiles</Text>
           <Text style={styles.emptySubtitle}>
-            You've seen all the amazing people nearby. We'll find more for you soon, or you can expand your search.
+            We've run out of people nearby. Try adjusting your distance or age
+            filters to see more people.
           </Text>
-
-          <View style={styles.emptyOptions}>
-             <Pressable
-                style={styles.refreshButton}
-                onPress={async () => {
-                  setProfiles([]);
-                  setCurrentIndex(0);
-                  translateX.value = 0;
-                  translateY.value = 0;
-                  opacity.value = 1;
-                  if (currentUserId) {
-                    try {
-                      await resetPasses(currentUserId);
-                      triggerMediumHaptic();
-                    } catch (e) {
-                      console.error('Failed to reset passes:', e);
-                    }
-                  }
-                  await loadProfiles();
-                }}>
-                <LinearGradient
-                  colors={['#7C3AED', '#EC4899', '#F43F5E']}
-                  start={{x: 0, y: 0}}
-                  end={{x: 1, y: 0}}
-                  style={styles.refreshButtonGradient}>
-                  <Text style={styles.refreshButtonText}>Refresh Discover</Text>
-                </LinearGradient>
-              </Pressable>
-
-              <Pressable 
-                onPress={() => navigation.navigate('AdvancedFilters')}
-                style={styles.adjustFilterButton}>
-                 <Text style={styles.adjustFilterText}>Adjust Filters</Text>
-              </Pressable>
-          </View>
-
-          <View style={styles.discoveryTipCard}>
-             <MaterialCommunityIcons name="lightbulb-on-outline" size={24} color="#7C3AED" />
-             <View style={styles.tipTextContainer}>
-                <Text style={styles.tipTitle}>Pro Tip</Text>
-                <Text style={styles.tipDescription}>
-                  Users who update their bio get 3x more matches. Why not polish yours while we find more people?
-                </Text>
-             </View>
-          </View>
+          <Pressable
+            style={styles.refreshButton}
+            onPress={async () => {
+              setProfiles([]);
+              setCurrentIndex(0);
+              translateX.value = 0;
+              translateY.value = 0;
+              opacity.value = 1;
+              if (currentUserId) {
+                try {
+                  await resetPasses(currentUserId);
+                } catch (e) {
+                  console.error('Failed to reset passes:', e);
+                }
+              }
+              await loadProfiles();
+            }}>
+            <LinearGradient
+              colors={['#9411FA', '#E040C8', '#FF6B35']}
+              start={{x: 0, y: 0}}
+              end={{x: 1, y: 0}}
+              style={styles.refreshButtonGradient}>
+              <Text style={styles.refreshButtonText}>Refresh Profiles</Text>
+            </LinearGradient>
+          </Pressable>
         </View>
       </SafeAreaView>
     );
@@ -1459,7 +1417,7 @@ const HomeScreen = ({navigation, route}) => {
   return (
     <ThemeBackground>
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
       {renderHeader()}
 
@@ -1846,91 +1804,36 @@ const styles = StyleSheet.create({
   // ── Empty / Loading ───────────────────────────────────────────────────────
   emptyContainer: {
     flex: 1,
-    paddingHorizontal: 32,
-    alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.background,
-  },
-  emptyIconCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#7C3AED',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 32,
-    shadowColor: '#7C3AED',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
+    paddingHorizontal: spacing.xl,
   },
   emptyTitle: {
-    fontSize: 28,
+    fontSize: typography.headings.h2,
     fontFamily: typography.fontFamilyBold,
-    color: '#000',
-    textAlign: 'center',
-    marginBottom: 16,
+    color: colors.textPrimary,
+    marginBottom: spacing.sm,
   },
   emptySubtitle: {
-    fontSize: 16,
-    fontFamily: typography.fontFamilyMedium,
-    color: '#666',
+    fontSize: typography.body.large,
+    fontFamily: typography.fontFamilyRegular,
+    color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 40,
-  },
-  emptyOptions: {
-    width: '100%',
-    gap: 16,
   },
   refreshButton: {
-    width: '100%',
-    height: 60,
-    borderRadius: 30,
+    marginTop: 30,
+    borderRadius: 28,
     overflow: 'hidden',
   },
   refreshButtonGradient: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 28,
   },
   refreshButtonText: {
     color: '#FFF',
-    fontSize: 18,
     fontFamily: typography.fontFamilyBold,
-  },
-  adjustFilterButton: {
-    width: '100%',
-    paddingVertical: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  discoveryTipCard: {
-    marginTop: 40,
-    padding: 20,
-    backgroundColor: '#FAFAFA',
-    borderRadius: 20,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 16,
-    borderWidth: 1,
-    borderColor: '#F1F1F1',
-  },
-  tipTextContainer: {
-    flex: 1,
-  },
-  tipTitle: {
     fontSize: 16,
-    fontFamily: typography.fontFamilyBold,
-    color: '#000',
-    marginBottom: 4,
-  },
-  tipDescription: {
-    fontSize: 13,
-    fontFamily: typography.fontFamilyRegular,
-    color: '#666',
-    lineHeight: 18,
   },
 
   // ── Floating ──────────────────────────────────────────────────────────────
