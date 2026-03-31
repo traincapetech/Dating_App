@@ -344,7 +344,7 @@ const UserProfileViewScreen = ({navigation, route}) => {
         <Icon name="chevron-left" size={28} color={colors.textPrimary} />
       </Pressable>
       <Text style={styles.headerTitle} numberOfLines={1}>
-        {formatToTitleCase(name) || 'profile'}
+        Inside Their World 🌍
       </Text>
       {/* Right Spacer for Header Balance (Transparent) */}
       <View style={styles.headerSpacer} />
