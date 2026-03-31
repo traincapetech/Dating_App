@@ -22,6 +22,7 @@ import {
 } from '../../../services/profile/profileService';
 import {logoutFromAllDevices} from '../../../services/auth/authService';
 import {useAuth} from '../../../context/AuthContext';
+import ThemeBackground from '../../../components/layout/ThemeBackground';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
@@ -228,22 +229,23 @@ const SettingsScreen = () => {
   );
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'right', 'left']}>
-      <View style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Pressable
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}>
-            <MaterialCommunityIcons
-              name="arrow-left"
-              size={28}
-              color={colors.textPrimary}
-            />
-          </Pressable>
-          <Text style={styles.headerTitle}>Settings</Text>
-          <View style={{width: 40}} />
-        </View>
+    <ThemeBackground>
+      <SafeAreaView style={styles.safe} edges={['top', 'right', 'left']}>
+        <View style={styles.container}>
+          {/* Header */}
+          <View style={styles.header}>
+            <Pressable
+              onPress={() => navigation.goBack()}
+              style={styles.backButton}>
+              <MaterialCommunityIcons
+                name="arrow-left"
+                size={28}
+                color={colors.textPrimary}
+              />
+            </Pressable>
+            <Text style={styles.headerTitle}>Settings</Text>
+            <View style={{width: 40}} />
+          </View>
 
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -501,17 +503,18 @@ const SettingsScreen = () => {
         </ScrollView>
       </View>
     </SafeAreaView>
+    </ThemeBackground>
   );
 };
 
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: 'transparent',
   },
   container: {
     flex: 1,
-    backgroundColor: '#F9F9F9',
+    backgroundColor: 'transparent',
   },
   header: {
     flexDirection: 'row',
@@ -519,7 +522,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
-    backgroundColor: colors.background,
+    backgroundColor: 'transparent',
   },
   backButton: {
     padding: spacing.xs,
@@ -565,7 +568,7 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 13,
     fontFamily: typography.fontFamilyBold,
-    color: '#999',
+    color: '#6B21A8', // Darker purple for better contrast
     textTransform: 'uppercase',
     letterSpacing: 1.2,
     paddingHorizontal: spacing.xl + 4,
@@ -573,16 +576,18 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   card: {
-    backgroundColor: '#FFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.95)', // Semi-transparent for glassmorphism
     marginHorizontal: spacing.lg,
     borderRadius: 24,
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
+    shadowColor: colors.primary,
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
     marginBottom: spacing.lg,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(107, 33, 168, 0.1)',
   },
   settingItem: {
     flexDirection: 'row',
@@ -590,7 +595,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md + 4,
     paddingHorizontal: spacing.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#F0F0F0',
+    borderBottomColor: 'rgba(107, 33, 168, 0.05)',
   },
   lastItem: {
     borderBottomWidth: 0,

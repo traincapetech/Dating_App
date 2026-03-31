@@ -11,7 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
-import {decodeJWT} from '../../../utils/safeUtils';
+import {decodeJWT, formatToTitleCase} from '../../../utils/safeUtils';
 import {useNavigation, useFocusEffect} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {colors, typography, spacing} from '../../../theme';
@@ -250,8 +250,8 @@ const ProfileScreen = () => {
                 color={colors.textPrimary}
               />
             </Pressable>
-            <Text style={styles.headerTitle}>
-              {firstName.toLowerCase() || 'profile'}
+            <Text style={styles.headerTitle} numberOfLines={1}>
+              {formatToTitleCase(firstName) || 'profile'}
             </Text>
             <View style={styles.headerActions}>
               <Pressable
@@ -293,8 +293,8 @@ const ProfileScreen = () => {
             {/* User Identity block with Overlap */}
             <View style={styles.identityBlockOverlay}>
               <View style={styles.nameRowCentered}>
-                <Text style={styles.heroName}>
-                  {name}
+                <Text style={styles.heroName} numberOfLines={1}>
+                  {formatToTitleCase(name)}
                   {age ? `, ${age}` : ''}
                 </Text>
                 <Icon
@@ -581,7 +581,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: typography.fontFamilyBold,
     color: '#000',
-    textTransform: 'lowercase',
   },
   headerIconBtn: {
     padding: 4,

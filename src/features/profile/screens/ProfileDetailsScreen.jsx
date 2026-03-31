@@ -34,8 +34,11 @@ import LinearGradient from 'react-native-linear-gradient';
 import ThemeBackground from '../../../components/layout/ThemeBackground';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
-const PHOTO_SIZE = (SCREEN_WIDTH - spacing.lg * 2 - spacing.sm * 2) / 3;
-const HERO_HEIGHT = Dimensions.get('window').height * 0.55; // Taller hero section
+const GRID_PADDING = 20; // Matches bodyContent padding
+const GRID_GAP = 10;    
+const CONTAINER_WIDTH = SCREEN_WIDTH - GRID_PADDING * 2;
+const PHOTO_SIZE = CONTAINER_WIDTH / 3;
+const HERO_HEIGHT = Dimensions.get('window').height * 0.55; 
 
 const ProfileDetailsScreen = () => {
   const navigation = useNavigation();
@@ -612,43 +615,45 @@ const ProfileDetailsScreen = () => {
           {isEditing && (
             <View style={styles.editModule}>
               {renderSectionHeader('Photos', 'camera')}
-              <View style={{height: (PHOTO_SIZE * 1.3 + 12) * 2}}>
+              <View style={[styles.photoGridContainer, {height: (PHOTO_SIZE * 1.35) * 2 + 20}]}>
                 <DraggableGrid
                   numColumns={3}
                   renderItem={(item, index) => (
-                    <View style={styles.profilePhotoSlot}>
-                      {item.url ? (
-                        <>
-                          <Image
-                            source={{uri: item.url}}
-                            style={styles.profilePhotoImg}
-                          />
+                    <View key={item.key} style={styles.photoGridItemWrapper}>
+                      <View style={styles.profilePhotoSlot}>
+                        {item.url ? (
+                          <>
+                            <Image
+                              source={{uri: item.url}}
+                              style={styles.profilePhotoImg}
+                            />
+                            <Pressable
+                              style={styles.photoRemoveBtn}
+                              onPress={() => handleDeletePhoto(index)}>
+                              <MaterialCommunityIcons
+                                name="close"
+                                size={12}
+                                color="#FFF"
+                              />
+                            </Pressable>
+                          </>
+                        ) : (
                           <Pressable
-                            style={styles.photoRemoveBtn}
-                            onPress={() => handleDeletePhoto(index)}>
+                            style={styles.photoPlaceholderBtn}
+                            onPress={() => handleAddPhoto(index)}>
                             <MaterialCommunityIcons
-                              name="close"
-                              size={12}
-                              color="#FFF"
+                              name="plus"
+                              size={32}
+                              color="#1A1A1A"
                             />
                           </Pressable>
-                        </>
-                      ) : (
-                        <Pressable
-                          style={styles.photoPlaceholderBtn}
-                          onPress={() => handleAddPhoto(index)}>
-                          <MaterialCommunityIcons
-                            name="plus"
-                            size={32}
-                            color="#000000"
-                          />
-                        </Pressable>
-                      )}
-                      {index === 0 && (
-                        <View style={styles.featuredBadge}>
-                          <Text style={styles.featuredBadgeTxt}>Main</Text>
-                        </View>
-                      )}
+                        )}
+                        {index === 0 && (
+                          <View style={styles.featuredBadge}>
+                            <Text style={styles.featuredBadgeTxt}>Main</Text>
+                          </View>
+                        )}
+                      </View>
                     </View>
                   )}
                   data={editedProfile.photos || []}
@@ -657,8 +662,8 @@ const ProfileDetailsScreen = () => {
                     setScrollEnabled(true);
                     setEditedProfile(prev => ({...prev, photos: data}));
                   }}
-                  itemHeight={PHOTO_SIZE * 1.3}
-                  style={{zIndex: 10}}
+                  itemHeight={PHOTO_SIZE * 1.35}
+                  style={styles.draggableGrid}
                 />
               </View>
             </View>
@@ -1274,12 +1279,32 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamilyBold,
     color: '#000000',
   },
-  profilePhotoSlot: {
+  photoGridContainer: {
+    marginTop: 10,
+    marginBottom: 20,
+    width: CONTAINER_WIDTH,
+  },
+  photoGridItemWrapper: {
     width: PHOTO_SIZE,
-    height: PHOTO_SIZE * 1.3,
+    height: PHOTO_SIZE * 1.35,
+    padding: 5, // Consistent gap on all sides
+  },
+  profilePhotoSlot: {
+    flex: 1,
     borderRadius: 16,
     overflow: 'hidden',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: '#FFF',
+    borderColor: '#F3F4F6',
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  draggableGrid: {
+    zIndex: 10,
+    width: CONTAINER_WIDTH,
   },
   profilePhotoImg: {
     width: '100%',

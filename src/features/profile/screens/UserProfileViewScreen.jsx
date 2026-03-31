@@ -6,12 +6,12 @@ import {
   ScrollView,
   Image,
   Pressable,
-  ActivityIndicator,
   Dimensions,
   StatusBar,
   Platform,
   Alert,
 } from 'react-native';
+import PremiumLoader from '../../../components/common/PremiumLoader';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {
   useNavigation,
@@ -23,25 +23,23 @@ import {colors, typography, spacing} from '../../../theme';
 import {getProfile} from '../../../services/profile/profileService';
 import streakService from '../../../services/streakService';
 import {initSocket} from '../../../services/socket';
-import { usePhotoSocial } from '../../../hooks/usePhotoSocial';
-import { photoSocialService } from '../../../services/photoSocialService';
+import {usePhotoSocial} from '../../../hooks/usePhotoSocial';
+import {photoSocialService} from '../../../services/photoSocialService';
 import PhotoInteractionViewer from '../../../components/profile/PhotoInteractionViewer';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import Animated, { 
-  useSharedValue, 
-  useAnimatedStyle, 
-  withSpring 
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
 } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '../../../context/AuthContext';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useAuth} from '../../../context/AuthContext';
 import ThemeBackground from '../../../components/layout/ThemeBackground';
 
-import {
-  likeUser,
-  getDailyLikeInfo,
-} from '../../../services/swipeActions';
+import {likeUser, getDailyLikeInfo} from '../../../services/swipeActions';
 import MatchPopup from '../../../components/profile/MatchPopup.js';
+import {formatToTitleCase} from '../../../utils/safeUtils';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
@@ -52,7 +50,7 @@ const {width: SCREEN_WIDTH} = Dimensions.get('window');
 
 const UserProfileViewScreen = ({navigation, route}) => {
   const {userId, theirName, theirPhoto, theirAge} = route.params || {};
-  const { profile: myProfile } = useAuth();
+  const {profile: myProfile} = useAuth();
 
   const [profile, setProfile] = useState(null);
   const [streak, setStreak] = useState(null);
@@ -75,15 +73,15 @@ const UserProfileViewScreen = ({navigation, route}) => {
   });
   const socketRef = useRef(null);
   const insets = useSafeAreaInsets();
-  
+
   // Animation for button press
   const buttonScale = useSharedValue(1);
   const animatedButtonStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: buttonScale.value }],
+    transform: [{scale: buttonScale.value}],
   }));
 
   // 📸 Social Interaction System
-  const { photosStats, handleLike, handleComment } = usePhotoSocial(userId);
+  const {photosStats, handleLike, handleComment} = usePhotoSocial(userId);
   const [selectedPhoto, setSelectedPhoto] = useState(null);
   const [viewerVisible, setViewerVisible] = useState(false);
 
@@ -168,7 +166,7 @@ const UserProfileViewScreen = ({navigation, route}) => {
 
       setProfile(profileData);
       setStreak(streakRes);
-      
+
       if (profileData?.interaction) {
         setInteractionStatus(profileData.interaction);
       }
@@ -181,11 +179,24 @@ const UserProfileViewScreen = ({navigation, route}) => {
 
   // ── Derived data ─────────────────────────────────────────────────────────────
 
-  const formatJoinedDate = (dateString) => {
+  const formatJoinedDate = dateString => {
     if (!dateString) return '--';
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return '--';
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return `${months[date.getMonth()]} ${date.getFullYear()}`;
   };
 
@@ -278,29 +289,30 @@ const UserProfileViewScreen = ({navigation, route}) => {
 
     try {
       setIsSendingLike(true);
-      
+
       // Get current premium status
       const likeInfo = await getDailyLikeInfo(currentUserId);
       const isPremium = likeInfo?.isPremium || false;
 
       const res = await likeUser(currentUserId, userId, isPremium);
-      
+
       if (res.success) {
-        setInteractionStatus(prev => ({ ...prev, isLiked: true }));
-        
+        setInteractionStatus(prev => ({...prev, isLiked: true}));
+
         if (res.isMatch && res.match) {
           // It's a match!
-          const myPhoto = myProfile?.media?.media?.[0]?.url || myProfile?.photos?.[0] || null;
+          const myPhoto =
+            myProfile?.media?.media?.[0]?.url || myProfile?.photos?.[0] || null;
 
           setMatchInfo({
             visible: true,
             myPhoto: myPhoto,
             theirPhoto: photos[0] || null,
-            theirName: name,
+            theirName: formatToTitleCase(name),
             theirAge: age,
             matchId: res.match._id,
           });
-          setInteractionStatus(prev => ({ ...prev, isMatched: true }));
+          setInteractionStatus(prev => ({...prev, isMatched: true}));
         }
       }
     } catch (err) {
@@ -308,7 +320,8 @@ const UserProfileViewScreen = ({navigation, route}) => {
       if (err?.limitReached) {
         Alert.alert(
           'Limit Reached',
-          err.message || "You've reached your daily like limit. Come back tomorrow!"
+          err.message ||
+            "You've reached your daily like limit. Come back tomorrow!",
         );
       } else {
         Alert.alert('Error', 'Failed to send like. Please try again.');
@@ -319,7 +332,8 @@ const UserProfileViewScreen = ({navigation, route}) => {
   };
 
   const isOwner = currentUserId === userId;
-  const showMatchButton = !isOwner && !interactionStatus.isMatched && !interactionStatus.hasChat;
+  const showMatchButton =
+    !isOwner && !interactionStatus.isMatched && !interactionStatus.hasChat;
 
   // ── Header (shared between loading + main) ───────────────────────────────────
   const renderHeader = () => (
@@ -330,40 +344,27 @@ const UserProfileViewScreen = ({navigation, route}) => {
         <Icon name="chevron-left" size={28} color={colors.textPrimary} />
       </Pressable>
       <Text style={styles.headerTitle} numberOfLines={1}>
-        {name.toLowerCase() || 'profile'}
+        {formatToTitleCase(name) || 'profile'}
       </Text>
       {/* Right Spacer for Header Balance (Transparent) */}
       <View style={styles.headerSpacer} />
     </View>
   );
 
-  // ── Loading state ────────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <ThemeBackground>
-        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-          <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
-          {renderHeader()}
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={styles.loadingText}>Loading profile…</Text>
-          </View>
-        </SafeAreaView>
-      </ThemeBackground>
-    );
-  }
-
   // ── Main render ──────────────────────────────────────────────────────────────
   return (
     <ThemeBackground>
       <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-        <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
+        <StatusBar
+          barStyle="dark-content"
+          translucent
+          backgroundColor="transparent"
+        />
         {renderHeader()}
 
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}>
-          
           {/* 🔥 Hero Section: Centered Avatar with Overlapping Name (Redesigned) */}
           <View style={styles.heroSection}>
             <View style={styles.avatarGlowWrapper}>
@@ -378,11 +379,7 @@ const UserProfileViewScreen = ({navigation, route}) => {
                     />
                   ) : (
                     <View style={styles.headerAvatarPlaceholder}>
-                      <Icon
-                        name="account"
-                        size={48}
-                        color="#CCC"
-                      />
+                      <Icon name="account" size={48} color="#CCC" />
                     </View>
                   )}
                 </View>
@@ -395,8 +392,8 @@ const UserProfileViewScreen = ({navigation, route}) => {
             {/* User Identity block with Overlap */}
             <View style={styles.identityBlockOverlay}>
               <View style={styles.nameRowCentered}>
-                <Text style={styles.heroName}>
-                  {name}
+                <Text style={styles.heroName} numberOfLines={1}>
+                  {formatToTitleCase(name)}
                   {age ? `, ${age}` : ''}
                 </Text>
                 <Icon
@@ -413,38 +410,55 @@ const UserProfileViewScreen = ({navigation, route}) => {
 
             {/* Combined CTA Block */}
             <View style={styles.actionButtonsRow}>
-               {/* Main Match Button (Replaces Complete Profile placement) */}
-               {showMatchButton && (
-                  <View style={styles.matchButtonWrapper}>
-                    <Animated.View style={animatedButtonStyle}>
-                      <Pressable
-                        disabled={interactionStatus.isLiked || isSendingLike}
-                        onPressIn={() => (buttonScale.value = withSpring(0.96))}
-                        onPressOut={() => (buttonScale.value = withSpring(1))}
-                        onPress={handleSendLike}
-                        style={styles.primaryCtaBtn}>
-                        <LinearGradient
-                          colors={interactionStatus.isLiked ? ['#F3F4F6', '#E5E7EB'] : [colors.primary, '#8E2DE2']}
-                          start={{x: 0, y: 0}}
-                          end={{x: 1, y: 0}}
-                          style={styles.ctaGradient}>
-                          <Icon
-                            name={interactionStatus.isLiked ? "check-circle" : "heart"}
-                            size={20}
-                            color={interactionStatus.isLiked ? colors.textSecondary : "#FFF"}
-                            style={{marginRight: 10}}
-                          />
-                          <Text style={[
-                              styles.ctaText,
-                              interactionStatus.isLiked && {color: colors.textSecondary}
+              {/* Main Match Button (Replaces Complete Profile placement) */}
+              {showMatchButton && (
+                <View style={styles.matchButtonWrapper}>
+                  <Animated.View style={animatedButtonStyle}>
+                    <Pressable
+                      disabled={interactionStatus.isLiked || isSendingLike}
+                      onPressIn={() => (buttonScale.value = withSpring(0.96))}
+                      onPressOut={() => (buttonScale.value = withSpring(1))}
+                      onPress={handleSendLike}
+                      style={styles.primaryCtaBtn}>
+                      <LinearGradient
+                        colors={
+                          interactionStatus.isLiked
+                            ? ['#F3F4F6', '#E5E7EB']
+                            : [colors.primary, '#8E2DE2']
+                        }
+                        start={{x: 0, y: 0}}
+                        end={{x: 1, y: 0}}
+                        style={styles.ctaGradient}>
+                        <Icon
+                          name={
+                            interactionStatus.isLiked ? 'check-circle' : 'heart'
+                          }
+                          size={20}
+                          color={
+                            interactionStatus.isLiked
+                              ? colors.textSecondary
+                              : '#FFF'
+                          }
+                          style={{marginRight: 10}}
+                        />
+                        <Text
+                          style={[
+                            styles.ctaText,
+                            interactionStatus.isLiked && {
+                              color: colors.textSecondary,
+                            },
                           ]}>
-                            {isSendingLike ? '...' : (interactionStatus.isLiked ? 'Request Sent' : 'Send Match')}
-                          </Text>
-                        </LinearGradient>
-                      </Pressable>
-                    </Animated.View>
-                  </View>
-               )}
+                          {isSendingLike
+                            ? '...'
+                            : interactionStatus.isLiked
+                            ? 'Request Sent'
+                            : 'Send Match'}
+                        </Text>
+                      </LinearGradient>
+                    </Pressable>
+                  </Animated.View>
+                </View>
+              )}
             </View>
 
             {/* Dating Intention Badge (Below main CTA) */}
@@ -461,7 +475,8 @@ const UserProfileViewScreen = ({navigation, route}) => {
                     color={colors.primary}
                     style={{marginRight: 6}}
                   />
-                  <Text style={[styles.intentBadgeText, {color: colors.primary}]}>
+                  <Text
+                    style={[styles.intentBadgeText, {color: colors.primary}]}>
                     Looking for {datingIntention}
                   </Text>
                 </LinearGradient>
@@ -478,7 +493,10 @@ const UserProfileViewScreen = ({navigation, route}) => {
             <View style={styles.statDivider} />
             <View style={styles.statBox}>
               <Text style={styles.statNumber}>
-                {streak?.streakCount || streak?.count || profile?.streakCount || 0}
+                {streak?.streakCount ||
+                  streak?.count ||
+                  profile?.streakCount ||
+                  0}
                 {'  '}
                 <Text style={styles.statEmoji}>🔥</Text>
               </Text>
@@ -527,7 +545,11 @@ const UserProfileViewScreen = ({navigation, route}) => {
               {photos.length > 0 ? (
                 photos.map((uri, idx) => {
                   const pId = photoSocialService.generatePhotoId(uri);
-                  const photoStats = photosStats[pId] || { likes: 0, commentsCount: 0, isLiked: false };
+                  const photoStats = photosStats[pId] || {
+                    likes: 0,
+                    commentsCount: 0,
+                    isLiked: false,
+                  };
                   const isOwner = currentUserId === userId;
 
                   return (
@@ -537,91 +559,113 @@ const UserProfileViewScreen = ({navigation, route}) => {
                         onPress={() => {
                           setSelectedPhoto(uri);
                           setViewerVisible(true);
-                        }}
-                      >
+                        }}>
                         <Image
                           source={{uri}}
                           style={styles.gridPhoto}
                           resizeMode="cover"
                         />
                         {/* 📸 Social interaction badges (mini) */}
-                        {isOwner && (photoStats.likes > 0 || photoStats.commentsCount > 0) && (
-                          <View style={styles.miniStatsOverlay}>
-                            {photoStats.likes > 0 && (
-                              <View style={styles.miniStat}>
-                                <Icon name="heart" size={10} color="#fff" />
-                                <Text style={styles.miniStatText}>{photoStats.likes}</Text>
-                              </View>
-                            )}
-                            {photoStats.commentsCount > 0 && (
-                              <View style={styles.miniStat}>
-                                <Icon name="comment" size={10} color="#fff" />
-                                <Text style={styles.miniStatText}>{photoStats.commentsCount}</Text>
-                              </View>
-                            )}
-                          </View>
-                        )}
+                        {isOwner &&
+                          (photoStats.likes > 0 ||
+                            photoStats.commentsCount > 0) && (
+                            <View style={styles.miniStatsOverlay}>
+                              {photoStats.likes > 0 && (
+                                <View style={styles.miniStat}>
+                                  <Icon name="heart" size={10} color="#fff" />
+                                  <Text style={styles.miniStatText}>
+                                    {photoStats.likes}
+                                  </Text>
+                                </View>
+                              )}
+                              {photoStats.commentsCount > 0 && (
+                                <View style={styles.miniStat}>
+                                  <Icon name="comment" size={10} color="#fff" />
+                                  <Text style={styles.miniStatText}>
+                                    {photoStats.commentsCount}
+                                  </Text>
+                                </View>
+                              )}
+                            </View>
+                          )}
                       </Pressable>
                     </View>
                   );
                 })
               ) : (
-                  <View style={styles.emptyGridPlaceholder}>
-                      <Icon name="image-off-outline" size={48} color="#DDD" />
-                      <Text style={styles.emptyGridText}>No photos shared yet</Text>
-                  </View>
+                <View style={styles.emptyGridPlaceholder}>
+                  <Icon name="image-off-outline" size={48} color="#DDD" />
+                  <Text style={styles.emptyGridText}>No photos shared yet</Text>
+                </View>
               )}
             </View>
           ) : (
             /* ── Details Tab (Mapped to ProfileScreen Grid Style) ── */
             <View style={styles.insightsWrapper}>
-              
               {/* Work & Education */}
               {(jobTitle || school) && (
-                  <View style={styles.basicsGridSection}>
-                      <Text style={styles.insightSectionTitle}>Work & Education</Text>
-                      <View style={styles.basicsGrid}>
-                          {jobTitle && (
-                              <View style={styles.basicGridItem}>
-                                  <Icon name="briefcase-outline" size={18} color={colors.primary} />
-                                  <Text style={styles.basicGridLabel}>{jobTitle}</Text>
-                              </View>
-                          )}
-                          {school && (
-                              <View style={styles.basicGridItem}>
-                                  <Icon name="school-outline" size={18} color={colors.primary} />
-                                  <Text style={styles.basicGridLabel}>{school}</Text>
-                              </View>
-                          )}
+                <View style={styles.basicsGridSection}>
+                  <Text style={styles.insightSectionTitle}>
+                    Work & Education
+                  </Text>
+                  <View style={styles.basicsGrid}>
+                    {jobTitle && (
+                      <View style={styles.basicGridItem}>
+                        <Icon
+                          name="briefcase-outline"
+                          size={18}
+                          color={colors.primary}
+                        />
+                        <Text style={styles.basicGridLabel}>{jobTitle}</Text>
                       </View>
+                    )}
+                    {school && (
+                      <View style={styles.basicGridItem}>
+                        <Icon
+                          name="school-outline"
+                          size={18}
+                          color={colors.primary}
+                        />
+                        <Text style={styles.basicGridLabel}>{school}</Text>
+                      </View>
+                    )}
                   </View>
+                </View>
               )}
 
               {/* Basics Grid */}
               {basicsItems.length > 0 && (
-                  <View style={styles.basicsGridSection}>
-                      <Text style={styles.insightSectionTitle}>About Me</Text>
-                      <View style={styles.basicsGrid}>
-                          {basicsItems.map((item, idx) => (
-                              <View key={idx} style={styles.basicGridItem}>
-                                  <Icon name={item.icon} size={18} color={colors.primary} />
-                                  <Text style={styles.basicGridLabel}>{item.label}</Text>
-                              </View>
-                          ))}
+                <View style={styles.basicsGridSection}>
+                  <Text style={styles.insightSectionTitle}>About Me</Text>
+                  <View style={styles.basicsGrid}>
+                    {basicsItems.map((item, idx) => (
+                      <View key={idx} style={styles.basicGridItem}>
+                        <Icon
+                          name={item.icon}
+                          size={18}
+                          color={colors.primary}
+                        />
+                        <Text style={styles.basicGridLabel}>{item.label}</Text>
                       </View>
+                    ))}
                   </View>
+                </View>
               )}
 
               {/* Prompts Section */}
               {profile?.profilePrompts && (
-                  <View style={styles.promptsSection}>
-                      {Object.values(profile.profilePrompts).filter(p => p.question && p.answer).map((prompt, idx) => (
-                          <View key={idx} style={styles.promptCard}>
-                              <Text style={styles.promptQuestion}>{prompt.question}</Text>
-                              <Text style={styles.promptAnswer}>{prompt.answer}</Text>
-                          </View>
-                      ))}
-                  </View>
+                <View style={styles.promptsSection}>
+                  {Object.values(profile.profilePrompts)
+                    .filter(p => p.question && p.answer)
+                    .map((prompt, idx) => (
+                      <View key={idx} style={styles.promptCard}>
+                        <Text style={styles.promptQuestion}>
+                          {prompt.question}
+                        </Text>
+                        <Text style={styles.promptAnswer}>{prompt.answer}</Text>
+                      </View>
+                    ))}
+                </View>
               )}
             </View>
           )}
@@ -634,18 +678,18 @@ const UserProfileViewScreen = ({navigation, route}) => {
           theirName={matchInfo.theirName}
           onContinue={() => setMatchInfo(prev => ({...prev, visible: false}))}
           onMessage={() => {
-              const { matchId, theirName, theirPhoto, theirAge } = matchInfo;
-              const theirId = userId;
-              setMatchInfo(prev => ({...prev, visible: false}));
-              if (matchId && theirId) {
-                navigation.navigate('ChatScreen', {
-                  matchId, 
-                  theirId, 
-                  theirName, 
-                  theirPhoto, 
-                  theirAge
-                });
-              }
+            const {matchId, theirName, theirPhoto, theirAge} = matchInfo;
+            const theirId = userId;
+            setMatchInfo(prev => ({...prev, visible: false}));
+            if (matchId && theirId) {
+              navigation.navigate('ChatScreen', {
+                matchId,
+                theirId,
+                theirName,
+                theirPhoto,
+                theirAge,
+              });
+            }
           }}
         />
 
@@ -656,6 +700,13 @@ const UserProfileViewScreen = ({navigation, route}) => {
           targetUserId={userId}
           currentUserId={currentUserId}
           navigation={navigation}
+        />
+
+        {/* 💫 Premium Full-Screen Loading Overlay */}
+        <PremiumLoader
+          visible={loading}
+          text="Finding your perfect match💫"
+          minDuration={600}
         />
       </SafeAreaView>
     </ThemeBackground>
@@ -684,7 +735,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: typography.fontFamilyBold,
     color: '#000',
-    textTransform: 'lowercase',
   },
   headerIconBtn: {
     width: 44,

@@ -68,3 +68,18 @@ export const decodeJWT = (token) => {
     return null;
   }
 };
+
+/**
+ * Formats a string to Title Case (e.g. "aman sharma" -> "Aman Sharma")
+ * @param {string} str - The string to format
+ * @returns {string} - Formatted string
+ */
+export const formatToTitleCase = (str) => {
+  if (!str || typeof str !== 'string') return '';
+  return str
+    .toLowerCase()
+    .split(' ')
+    .filter(word => word.length > 0)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};

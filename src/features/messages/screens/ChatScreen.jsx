@@ -53,6 +53,7 @@ import StreakBadge from '../../../components/common/StreakBadge';
 import StreakWarningBanner from '../../../components/common/StreakWarningBanner';
 import GiftReceiverAnimation from '../../../components/chat/GiftReceiverAnimation';
 import IcebreakerSuggestions from '../../../components/chat/IcebreakerSuggestions';
+import ChatSkeleton from '../../../components/chat/ChatSkeleton';
 import giftImages from '../../../assets/images/gifts';
 
 const REPORT_REASONS = [
@@ -87,6 +88,7 @@ const ChatScreen = ({route, navigation}) => {
   const [selectedMedia, setSelectedMedia] = useState(null);
   const [showFullScreenImage, setShowFullScreenImage] = useState(false);
   const [fullScreenImageUrl, setFullScreenImageUrl] = useState(null);
+  const [showSkeleton, setShowSkeleton] = useState(false);
 
   // Date or Dissolve State
   const [matchDetails, setMatchDetails] = useState(null);
@@ -142,6 +144,15 @@ const ChatScreen = ({route, navigation}) => {
       }
     };
   }, [matchId]);
+  
+  useEffect(() => {
+    if (loading) {
+      const timer = setTimeout(() => setShowSkeleton(true), 250);
+      return () => clearTimeout(timer);
+    } else {
+      setShowSkeleton(false);
+    }
+  }, [loading]);
 
   const initChat = async () => {
     console.log('[ChatScreen] Initializing chat for matchId:', matchId);
@@ -800,13 +811,7 @@ const ChatScreen = ({route, navigation}) => {
     </>
   );
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
+  // No early return for loading to ensure instant screen rendering
 
   if (isBlocked) {
     return (
@@ -933,17 +938,23 @@ const ChatScreen = ({route, navigation}) => {
             </View>
           )}
 
-          {/* Messages */}
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            renderItem={renderItem}
-            keyExtractor={item => item._id}
-            contentContainerStyle={styles.messagesList}
-            onContentSizeChange={scrollToBottom}
-            onLayout={scrollToBottom}
-            showsVerticalScrollIndicator={false}
-          />
+          {/* Messages Container with Asynchronous Data Handling */}
+          <View style={{flex: 1}}>
+            {showSkeleton && messages.length === 0 ? (
+              <ChatSkeleton />
+            ) : (
+                <FlatList
+                    ref={flatListRef}
+                    data={messages}
+                    renderItem={renderItem}
+                    keyExtractor={item => item._id}
+                    contentContainerStyle={styles.messagesList}
+                    onContentSizeChange={scrollToBottom}
+                    onLayout={scrollToBottom}
+                    showsVerticalScrollIndicator={false}
+                />
+            )}
+          </View>
 
           {/* Typing Indicator */}
           {typing && (
