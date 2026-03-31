@@ -151,3 +151,46 @@ export async function showFailedReply(notification) {
     });
   } catch(e) {}
 }
+
+export async function displayTimerNotification(data) {
+  const { title, body, endTime, actionText } = data;
+  
+  if (Platform.OS !== 'android') return;
+
+  try {
+    const channelId = await notifee.createChannel({
+      id: 'timer_priority',
+      name: 'Promotions & Timers',
+      vibration: true,
+      importance: AndroidImportance.HIGH,
+      visibility: AndroidVisibility.PUBLIC,
+    });
+
+    const targetTime = endTime ? parseInt(endTime, 10) : Date.now() + 3600000;
+
+    await notifee.displayNotification({
+      id: 'timer_notif', // Unique ID for the timer so it updates instead of duplicates
+      title: title || 'Limited Time Offer',
+      body: body || 'Act fast before time runs out!',
+      data: data,
+      android: {
+        channelId: channelId,
+        color: '#E0AAFF',
+        smallIcon: 'ic_launcher',
+        largeIcon: 'ic_launcher',
+        pressAction: { id: 'default' },
+        showChronometer: true,
+        chronometerCountDown: true,
+        timestamp: targetTime,
+        actions: actionText ? [
+          {
+            title: actionText,
+            pressAction: { id: 'default' },
+          },
+        ] : [],
+      },
+    });
+  } catch(e) {
+    console.error('Failed to display Timer Notification:', e);
+  }
+}

@@ -1,73 +1,14 @@
-import { findTokenByUserId, unregisterToken, getTokensByUserIds } from '../models/notificationTokenModel.js';
-
-let admin = null;
-let isInitialized = false;
-
-// ---------------------------------------------------------------------------
-// Firebase Admin SDK bootstrap
-// ---------------------------------------------------------------------------
-
-async function initFirebase() {
-  if (isInitialized) return admin;
-
-  try {
-    if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
-      const firebaseModule = await import('../../firebase.js');
-      admin = firebaseModule.default;
-      isInitialized = true;
-      console.log('🔥 Firebase Admin SDK initialized (using firebase.js)');
-      return admin;
-    }
-
-    const firebaseAdmin = await import('firebase-admin');
-
-    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-      firebaseAdmin.default.initializeApp({
-        credential: firebaseAdmin.default.credential.cert(serviceAccount),
-      });
-      admin = firebaseAdmin.default;
-      isInitialized = true;
-      console.log('🔥 Firebase Admin SDK initialized (FIREBASE_SERVICE_ACCOUNT)');
-      return admin;
-    }
-
-    if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-      firebaseAdmin.default.initializeApp({
-        credential: firebaseAdmin.default.credential.applicationDefault(),
-      });
-      admin = firebaseAdmin.default;
-      isInitialized = true;
-      console.log('🔥 Firebase Admin SDK initialized (applicationDefault)');
-      return admin;
-    }
-
-    console.warn('⚠️  Firebase credentials not configured – push notifications disabled');
-    return null;
-  } catch (error) {
-    console.error('Failed to initialize Firebase Admin:', error.message);
-    return null;
-  }
-}
-
-let initPromise = null;
-function getAdmin() {
-  if (!initPromise) initPromise = initFirebase();
-  return initPromise;
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+import firebaseAdmin from '../config/firebase.js';
+import { findTokenByUserId, unregisterToken } from '../models/notificationTokenModel.js';
 
 /**
  * Calculate seconds-to-live for a notification.
- *
- * For timer notifications the TTL is capped to the remaining time before the
+ * 
+ * For timer notifications the TTL is capped to the remaining time before the 
  * endTime so that expired countdown pushes are never delivered.
  * For all other types we fall back to 24 hours.
- *
- * @param {'timer'|'general'|string} type
+ * 
+ * @param {'timer'|'general'|string} type 
  * @param {string|number|undefined} endTime  Unix timestamp in milliseconds
  * @returns {number} TTL in seconds
  */
@@ -90,26 +31,30 @@ function resolveTtlSeconds(type, endTime) {
 
 /**
  * Serialize a data object so every value is a string, as FCM requires.
- * @param {Record<string,any>} data
+ * @param {Record<string,any>} data 
  * @returns {Record<string,string>}
  */
 function serializeData(data) {
   if (!data || typeof data !== 'object') return {};
-  return Object.fromEntries(
-    Object.entries(data).map(([k, v]) => [k, String(v)]),
-  );
+  const serialized = {};
+  Object.entries(data).forEach(([k, v]) => {
+    if (v !== undefined && v !== null) {
+      serialized[k] = String(v);
+    }
+  });
+  return serialized;
 }
 
 /**
- * Build an FCM message object.
- *
- * Timer-type notifications use a *data-only* strategy so Android / iOS
+ * Build an FCM message object according to the new timer push specifications.
+ * 
+ * Timer-type notifications use a *data-only* strategy so Android / iOS 
  * background handlers receive the payload even when the app is closed.
  * The `android.data` + `apns.payload` fields carry the data block explicitly
  * to satisfy FCM background delivery requirements.
- *
- * @param {string} deviceToken
- * @param {object} notification
+ * 
+ * @param {string} deviceToken 
+ * @param {object} notification 
  * @param {string} notification.title
  * @param {string} notification.body
  * @param {'timer'|'general'|string} [notification.type]
@@ -131,7 +76,7 @@ function buildMessage(deviceToken, notification) {
   const serializedData = serializeData(data);
   const ttl = resolveTtlSeconds(type, data?.endTime);
 
-  // For timer notifications we always force data-only delivery so the
+  // For timer notifications we always force data-only delivery so the 
   // background handler can render the countdown itself.
   const forceDataOnly = type === 'timer' || isDataOnly;
   const priority = isHighPriority || type === 'timer' ? 'high' : 'normal';
@@ -139,7 +84,12 @@ function buildMessage(deviceToken, notification) {
   const message = {
     token: deviceToken,
     // Top-level data block – always present for background wake-up
-    data: serializedData,
+    data: {
+      ...serializedData,
+      title, // Include title and body so the frontend can display them 
+      body,  // even when it's a data-only message.
+      type, // Ensure type is present in data block for client-side routing
+    },
   };
 
   // ---- Visible notification (non-data-only flows) ----
@@ -151,9 +101,13 @@ function buildMessage(deviceToken, notification) {
   message.android = {
     priority,
     ttl: ttl * 1000, // FCM expects milliseconds for android.ttl
-    // Include the data object explicitly at the android level so background
-    // message handlers on Android receive it even when the app is killed.
-    data: serializedData,
+    // Include the data object explicitly at the android level for reliability
+    data: {
+      ...serializedData,
+      title,
+      body,
+      type,
+    },
   };
 
   if (!forceDataOnly) {
@@ -168,18 +122,17 @@ function buildMessage(deviceToken, notification) {
   // ---- APNs (iOS) config ----
   message.apns = {
     headers: {
-      // APNs priority: 10 = immediate, 5 = low power
-      'apns-priority': priority === 'high' ? '10' : '5',
-      // APNs expiration: seconds since epoch
-      'apns-expiration': String(Math.floor(Date.now() / 1000) + ttl),
+      'apns-priority': priority === 'high' ? '10' : '5', // 10 = immediate, 5 = low power
+      'apns-expiration': String(Math.floor(Date.now() / 1000) + ttl), // Seconds since epoch
     },
     payload: {
-      // Carry the data block here so iOS background handlers receive it
+      // Carry the data block here so iOS background/silent handlers receive it
       ...serializedData,
-      aps: forceDataOnly
-        ? {
-            'content-available': 1,  // Silent / background push
-          }
+      title,
+      body,
+      type,
+      aps: forceDataOnly 
+        ? { 'content-available': 1 }  // Silent / background push
         : {
             alert: { title, body },
             sound: 'default',
@@ -192,19 +145,13 @@ function buildMessage(deviceToken, notification) {
   return message;
 }
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
 /**
  * Send a push notification to a single user.
- *
- * @param {string} userId
+ * 
+ * @param {string} userId 
  * @param {object} notification - { title, body, type, isHighPriority, isDataOnly, data }
  */
 export async function sendPushNotification(userId, notification) {
-  const firebaseAdmin = await getAdmin();
-
   if (!firebaseAdmin) {
     console.log('Push notifications disabled – Firebase not initialized');
     return { success: false, reason: 'firebase_not_initialized' };
@@ -252,34 +199,13 @@ export async function sendPushNotification(userId, notification) {
 }
 
 /**
- * Send a push notification to multiple users.
- *
- * @param {string[]} userIds
- * @param {object} notification
- */
-export async function sendPushToMultiple(userIds, notification) {
-  const results = await Promise.allSettled(
-    userIds.map(userId => sendPushNotification(userId, notification)),
-  );
-
-  return results.map((result, index) => ({
-    userId: userIds[index],
-    ...result,
-  }));
-}
-
-/**
- * Broadcast a push notification to all registered device tokens using
- * FCM's `sendEachForMulticast` for efficiency (max 500 tokens/batch).
- *
- * @param {object} notification
+ * Broadcast a push notification to all (or specific) users.
+ * 
+ * @param {object} notification 
  * @param {string[]} [targetUserIds] - If provided, only these users are targeted.
- *                                     Pass `null` / `undefined` to target ALL tokens.
  * @returns {{ successCount: number, failureCount: number, results: object[] }}
  */
 export async function broadcastPushNotification(notification, targetUserIds = null) {
-  const firebaseAdmin = await getAdmin();
-
   if (!firebaseAdmin) {
     console.log('Push notifications disabled – Firebase not initialized');
     return { successCount: 0, failureCount: 0, results: [] };
@@ -331,7 +257,7 @@ export async function broadcastPushNotification(notification, targetUserIds = nu
       totalSuccess += batchResponse.successCount;
       totalFailure += batchResponse.failureCount;
 
-      // Clean up invalid tokens from this batch
+      // Clean up invalid tokens
       batchResponse.responses.forEach(async (resp, idx) => {
         if (!resp.success) {
           const errCode = resp.error?.code;
@@ -341,9 +267,7 @@ export async function broadcastPushNotification(notification, targetUserIds = nu
           ) {
             const userId = batch[idx]?.userId;
             if (userId) {
-              try {
-                await unregisterToken(userId);
-              } catch (_) {}
+              try { await unregisterToken(userId); } catch (_) {}
             }
           }
           allResults.push({ userId: batch[idx]?.userId, success: false, error: resp.error?.message });
@@ -359,4 +283,15 @@ export async function broadcastPushNotification(notification, targetUserIds = nu
 
   console.log(`📢 Broadcast complete – ✅ ${totalSuccess} sent, ❌ ${totalFailure} failed`);
   return { successCount: totalSuccess, failureCount: totalFailure, results: allResults };
+}
+
+/**
+ * Deprecated alias for broadcastPushNotification.
+ * Included for backward compatibility across the codebase.
+ * 
+ * @param {string[]} userIds 
+ * @param {object} notification 
+ */
+export async function sendPushToMultiple(userIds, notification) {
+  return broadcastPushNotification(notification, userIds);
 }

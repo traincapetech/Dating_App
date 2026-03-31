@@ -135,7 +135,7 @@ export async function deleteFCMToken() {
 
 // Setup notification handlers
 import notifee, { EventType } from '@notifee/react-native';
-import { displayChatNotification, updateNotificationWithReply } from '../notificationHelper.js';
+import { displayChatNotification, updateNotificationWithReply, displayTimerNotification } from '../notificationHelper.js';
 import { sendSmartMessage } from '../chatSendService.js';
 
 // Setup notification handlers
@@ -148,6 +148,8 @@ export function setupNotificationHandlers(navigation) {
         // Only display if user is not actively chatting with them right now
         // Typically you'd check active route, but for safety we draw it
         await displayChatNotification(remoteMessage.data);
+      } else if (remoteMessage.data?.type === 'timer') {
+        await displayTimerNotification(remoteMessage.data);
       }
     },
   );
