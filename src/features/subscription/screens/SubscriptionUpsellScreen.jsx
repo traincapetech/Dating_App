@@ -212,7 +212,7 @@ const SubscriptionUpsellScreenContent = () => {
               <View style={styles.bulletsContainer}>
                 {FEATURES.map((f, i) => (
                   <Text key={i} style={styles.bulletItem}>
-                    • {f.title}: {f.desc}
+                    • {f.label}: {f.sub}
                   </Text>
                 ))}
                 <Text style={styles.bulletItem}>
