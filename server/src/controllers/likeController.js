@@ -351,17 +351,6 @@ export const getLikesReceived = async (req, res) => {
       l => !matchedUserIds.includes(l.senderId),
     );
 
-    if (!isPremium && !LIKES_VISIBLE_FREE) {
-      // Return count only for non-premium users
-      return res.json({
-        success: true,
-        count: pendingLikes.length,
-        likes: [],
-        isPremiumRequired: true,
-        message: 'Upgrade to Premium to see who liked you!',
-      });
-    }
-
     // Get profile and user info for each liker
     const likerIds = pendingLikes.map(l => l.senderId);
     const [profiles, users] = await Promise.all([
@@ -389,7 +378,7 @@ export const getLikesReceived = async (req, res) => {
       success: true,
       count: likesWithProfiles.length,
       likes: likesWithProfiles,
-      isPremiumRequired: false,
+      isPremiumRequired: !isPremium,
     });
   } catch (error) {
     console.error('Error getting likes received:', error);

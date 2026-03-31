@@ -12,6 +12,7 @@ import {
   Animated,
   Platform,
   StatusBar,
+  Alert,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -222,25 +223,71 @@ const LikesScreen = ({navigation}) => {
 
   const currentMatchesList = isExpanded ? matches : matches.slice(0, 4);
 
-  const renderLikerItem = ({item}) => (
-    <Pressable style={styles.cardUnified}>
-      <Image source={{uri: item.photo || `https://ui-avatars.com/api/?background=6A0DAD&color=fff&name=${item.name || 'U'}`}} style={styles.cardAvatarUnified} />
-      <View style={styles.cardInfoUnified}>
-        <Text style={styles.cardNameUnified}>{item.name}{item.age ? `, ${item.age}` : ''}</Text>
-        <Text style={styles.cardSubtextUnified}>Liked your profile</Text>
-      </View>
-      <View style={styles.actionBtnsUnified}>
-        <Pressable style={styles.rejectBtnUnified} onPress={() => handleRejectLike(item.senderId)}>
-          <Text style={styles.rejectBtnTextUnified}>✕</Text>
-        </Pressable>
-        <Pressable style={styles.matchBtnUnified} onPress={() => handleLikeBack(item.senderId)}>
-          <LinearGradient colors={['#6A0DAD', '#9370DB']} style={styles.btnGradientUnified}>
-            <Text style={styles.btnTextUnified}>❤️ Match</Text>
-          </LinearGradient>
-        </Pressable>
-      </View>
-    </Pressable>
-  );
+  const renderLikerItem = ({item}) => {
+    const handleTeaserPress = () => {
+      Alert.alert(
+        'Premium Feature 💎',
+        'Upgrade to Premium to see who liked you and match with them!',
+        [
+          {text: 'Not Now', style: 'cancel'},
+          {
+            text: 'Get Premium',
+            onPress: () => navigation.navigate('Settings'),
+            style: 'default',
+          },
+        ],
+      );
+    };
+
+    return (
+      <Pressable
+        style={styles.cardUnified}
+        onPress={isPremiumRequired ? handleTeaserPress : null}>
+        <Image
+          source={{
+            uri:
+              item.photo ||
+              `https://ui-avatars.com/api/?background=6A0DAD&color=fff&name=${
+                item.name || 'U'
+              }`,
+          }}
+          style={styles.cardAvatarUnified}
+          blurRadius={isPremiumRequired ? 25 : 0}
+        />
+        <View style={styles.cardInfoUnified}>
+          <Text style={styles.cardNameUnified}>
+            {isPremiumRequired ? 'Someone' : item.name}
+            {!isPremiumRequired && item.age ? `, ${item.age}` : ''}
+          </Text>
+          <Text style={styles.cardSubtextUnified}>Liked your profile</Text>
+        </View>
+        <View style={styles.actionBtnsUnified}>
+          <Pressable
+            style={styles.rejectBtnUnified}
+            onPress={
+              isPremiumRequired
+                ? handleTeaserPress
+                : () => handleRejectLike(item.senderId)
+            }>
+            <Text style={styles.rejectBtnTextUnified}>✕</Text>
+          </Pressable>
+          <Pressable
+            style={styles.matchBtnUnified}
+            onPress={
+              isPremiumRequired
+                ? handleTeaserPress
+                : () => handleLikeBack(item.senderId)
+            }>
+            <LinearGradient
+              colors={['#6A0DAD', '#9370DB']}
+              style={styles.btnGradientUnified}>
+              <Text style={styles.btnTextUnified}>❤️ Match</Text>
+            </LinearGradient>
+          </Pressable>
+        </View>
+      </Pressable>
+    );
+  };
 
   const renderHeaderUnified = () => (
     <View style={styles.headerWrapperUnified}>
