@@ -21,33 +21,38 @@ const PremiumLoader = ({
   const startTime = useRef(0);
   const fadeOutActive = useRef(false);
 
+  const lastVisible = useRef(visible);
+  
   useEffect(() => {
-    if (visible) {
-      fadeOutActive.current = false;
-      setShouldRender(true);
-      startTime.current = Date.now();
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 200,
-        easing: Easing.out(Easing.quad),
-        useNativeDriver: true,
-      }).start();
-    } else if (shouldRender && !fadeOutActive.current) {
-      fadeOutActive.current = true;
-      const elapsed = Date.now() - startTime.current;
-      const remaining = Math.max(0, minDuration - elapsed);
-
-      setTimeout(() => {
+    // Only trigger if visibility has actually changed
+    if (visible !== lastVisible.current) {
+      lastVisible.current = visible;
+      
+      if (visible) {
+        fadeOutActive.current = false;
+        setShouldRender(true);
+        startTime.current = Date.now();
         Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 300,
-          easing: Easing.inOut(Easing.quad),
+          toValue: 1,
+          duration: 200,
           useNativeDriver: true,
-        }).start(() => {
-          setShouldRender(false);
-          fadeOutActive.current = false;
-        });
-      }, remaining);
+        }).start();
+      } else if (shouldRender && !fadeOutActive.current) {
+        fadeOutActive.current = true;
+        const elapsed = Date.now() - startTime.current;
+        const remaining = Math.max(0, minDuration - elapsed);
+
+        setTimeout(() => {
+          Animated.timing(fadeAnim, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }).start(() => {
+            setShouldRender(false);
+            fadeOutActive.current = false;
+          });
+        }, remaining);
+      }
     }
   }, [visible, fadeAnim, minDuration, shouldRender]);
 

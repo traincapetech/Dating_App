@@ -104,6 +104,7 @@ const ChatScreen = ({route, navigation}) => {
   const socketRef = useRef(null);
   const lastTypingEmitRef = useRef(0);
   const insets = useSafeAreaInsets();
+  const isMounted = useRef(true);
 
   useEffect(() => {
     if (!matchId) {
@@ -111,6 +112,7 @@ const ChatScreen = ({route, navigation}) => {
       return;
     }
 
+    isMounted.current = true;
     initChat();
 
     // Enable screenshot blocking in chat
@@ -122,6 +124,7 @@ const ChatScreen = ({route, navigation}) => {
     }
 
     return () => {
+      isMounted.current = false;
       if (socketRef.current) {
         leaveChatRoom(matchId);
         socketRef.current.off('receiveMessage');
@@ -158,6 +161,8 @@ const ChatScreen = ({route, navigation}) => {
     console.log('[ChatScreen] Initializing chat for matchId:', matchId);
     try {
       const userData = await AsyncStorage.getItem('@pryvo_user');
+      if (!isMounted.current) return;
+      
       if (userData && userData !== 'undefined') {
         const user = JSON.parse(userData);
         setCurrentUserId(user.id);
@@ -165,6 +170,8 @@ const ChatScreen = ({route, navigation}) => {
 
         // Check if blocked
         const blockStatus = await checkIfBlocked(user.id, theirId);
+        if (!isMounted.current) return;
+        
         console.log('[ChatScreen] Block status:', blockStatus);
         if (blockStatus.isBlocked) {
           setIsBlocked(true);
@@ -174,6 +181,7 @@ const ChatScreen = ({route, navigation}) => {
 
         // Load existing messages
         const data = await fetchMessages(matchId, user.id);
+        if (!isMounted.current) return;
         console.log('[ChatScreen] Messages fetched:', data?.length || 0);
         setMessages(data || []);
 
@@ -185,6 +193,7 @@ const ChatScreen = ({route, navigation}) => {
         if (unseenMessages.length > 0) {
           const unseenIds = unseenMessages.map(m => m._id);
           await markMessagesAsSeen(matchId, user.id);
+          if (!isMounted.current) return;
 
           // Trigger Gift Animation for newly received (unseen) gifts
           const unseenGifts = unseenMessages.filter(
@@ -209,6 +218,7 @@ const ChatScreen = ({route, navigation}) => {
 
         // Fetch Match Details (Status & Expiration)
         const details = await getMatchDetails(matchId);
+        if (!isMounted.current) return;
         setMatchDetails(details);
 
         // Fetch Streak Data
@@ -217,6 +227,7 @@ const ChatScreen = ({route, navigation}) => {
             user.id,
             theirId,
           );
+          if (!isMounted.current) return;
           if (streakData) {
             setStreak(streakData);
             // Check for streak warning (if 20h+ passed)
@@ -234,6 +245,7 @@ const ChatScreen = ({route, navigation}) => {
         }
 
         // Init socket
+        if (!isMounted.current) return;
         const socket = initSocket(user.id);
         socketRef.current = socket;
 
