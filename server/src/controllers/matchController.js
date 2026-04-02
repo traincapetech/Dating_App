@@ -60,8 +60,18 @@ async function syncMatchExpiration(match) {
     return true;
   }
 
-<<<<<<< HEAD
-  // 5. METADATA SYNC: Keep 'expiresAt' accurate for the UI
+  // 5. RECOVERY LOGIC: If it's marked expired but has recent interaction, re-enable it
+  if (!isExpired && match.status === 'expired') {
+    match.status = 'active';
+    match.chatEnabled = true;
+    console.log(
+      `[Expiry Fix] Recovered prematurely expired match: ${match._id}`,
+    );
+    await match.save();
+    return false; // Not expired anymore
+  }
+
+  // 6. METADATA SYNC: Keep 'expiresAt' accurate for the UI
   // Only update for active matches to avoid logic conflicts in expired states.
   if (match.status === 'active') {
     const computedExpiresAt = new Date(lastInteractionTime.getTime() + SEVEN_DAYS_MS);
@@ -73,49 +83,26 @@ async function syncMatchExpiration(match) {
     }
   }
 
-  // 6. CLEANUP: If already expired and remains inactive, ensure stale likes are cleaned up
+  // 7. CLEANUP: If already expired and remains inactive, ensure stale likes are cleaned up (Heal)
   if (match.status === 'expired') {
     const staleThreshold = new Date(Date.now() - SEVEN_DAYS_MS);
-    await Like.deleteMany({
-      createdAt: {$lt: staleThreshold},
-=======
-  // RECOVERY LOGIC: If it's marked expired but has recent interaction, re-enable it
-  if (!isExpired && match.status === 'expired') {
-    match.status = 'active';
-    match.chatEnabled = true;
-    console.log(
-      `[Expiry Fix] Recovered prematurely expired match: ${match._id}`,
-    );
-    await match.save();
-    return false; // Not expired anymore
-  }
-
-  // If it's already expired and remains inactive, ensure likes are cleaned up (legacy data heal)
-  if (match.status === 'expired') {
-    const {deletedCount} = await Like.deleteMany({
->>>>>>> 32a9853 (chat-disabled-logic-fix)
-      $or: [
-        {senderId: match.users[0], receiverId: match.users[1]},
-        {senderId: match.users[1], receiverId: match.users[0]},
-      ],
-    });
-<<<<<<< HEAD
-    return true;
-=======
-    if (deletedCount > 0) {
-      console.log(
-        `[Match Heal] Cleaned ${deletedCount} stale likes for expired match: ${match._id}`,
-      );
+    try {
+      const {deletedCount} = await Like.deleteMany({
+        createdAt: {$lt: staleThreshold},
+        $or: [
+          {senderId: match.users[0], receiverId: match.users[1]},
+          {senderId: match.users[1], receiverId: match.users[0]},
+        ],
+      });
+      if (deletedCount > 0) {
+        console.log(
+          `[Match Heal] Cleaned ${deletedCount} stale likes for expired match: ${match._id}`,
+        );
+      }
+    } catch (err) {
+      console.error('[Match Heal] Error cleaning likes:', err);
     }
     return true;
-  }
-
-  // Keep expiresAt field synced for active matches
-  const newExpiresAt = new Date(lastInteractionTime.getTime() + SEVEN_DAYS_MS);
-  if (!match.expiresAt || Math.abs(match.expiresAt - newExpiresAt) > 60000) {
-    match.expiresAt = newExpiresAt;
-    await match.save();
->>>>>>> 32a9853 (chat-disabled-logic-fix)
   }
 
   return false; // Active
