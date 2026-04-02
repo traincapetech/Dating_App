@@ -864,7 +864,7 @@ const MediaUploadScreen = () => {
       </View>
 
       <Pressable
-        style={(!uploading) && styles.primaryButtonDisabled}
+        style={uploading && styles.primaryButtonDisabled}
         onPress={handleContinue}
         disabled={uploading}>
         <LinearGradient
