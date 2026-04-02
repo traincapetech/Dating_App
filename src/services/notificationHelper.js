@@ -194,3 +194,45 @@ export async function displayTimerNotification(data) {
     console.error('Failed to display Timer Notification:', e);
   }
 }
+export async function showPryvoLiveNotification(payload) {
+  if (Platform.OS !== 'android') return;
+
+  try {
+    const duration = payload.durationMinutes ? parseInt(payload.durationMinutes, 10) : 15;
+    const countdownTarget = Date.now() + (duration * 60000);
+
+    const title = payload.title || 'Peak time starts for you';
+    const body = payload.body || 'Open the app now to get the best results.';
+
+    // Notifee does not support direct custom RemoteViews injection (XML via id) natively for free.
+    // Instead we use our custom Android Native Module to deliver the Schmooze-style timer layout.
+    const { NativeModules } = require('react-native');
+    if (NativeModules.PryvoNotification) {
+      NativeModules.PryvoNotification.showLiveNotification(title, body, countdownTarget);
+    } else {
+      console.warn('PryvoNotification native module not found, falling back to basic notification');
+      // Fallback
+      const channelId = await notifee.createChannel({
+        id: 'live_priority_v3', // New channel to clear old cache
+        name: 'Pryvo Live Offers',
+        vibration: true,
+        importance: AndroidImportance.HIGH,
+        visibility: AndroidVisibility.PUBLIC,
+      });
+
+      await notifee.displayNotification({
+        id: 'live_countdown_' + (payload.id || 'default'),
+        title: title,
+        body: body,
+        android: {
+          channelId: channelId,
+          smallIcon: 'ic_launcher_round',
+          color: '#6082B6',
+          pressAction: { id: 'default' },
+        },
+      });
+    }
+  } catch (e) {
+    console.error('Failed to display Live Pryvo Notification V3:', e);
+  }
+}

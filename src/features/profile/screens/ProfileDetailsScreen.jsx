@@ -119,8 +119,9 @@ const ProfileDetailsScreen = () => {
         setCurrentUserId(me.id || me._id);
       }
 
-      if (!targetId) {
-        Alert.alert('Error', 'User ID not found');
+      if (!targetId || targetId === 'undefined') {
+        console.warn('User ID not found, skipping profile fetch');
+        setLoading(false);
         return;
       }
 

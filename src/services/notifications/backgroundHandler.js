@@ -9,6 +9,9 @@ export async function handleBackgroundMessage(remoteMessage) {
   } else if (remoteMessage.data && remoteMessage.data.type === 'timer') {
     const { displayTimerNotification } = await import('../notificationHelper');
     await displayTimerNotification(remoteMessage.data);
+  } else if (remoteMessage.data && remoteMessage.data.type === 'live') {
+    const { showPryvoLiveNotification } = await import('../notificationHelper');
+    await showPryvoLiveNotification(remoteMessage.data);
   }
 
   return Promise.resolve();

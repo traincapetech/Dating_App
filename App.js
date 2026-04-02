@@ -8,6 +8,8 @@ import {AuthProvider} from './src/context/AuthContext';
 
 import {InitialLoadProvider} from './src/context/InitialLoadContext';
 import {StripeProvider} from '@stripe/stripe-react-native';
+import CustomAlertComponent from './src/components/common/CustomAlert';
+import {setCustomAlertRef} from './src/utils/CustomAlert';
 
 import './global.css';
 
@@ -85,6 +87,7 @@ const App = () => {
                   publishableKey={process.env.STRIPE_PUBLISHABLE_KEY || ""} // Ideally from .env
                 >
                   <AppNavigator />
+                  <CustomAlertComponent ref={ref => setCustomAlertRef(ref)} />
                 </StripeProvider>
               </GestureHandlerRootView>
             </SafeAreaProvider>

@@ -50,6 +50,11 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
       }
     }
   }
+  if (type === EventType.ACTION_PRESS && pressAction?.id === 'match_action') {
+    // If the user clicks "MATCH NOW", we clear the notification.
+    // App navigation is handled by navigation listeners on app wakeup.
+    await notifee.cancelNotification(notification.id);
+  }
 });
 
 AppRegistry.registerComponent(appName, () => App);

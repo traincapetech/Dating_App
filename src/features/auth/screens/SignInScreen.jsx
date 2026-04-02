@@ -338,7 +338,7 @@ import { useAuth } from '../../../context/AuthContext';
 const SignInScreen = () => {
   const navigation = useNavigation();
   const { setLoading } = useLoading();
-  const { login } = useAuth();
+  const { login, getNextOnboardingScreen } = useAuth();
   const { height } = useWindowDimensions();
   const [form, setForm] = useState({ email: '', password: '' });
   const [errors, setErrors] = useState({});
@@ -420,11 +420,18 @@ const SignInScreen = () => {
       });
       if (data?.user) {
         await login(data.user);
+        
+        // Use the centralized routing logic to decide where to go
+        const nextScreen = getNextOnboardingScreen();
+        console.log('[SignIn] Navigating to next screen:', nextScreen);
+
+        navigation.reset({
+          index: 0,
+          routes: [{ name: nextScreen }],
+        });
+      } else {
+        navigation.navigate(AppRoute.Welcome);
       }
-      navigation.reset({
-        index: 0,
-        routes: [{ name: AppRoute.HomeTabs }],
-      });
     } catch (error) {
       const message = error?.message || 'Unable to sign you in right now.';
       setErrors(prev => ({ ...prev, api: message }));

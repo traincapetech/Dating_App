@@ -64,7 +64,13 @@ const AnimatedPressable = ({
 
 const SplashScreen = ({navigation}) => {
   const {width, height} = useWindowDimensions();
-  const {isAuthenticated, profile, loading: authLoading} = useAuth();
+  const {
+    isAuthenticated,
+    profile,
+    loading: authLoading,
+    profileLoading,
+    getNextOnboardingScreen,
+  } = useAuth();
 
   // Sizing logic
   const heroImageSize = Math.min(width * 0.4, 180);
@@ -98,26 +104,21 @@ const SplashScreen = ({navigation}) => {
 
   // Auth Routing logic (FIXED: Eliminated mandatory 1.5s delay for authenticated users)
   useEffect(() => {
-    if (!authLoading) {
+    // Wait for the full auth initialization (session check + profile fetch)
+    if (!authLoading && !profileLoading) {
       if (isAuthenticated) {
-        // NAVIGATE IMMEDIATELY if authenticated
-        if (profile) {
-          console.log(
-            '[SplashScreen] Session found with profile, navigating to Home',
-          );
-          navigation?.reset({index: 0, routes: [{name: AppRoute.HomeTabs}]});
-        } else {
-          console.log(
-            '[SplashScreen] Session found but no profile, navigating to Onboarding',
-          );
-          navigation?.reset({index: 0, routes: [{name: AppRoute.Welcome}]});
-        }
+        // USE context routing logic to ensure they actually finished onboarding
+        const nextScreen = getNextOnboardingScreen();
+        console.log('[SplashScreen] Next screen determined:', nextScreen);
+        
+        // Either HomeTabs or one of the Onboarding screens.
+        navigation?.reset({index: 0, routes: [{name: nextScreen}]});
       } else {
         // If guest, keep on Splash and show buttons (animations handle the rest)
         console.log('[SplashScreen] No session found, stay on Splash');
       }
     }
-  }, [authLoading, isAuthenticated, profile, navigation]);
+  }, [authLoading, profileLoading, isAuthenticated, profile, navigation]);
 
   const handleCreateAccount = () => {
     navigation?.navigate(AppRoute.SignIn);

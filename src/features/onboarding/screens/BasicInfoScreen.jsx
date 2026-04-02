@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -10,29 +10,34 @@ import {
   ScrollView,
   Switch,
   ActivityIndicator,
-  Alert,
   PermissionsAndroid,
+  useWindowDimensions,
+  BackHandler,
 } from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import CustomAlert from '../../../utils/CustomAlert';
+import LinearGradient from 'react-native-linear-gradient';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Geolocation from 'react-native-geolocation-service';
-import {useNavigation} from '@react-navigation/native';
-import {AppRoute} from '../../../constants/routes';
-import {colors, typography, spacing} from '../../../theme';
-import {sendEmailOTP, verifyEmailOTP} from '../../../services/otp';
+import { useNavigation } from '@react-navigation/native';
+import { AppRoute } from '../../../constants/routes';
+import { colors, typography, spacing } from '../../../theme';
+import { sendEmailOTP, verifyEmailOTP } from '../../../services/otp';
 import {
   enableNotifications,
   disableNotifications,
   checkNotificationPermission,
 } from '../../../services/notifications';
-import {saveBasicInfo} from '../../../services/profile/profileService';
+import { saveBasicInfo } from '../../../services/profile/profileService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import {useAuth} from '../../../context/AuthContext';
-import {decodeJWT} from '../../../utils/safeUtils';
+import { useAuth } from '../../../context/AuthContext';
+import { decodeJWT } from '../../../utils/safeUtils';
 
 const BasicInfoScreen = () => {
-  const {loadProfile} = useAuth();
+  const { loadProfile } = useAuth();
   const navigation = useNavigation();
+  const { height } = useWindowDimensions();
   const [step, setStep] = useState(1); // 1: Name, 2: Email, 3: Notifications, 4: Location, 5: Gender
   const [form, setForm] = useState({
     firstName: '',
@@ -94,7 +99,7 @@ const BasicInfoScreen = () => {
   }, []);
 
   const handleChange = (field, value) => {
-    setForm(prev => ({...prev, [field]: value}));
+    setForm(prev => ({ ...prev, [field]: value }));
   };
 
   // Pre-fill form and determine starting step from backend or storage
@@ -128,7 +133,7 @@ const BasicInfoScreen = () => {
         }
 
         // 2. Fetch full profile from backend to see what's missing
-        const {getProfile} = await import(
+        const { getProfile } = await import(
           '../../../services/profile/profileService'
         );
         const profileResponse = await getProfile(userId);
@@ -199,6 +204,24 @@ const BasicInfoScreen = () => {
     initializeOnboarding();
   }, []);
 
+  // Handle hardware back button
+  React.useEffect(() => {
+    const backAction = () => {
+      if (step > 1) {
+        setStep(step - 1);
+        return true; // Prevent default behavior
+      }
+      return false; // Let default behavior happen
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction,
+    );
+
+    return () => backHandler.remove();
+  }, [step]);
+
   // Request location permission
   const requestLocationPermission = async () => {
     if (Platform.OS === 'android') {
@@ -228,7 +251,7 @@ const BasicInfoScreen = () => {
   const getCurrentLocation = async () => {
     const hasPermission = await requestLocationPermission();
     if (!hasPermission) {
-      Alert.alert(
+      CustomAlert.alert(
         'Permission Denied',
         'Location permission is required to find matches nearby. Please enable it in your device settings.',
       );
@@ -245,7 +268,7 @@ const BasicInfoScreen = () => {
         });
       });
 
-      const {latitude, longitude, accuracy} = position.coords;
+      const { latitude, longitude, accuracy } = position.coords;
 
       // Store GPS coordinates
       const locationData = {
@@ -279,16 +302,16 @@ const BasicInfoScreen = () => {
       }
 
       handleChange('locationDetails', locationData);
-      Alert.alert(
+      CustomAlert.alert(
         'Location Found',
         'Your location has been detected successfully!',
       );
     } catch (error) {
       console.error('Location error:', error);
-      Alert.alert(
+      CustomAlert.alert(
         'Location Error',
         error.message ||
-          'Failed to get your location. Please make sure GPS is enabled and try again.',
+        'Failed to get your location. Please make sure GPS is enabled and try again.',
       );
     } finally {
       setIsGettingLocation(false);
@@ -338,7 +361,7 @@ const BasicInfoScreen = () => {
 
   const handleSendEmailOTP = async () => {
     if (!form.email.trim() || !/\S+@\S+\.\S+/.test(form.email)) {
-      Alert.alert('Invalid Email', 'Please enter a valid email address');
+      CustomAlert.alert('Invalid Email', 'Please enter a valid email address');
       return;
     }
 
@@ -346,13 +369,14 @@ const BasicInfoScreen = () => {
     try {
       await sendEmailOTP(form.email);
       setShowOTPInput(true);
-      Alert.alert('OTP Sent', 'Check your email for the verification code');
+      CustomAlert.alert('OTP Sent', 'Check your email for the verification code');
       // Auto-focus first OTP input
       setTimeout(() => {
         otpInputRefs.current[0]?.focus();
       }, 100);
     } catch (error) {
-      Alert.alert('Error', error?.message || 'Failed to send OTP');
+      CustomAlert.alert('Error', error?.message || 'Failed to send OTP');
+      
     } finally {
       setIsSendingOTP(false);
     }
@@ -393,16 +417,16 @@ const BasicInfoScreen = () => {
   const handleVerifyEmailOTP = async () => {
     const otpCode = emailOTP.join('');
     if (otpCode.length !== 6) {
-      Alert.alert('Invalid OTP', 'Please enter the complete 6-digit code');
+      CustomAlert.alert('Invalid OTP', 'Please enter the complete 6-digit code');
       return;
     }
 
     setIsVerifyingOTP(true);
     try {
       await verifyEmailOTP(form.email, otpCode);
-      setForm(prev => ({...prev, emailVerified: true}));
+      setForm(prev => ({ ...prev, emailVerified: true }));
       setShowOTPInput(false);
-      Alert.alert(
+      CustomAlert.alert(
         'Email Verified',
         'Your email has been verified successfully',
         [
@@ -416,7 +440,7 @@ const BasicInfoScreen = () => {
         ],
       );
     } catch (error) {
-      Alert.alert('Verification Failed', error?.message || 'Invalid OTP code');
+      CustomAlert.alert('Verification Failed', error?.message || 'Invalid OTP code');
       setEmailOTP(['', '', '', '', '', '']);
       otpInputRefs.current[0]?.focus();
     } finally {
@@ -456,7 +480,7 @@ const BasicInfoScreen = () => {
       }
 
       if (!userId) {
-        Alert.alert('Error', 'User ID not found. Please sign in again.');
+        CustomAlert.alert('Error', 'User ID not found. Please sign in again.');
         setIsSubmitting(false);
         return;
       }
@@ -488,7 +512,7 @@ const BasicInfoScreen = () => {
       navigation.navigate(AppRoute.DatingPreferences);
     } catch (error) {
       console.error('Error saving basic info:', error);
-      Alert.alert(
+      CustomAlert.alert(
         'Error',
         error?.message || 'Failed to save basic info. Please try again.',
       );
@@ -542,7 +566,7 @@ const BasicInfoScreen = () => {
         valid: false,
         message: 'You must be at least 18 years old to use Pryvo.',
       };
-    return {valid: true, age};
+    return { valid: true, age };
   };
 
   const canProceed = () => {
@@ -593,9 +617,9 @@ const BasicInfoScreen = () => {
               placeholder="First name"
               autoCapitalize="words"
               style={styles.input}
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor="rgba(255, 255, 255, 0.6)"
             />
-            <Text style={[styles.label, {marginTop: spacing.lg}]}>
+            <Text style={[styles.label, { marginTop: spacing.lg }]}>
               Last name
             </Text>
             <TextInput
@@ -604,9 +628,9 @@ const BasicInfoScreen = () => {
               placeholder="Last name"
               autoCapitalize="words"
               style={styles.input}
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor="rgba(255, 255, 255, 0.6)"
             />
-            <Text style={[styles.label, {marginTop: spacing.lg}]}>
+            <Text style={[styles.label, { marginTop: spacing.lg }]}>
               Date of birth (YYYY-MM-DD)
             </Text>
             <Text style={styles.hintText}>
@@ -617,7 +641,7 @@ const BasicInfoScreen = () => {
               onPress={() => setShowDatePicker(true)}>
               <Text
                 style={{
-                  color: form.dob ? colors.textPrimary : colors.textSecondary,
+                  color: form.dob ? '#ffffff' : 'rgba(255, 255, 255, 0.6)',
                   fontSize: typography.body.medium,
                 }}>
                 {form.dob || 'YYYY-MM-DD'}
@@ -630,10 +654,10 @@ const BasicInfoScreen = () => {
                   form.dob
                     ? new Date(`${form.dob}T12:00:00`)
                     : (() => {
-                        const d = new Date();
-                        d.setFullYear(d.getFullYear() - 18);
-                        return d;
-                      })()
+                      const d = new Date();
+                      d.setFullYear(d.getFullYear() - 18);
+                      return d;
+                    })()
                 }
                 mode="date"
                 display={Platform.OS === 'ios' ? 'spinner' : 'default'}
@@ -680,7 +704,7 @@ const BasicInfoScreen = () => {
               After giving email, OTP will be sent over email and after
               verification next screen will come.
             </Text>
-            <Text style={[styles.label, {marginTop: spacing.lg}]}>Email</Text>
+            <Text style={[styles.label, { marginTop: spacing.lg }]}>Email</Text>
             <TextInput
               value={form.email}
               onChangeText={value => handleChange('email', value)}
@@ -688,7 +712,7 @@ const BasicInfoScreen = () => {
               keyboardType="email-address"
               autoCapitalize="none"
               style={styles.input}
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor="rgba(255, 255, 255, 0.6)"
               editable={!form.emailVerified}
             />
             {form.emailVerified && (
@@ -774,7 +798,7 @@ const BasicInfoScreen = () => {
                       // Enable notifications - request permission and get token
                       await enableNotifications();
                       handleChange('notificationsEnabled', true);
-                      Alert.alert(
+                      CustomAlert.alert(
                         'Notifications Enabled',
                         'You will now receive push notifications for matches and messages.',
                       );
@@ -788,16 +812,16 @@ const BasicInfoScreen = () => {
                       handleChange('notificationsEnabled', false);
                     }
                   } catch (error) {
-                    Alert.alert(
+                    CustomAlert.alert(
                       'Notification Error',
                       error?.message ||
-                        'Failed to update notification settings. Please try again.',
+                      'Failed to update notification settings. Please try again.',
                     );
                     // Revert switch if error
                     handleChange('notificationsEnabled', previousValue);
                   }
                 }}
-                trackColor={{false: colors.borderLight, true: colors.primary}}
+                trackColor={{ false: colors.borderLight, true: colors.primary }}
               />
             </View>
             <Pressable
@@ -924,96 +948,148 @@ const BasicInfoScreen = () => {
   const isLocationStep = step === 4;
 
   const content = (
-    <>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Text style={styles.title}>
-            {step === 1 && "What's your name?"}
-            {step === 2 && 'Provide Your Email'}
-            {step === 3 && 'Notifications'}
-            {step === 4 && 'Location'}
-            {step === 5 && 'Gender'}
+    <View style={styles.contentWrapper}>
+      <View style={styles.topSection}>
+        <View style={styles.header}>
+          <View style={styles.headerTop}>
+            <Text style={styles.title} numberOfLines={1} adjustsFontSizeToFit>
+              {step === 1 && "What's your name?"}
+              {step === 2 && 'Provide Your Email'}
+              {step === 3 && 'Notifications'}
+              {step === 4 && 'Location'}
+              {step === 5 && 'Gender'}
+            </Text>
+            {step > 2 && (
+              <Pressable
+                onPress={() => {
+                  if (step < 5) {
+                    setStep(step + 1);
+                  } else {
+                    navigation.navigate(AppRoute.DatingPreferences);
+                  }
+                }}
+                style={styles.skipButton}
+              >
+                <Text style={styles.skipText}>Skip</Text>
+              </Pressable>
+            )}
+          </View>
+          <Text style={styles.subtitle}>
+            Step {step} of 5: {step === 1 ? 'Personal details' : step === 2 ? 'Verify email' : step === 3 ? 'Notifications' : step === 4 ? 'Location' : 'Gender'}
           </Text>
-          <Pressable 
-            onPress={() => navigation.navigate(AppRoute.DatingPreferences)}
-            style={styles.skipButton}
-          >
-            <Text style={styles.skipText}>Skip</Text>
-          </Pressable>
         </View>
-        <Text style={styles.subtitle}>
-          Step {step} of 5: {step === 1 ? 'Personal details' : step === 2 ? 'Verify email' : step === 3 ? 'Notifications' : step === 4 ? 'Location' : 'Gender'}
-        </Text>
+        {renderStepContent()}
       </View>
-      {renderStepContent()}
 
-      <Pressable
-        style={[
-          styles.primaryButton,
-          (!canProceed() || isSubmitting) && styles.primaryButtonDisabled,
-        ]}
-        onPress={handleNext}
-        disabled={!canProceed() || isSubmitting}>
-        {isSubmitting ? (
-          <ActivityIndicator color={colors.textInverse} />
-        ) : (
-          <Text style={styles.primaryButtonText}>
-            {step === 5 ? 'Continue' : 'Next'}
-          </Text>
-        )}
-      </Pressable>
-
-      {step === 3 && (
-        <Pressable style={styles.skipButton} onPress={() => setStep(4)}>
-          <Text style={styles.skipText}>Skip for now</Text>
+      <View style={styles.bottomSection}>
+        <Pressable
+          style={(!canProceed() || isSubmitting) && styles.primaryButtonDisabled}
+          onPress={handleNext}
+          disabled={!canProceed() || isSubmitting}>
+          <LinearGradient
+            colors={['#7C3AED', '#C084FC']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.primaryButton}>
+            {isSubmitting ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.primaryButtonText}>
+                {step === 5 ? 'Continue' : 'Next'}
+              </Text>
+            )}
+          </LinearGradient>
         </Pressable>
-      )}
-    </>
+
+
+
+      </View>
+    </View>
   );
 
   if (isLocationStep) {
     // For location step, use View to avoid VirtualizedList nesting
     return (
-      <SafeAreaView style={styles.flex} edges={['top', 'left', 'right']}>
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
-          <View style={styles.container}>{content}</View>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+      <LinearGradient
+        colors={['#743A9A', '#9B5CC5']}
+        style={styles.flex}>
+        {/* Programmatic Botanical Shadows */}
+        <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+          <MaterialCommunityIcons name="leaf" size={180} color="#000" style={{ position: 'absolute', opacity: 0.08, top: -20, left: -60, transform: [{ rotate: '45deg' }] }} />
+          <MaterialCommunityIcons name="clover" size={140} color="#000" style={{ position: 'absolute', opacity: 0.08, top: 150, right: -40, transform: [{ rotate: '-20deg' }] }} />
+          <MaterialCommunityIcons name="leaf-maple" size={200} color="#000" style={{ position: 'absolute', opacity: 0.08, bottom: 80, left: -80, transform: [{ rotate: '70deg' }] }} />
+          <MaterialCommunityIcons name="cannabis" size={160} color="#000" style={{ position: 'absolute', opacity: 0.08, bottom: -30, right: 30, transform: [{ rotate: '-10deg' }] }} />
+        </View>
+        <LinearGradient
+          colors={['rgba(26, 24, 33, 0.4)', 'rgba(10, 9, 13, 0.7)']}
+          style={StyleSheet.absoluteFillObject}
+          pointerEvents="none"
+        />
+        <SafeAreaView style={styles.flex} edges={['top', 'left', 'right']}>
+          <KeyboardAvoidingView
+            style={styles.flex}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
+            <View style={styles.container}>{content}</View>
+          </KeyboardAvoidingView>
+        </SafeAreaView>
+      </LinearGradient>
     );
   }
 
   return (
-    <SafeAreaView style={styles.flex} edges={['top', 'left', 'right']}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
-          contentContainerStyle={styles.container}
-          keyboardShouldPersistTaps="handled">
-          {content}
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      <LinearGradient
+        colors={['#743A9A', '#9B5CC5']}
+        style={styles.flex}>
+        {/* Programmatic Botanical Shadows */}
+        <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+          <MaterialCommunityIcons name="leaf" size={180} color="#000" style={{ position: 'absolute', opacity: 0.08, top: -20, left: -60, transform: [{ rotate: '45deg' }] }} />
+          <MaterialCommunityIcons name="clover" size={140} color="#000" style={{ position: 'absolute', opacity: 0.08, top: 150, right: -40, transform: [{ rotate: '-20deg' }] }} />
+          <MaterialCommunityIcons name="leaf-maple" size={200} color="#000" style={{ position: 'absolute', opacity: 0.08, bottom: 80, left: -80, transform: [{ rotate: '70deg' }] }} />
+          <MaterialCommunityIcons name="cannabis" size={160} color="#000" style={{ position: 'absolute', opacity: 0.08, bottom: -30, right: 30, transform: [{ rotate: '-10deg' }] }} />
+        </View>
+        <LinearGradient
+          colors={['rgba(26, 24, 33, 0.4)', 'rgba(10, 9, 13, 0.7)']}
+          style={StyleSheet.absoluteFillObject}
+          pointerEvents="none"
+        />
+      <SafeAreaView style={styles.flex} edges={['top', 'left', 'right']}>
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <ScrollView
+            contentContainerStyle={styles.container}
+            keyboardShouldPersistTaps="handled">
+            {content}
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
-    backgroundColor: colors.background,
   },
   container: {
+    flexGrow: 1,
     paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xxl,
+    paddingVertical: spacing.xl,
+  },
+  contentWrapper: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  topSection: {
+    flex: 1,
+  },
+  bottomSection: {
+    paddingBottom: spacing.lg,
   },
   header: {
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.xxl,
-    paddingBottom: spacing.md,
-    backgroundColor: colors.background,
+    marginBottom: spacing.xl,
+    backgroundColor: 'transparent',
   },
   headerTop: {
     flexDirection: 'row',
@@ -1022,76 +1098,70 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   title: {
-    fontFamily: typography.fontFamilyBold,
+    fontFamily: 'MonaSans-Bold',
     fontSize: typography.headings.h2,
-    color: colors.textPrimary,
+    color: '#E5C49F',
     flex: 1,
-  },
-  skipButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  skipText: {
-    fontFamily: typography.fontFamilyBold,
-    fontSize: typography.body.medium,
-    color: colors.primary,
+    marginRight: spacing.sm,
   },
   subtitle: {
-    fontFamily: typography.fontFamilyMedium,
+    fontFamily: 'MonaSans-Medium',
     fontSize: typography.body.medium,
-    color: colors.textSecondary,
+    color: '#D4B895',
   },
   label: {
-    fontFamily: typography.fontFamilyMedium,
+    fontFamily: 'MonaSans-Medium',
     fontSize: typography.body.medium,
-    color: colors.textPrimary,
+    color: '#E5C49F',
     marginBottom: spacing.xs,
   },
   input: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 14,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     fontSize: typography.body.medium,
-    color: colors.textPrimary,
-    backgroundColor: colors.inputBackground,
+    color: '#ffffff',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   verifiedBadge: {
     marginTop: spacing.sm,
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
-    backgroundColor: colors.success + '20',
+    backgroundColor: 'rgba(52, 199, 89, 0.2)',
     borderRadius: 8,
     alignSelf: 'flex-start',
   },
   verifiedText: {
-    color: colors.success,
-    fontFamily: typography.fontFamilyMedium,
+    color: '#4ade80',
+    fontFamily: 'MonaSans-Medium',
     fontSize: typography.body.small,
   },
   otpButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: 'rgba(57, 28, 86, 0.6)',
     paddingVertical: spacing.md,
     borderRadius: 14,
     alignItems: 'center',
     marginTop: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   otpButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.4,
   },
   otpButtonText: {
-    color: colors.textInverse,
-    fontFamily: typography.fontFamilyBold,
+    color: '#E5C49F',
+    fontFamily: 'MonaSans-Bold',
     fontSize: typography.body.medium,
   },
   otpContainer: {
     marginTop: spacing.lg,
   },
   otpLabel: {
-    fontFamily: typography.fontFamilyMedium,
+    fontFamily: 'MonaSans-Medium',
     fontSize: typography.body.medium,
-    color: colors.textPrimary,
+    color: '#E5C49F',
     marginBottom: spacing.md,
   },
   otpInputs: {
@@ -1103,26 +1173,28 @@ const styles = StyleSheet.create({
   otpInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 12,
     paddingVertical: spacing.md,
     fontSize: typography.headings.h3,
-    color: colors.textPrimary,
-    backgroundColor: colors.inputBackground,
-    fontFamily: typography.fontFamilyBold,
+    color: '#ffffff',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    fontFamily: 'MonaSans-Bold',
   },
   verifyButton: {
-    backgroundColor: colors.primary,
+    backgroundColor: 'rgba(57, 28, 86, 0.6)',
     paddingVertical: spacing.md,
     borderRadius: 14,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   verifyButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.4,
   },
   verifyButtonText: {
-    color: colors.textInverse,
-    fontFamily: typography.fontFamilyBold,
+    color: '#E5C49F',
+    fontFamily: 'MonaSans-Bold',
     fontSize: typography.body.medium,
   },
   switchContainer: {
@@ -1133,9 +1205,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
   },
   switchLabel: {
-    fontFamily: typography.fontFamilyMedium,
+    fontFamily: 'MonaSans-Medium',
     fontSize: typography.body.medium,
-    color: colors.textPrimary,
+    color: '#D4B895',
   },
   placesWrapper: {
     zIndex: 1,
@@ -1148,135 +1220,140 @@ const styles = StyleSheet.create({
   },
   placesInput: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 14,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     fontSize: typography.body.medium,
-    color: colors.textPrimary,
-    backgroundColor: colors.inputBackground,
+    color: '#ffffff',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   placesList: {
     marginTop: spacing.sm,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(20, 5, 40, 0.8)',
     maxHeight: 200,
   },
   placesRow: {
     padding: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.borderLight,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
   placesDescription: {
-    fontFamily: typography.fontFamilyMedium,
+    fontFamily: 'MonaSans-Medium',
     fontSize: typography.body.medium,
-    color: colors.textPrimary,
+    color: '#D4B895',
   },
   placesSubtext: {
-    fontFamily: typography.fontFamilyRegular,
+    fontFamily: 'MonaSans-Regular',
     fontSize: typography.body.small,
-    color: colors.textSecondary,
+    color: '#E5C49F',
+    opacity: 0.8,
     marginTop: spacing.xs,
   },
   placesSeparator: {
     height: 1,
-    backgroundColor: colors.borderLight,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   selectedLocation: {
     marginTop: spacing.md,
     padding: spacing.md,
-    backgroundColor: colors.secondary,
+    backgroundColor: 'rgba(57, 28, 86, 0.4)',
     borderRadius: 12,
   },
   selectedLocationText: {
-    fontFamily: typography.fontFamilyMedium,
+    fontFamily: 'MonaSans-Medium',
     fontSize: typography.body.small,
-    color: colors.primary,
+    color: '#E5C49F',
   },
   locationCoordsText: {
-    fontFamily: typography.fontFamilyRegular,
+    fontFamily: 'MonaSans-Regular',
     fontSize: typography.body.small,
-    color: colors.textSecondary,
+    color: '#D4B895',
+    opacity: 0.8,
     marginTop: spacing.xs,
   },
   warningLocation: {
     marginTop: spacing.md,
     padding: spacing.md,
-    backgroundColor: colors.warning + '20',
+    backgroundColor: 'rgba(255, 59, 48, 0.2)',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.warning,
+    borderColor: '#FF3B30',
   },
   warningLocationText: {
-    fontFamily: typography.fontFamilyMedium,
+    fontFamily: 'MonaSans-Medium',
     fontSize: typography.body.small,
-    color: colors.warning || colors.error,
+    color: '#FF3B30',
   },
   locationButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.primary,
+    backgroundColor: 'rgba(57, 28, 86, 0.6)',
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.lg,
     borderRadius: 14,
     marginTop: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     gap: spacing.sm,
   },
   locationButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.4,
   },
   locationIcon: {
     fontSize: 24,
   },
   locationButtonText: {
-    fontFamily: typography.fontFamilyBold,
+    fontFamily: 'MonaSans-Bold',
     fontSize: typography.body.medium,
-    color: colors.surface,
+    color: '#E5C49F',
   },
   locationAccuracyText: {
-    fontFamily: typography.fontFamilyRegular,
+    fontFamily: 'MonaSans-Regular',
     fontSize: typography.body.small,
-    color: colors.textSecondary,
+    color: '#D4B895',
+    opacity: 0.8,
     marginTop: spacing.xs,
   },
   infoBox: {
     marginTop: spacing.lg,
     padding: spacing.md,
-    backgroundColor: colors.secondary,
+    backgroundColor: 'rgba(57, 28, 86, 0.4)',
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   infoBoxText: {
-    fontFamily: typography.fontFamilyRegular,
+    fontFamily: 'MonaSans-Regular',
     fontSize: typography.body.small,
-    color: colors.textSecondary,
+    color: '#D4B895',
     lineHeight: 20,
   },
   optionButton: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 14,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
     marginBottom: spacing.md,
-    backgroundColor: colors.inputBackground,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
   },
   optionButtonSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.secondary,
+    borderColor: '#E5C49F',
+    backgroundColor: 'rgba(57, 28, 86, 0.6)',
   },
   optionText: {
-    fontFamily: typography.fontFamilyMedium,
+    fontFamily: 'MonaSans-Medium',
     fontSize: typography.body.medium,
-    color: colors.textPrimary,
+    color: '#D4B895',
   },
   optionTextSelected: {
-    fontFamily: typography.fontFamilyBold,
-    color: colors.primary,
+    fontFamily: 'MonaSans-Bold',
+    color: '#E5C49F',
   },
   checkboxContainer: {
     flexDirection: 'row',
@@ -1287,87 +1364,119 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderWidth: 2,
-    borderColor: colors.primary,
+    borderColor: '#E5C49F',
     borderRadius: 6,
     marginRight: spacing.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.inputBackground,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
   },
   checkboxIcon: {
-    color: colors.primary,
+    color: '#E5C49F',
     fontSize: 16,
-    fontFamily: typography.fontFamilyBold,
+    fontFamily: 'MonaSans-Bold',
   },
   checkboxLabel: {
-    fontFamily: typography.fontFamilyRegular,
+    fontFamily: 'MonaSans-Regular',
     fontSize: typography.body.medium,
-    color: colors.textPrimary,
+    color: '#D4B895',
   },
   primaryButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.md,
-    borderRadius: 18,
+    paddingVertical: 18,
+    borderRadius: 999,
     alignItems: 'center',
     marginTop: spacing.xl,
+    elevation: 4,
+    shadowColor: '#7C3AED',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   primaryButtonDisabled: {
-    opacity: 0.5,
+    opacity: 0.4,
   },
   primaryButtonText: {
-    color: colors.textInverse,
-    fontFamily: typography.fontFamilyBold,
-    fontSize: typography.body.large,
+    color: '#E5C49F',
+    fontFamily: 'MonaSans-Medium',
+    fontSize: 16,
+    letterSpacing: 0.3,
   },
   secondaryButton: {
     borderWidth: 1,
-    borderColor: colors.primary,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     paddingVertical: spacing.md,
     borderRadius: 18,
     alignItems: 'center',
     marginTop: spacing.md,
   },
   secondaryButtonText: {
-    color: colors.primary,
-    fontFamily: typography.fontFamilyMedium,
+    color: '#E5C49F',
+    fontFamily: 'MonaSans-Medium',
     fontSize: typography.body.medium,
   },
   skipButton: {
-    marginTop: spacing.md,
-    alignSelf: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+
+    borderRadius: 16,
+
+    // subtle glow
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+
+    elevation: 3, // Android
   },
+  // skipText: {
+  //   fontFamily: 'MonaSans-Medium',
+  //   fontSize: typography.body.medium,
+  //   color: '#E5C49F',
+  //   padding:"3px",
+
+  //   // borderRadius: "2px",
+  //   backgroundColor: 'rgba(255, 255, 255, 0.1)',
+
+  // },
   skipText: {
-    fontFamily: typography.fontFamilyMedium,
-    fontSize: typography.body.medium,
-    color: colors.textSecondary,
+    color: '#E5C49F', // gold
+    fontWeight: '600',
+    fontSize: 13,
+    letterSpacing: 0.5,
   },
+
   linkButton: {
     marginTop: spacing.sm,
     padding: spacing.sm,
   },
   linkText: {
-    fontFamily: typography.fontFamilyMedium,
+    fontFamily: 'MonaSans-Medium',
     fontSize: typography.body.small,
-    color: colors.primary,
+    color: '#E5C49F',
     textDecorationLine: 'underline',
   },
   hintText: {
-    fontFamily: typography.fontFamilyRegular,
+    fontFamily: 'MonaSans-Regular',
     fontSize: typography.body.small,
-    color: colors.textSecondary,
+    color: '#D4B895',
+    opacity: 0.8,
     marginTop: spacing.xs,
     marginBottom: spacing.xs,
   },
   errorText: {
-    fontFamily: typography.fontFamilyRegular,
+    fontFamily: 'MonaSans-Regular',
     fontSize: typography.body.small,
-    color: '#FF3B30',
+    color: '#FF6B6B',
     marginTop: spacing.xs,
   },
   successText: {
-    fontFamily: typography.fontFamilyMedium,
+    fontFamily: 'MonaSans-Medium',
     fontSize: typography.body.small,
-    color: colors.success || '#34C759',
+    color: '#4ade80',
     marginTop: spacing.xs,
   },
 });

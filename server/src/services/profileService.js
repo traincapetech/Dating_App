@@ -307,6 +307,8 @@ export async function getAllProfiles(excludeUserId = null, options = {}) {
     filters = null,
   } = options;
 
+  console.log(`[getAllProfiles] Called for ${excludeUserId} with useMatching=${useMatching}, maxDistance=${maxDistance}`);
+
   const profiles = await getProfiles();
   const users = await getUsers();
 
