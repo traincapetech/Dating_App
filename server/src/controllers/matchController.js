@@ -62,9 +62,12 @@ async function syncMatchExpiration(match) {
     return false; // Not expired anymore
   }
 
-  // If it's already expired and remains inactive, ensure likes are cleaned up (legacy data heal)
+  // If it's already expired and remains inactive, ensure stale likes are cleaned up (legacy data heal)
+  // IMPORTANT: Only delete likes older than 7 days — new re-engagement likes must NOT be touched
   if (match.status === 'expired') {
+    const staleThreshold = new Date(Date.now() - SEVEN_DAYS_MS);
     const {deletedCount} = await Like.deleteMany({
+      createdAt: {$lt: staleThreshold},
       $or: [
         {senderId: match.users[0], receiverId: match.users[1]},
         {senderId: match.users[1], receiverId: match.users[0]},
