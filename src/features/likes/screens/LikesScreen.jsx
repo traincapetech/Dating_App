@@ -20,7 +20,7 @@ import {useFocusEffect} from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import {colors, typography, spacing} from '../../../theme';
 import {getLikesReceived, likeUser, rejectLike} from '../../../services/swipeActions';
-import {fetchMatches} from '../../../services/chatService';
+import {fetchMatches, fetchPreviousInteractions} from '../../../services/chatService';
 import {useLoading} from '../../../context/LoadingContext';
 import {useInitialLoad} from '../../../context/InitialLoadContext';
 import FullScreenLoader from '../../../components/layout/FullScreenLoader';
@@ -125,8 +125,10 @@ const LikesScreen = ({navigation}) => {
   const {profile: myProfile} = useAuth();
   const [likes, setLikes] = useState([]);
   const [matches, setMatches] = useState([]);
+  const [previousInteractions, setPreviousInteractions] = useState([]);
   const [likesCount, setLikesCount] = useState(0);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isPreviousExpanded, setIsPreviousExpanded] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -164,9 +166,10 @@ const LikesScreen = ({navigation}) => {
       if (userData && userData !== 'undefined') {
         const user = JSON.parse(userData);
         setCurrentUserId(user.id);
-        const [likesResponse, matchesResponse] = await Promise.all([
+        const [likesResponse, matchesResponse, previousResponse] = await Promise.all([
           getLikesReceived(user.id, true),
           fetchMatches(user.id),
+          fetchPreviousInteractions(user.id),
         ]);
         if (likesResponse.success) {
           setLikes(likesResponse.likes || []);
@@ -176,6 +179,9 @@ const LikesScreen = ({navigation}) => {
         if (matchesResponse.success) {
           const sorted = (matchesResponse.matches || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
           setMatches(sorted);
+        }
+        if (previousResponse.success) {
+          setPreviousInteractions(previousResponse.matches || []);
         }
       }
     } catch (error) {
@@ -311,6 +317,39 @@ const LikesScreen = ({navigation}) => {
                 onPress={() => navigation.navigate('ChatScreen', {
                   matchId: item._id, theirId: item.theirId, theirName: item.theirName, theirPhoto: item.theirPhoto
                 })}
+              />
+            )}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.matchesScrollContent}
+          />
+          <View style={styles.dividerUnified} />
+        </View>
+      )}
+
+      {/* 🕰️ PREVIOUS INTERACTIONS (Requirement #4) */}
+      {previousInteractions.length > 0 && (
+        <View style={styles.sectionUnified}>
+          <SectionHeaderUnified
+            title="PREVIOUS INTERACTIONS"
+            isSubsection={true}
+            showSeeAll={previousInteractions.length > 4}
+            isExpanded={isPreviousExpanded}
+            onPressSeeAll={() => setIsPreviousExpanded(!isPreviousExpanded)}
+          />
+          <FlatList
+            horizontal
+            data={isPreviousExpanded ? previousInteractions : previousInteractions.slice(0, 4)}
+            keyExtractor={item => `prev-${item._id}`}
+            renderItem={({item}) => (
+              <MatchAvatar
+                item={item}
+                onPress={() => {
+                  // Redirect to Home/Swipe Screen (Requirement #5)
+                  navigation.navigate('HomeTabs', { 
+                    screen: 'Accueil',
+                    params: { targetUserId: item.theirId }
+                  });
+                }}
               />
             )}
             showsHorizontalScrollIndicator={false}

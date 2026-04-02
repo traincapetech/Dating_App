@@ -248,11 +248,28 @@ export const deleteMessageApi = async (messageId, userId) => {
   }
 };
 
+/**
+ * Fetch expired matches for "Previous Interactions"
+ * @param {string} userId - User ID
+ */
+export const fetchPreviousInteractions = async userId => {
+  if (!userId) return {matches: []};
+
+  try {
+    const res = await apiClient.get(`/match/${userId}/previous`);
+    return res || {matches: []};
+  } catch (err) {
+    console.log('❌ fetchPreviousInteractions error:', err?.message);
+    return {matches: []};
+  }
+};
+
 export default {
   fetchMessages,
   sendMessageApi,
   markMessagesAsSeen,
   fetchMatches,
+  fetchPreviousInteractions,
   fetchLastMessages,
   uploadChatMedia,
   blockUser,

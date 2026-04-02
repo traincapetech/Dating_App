@@ -126,6 +126,15 @@ export const getProfileController = asyncHandler(async (req, res) => {
   if (!profile) {
     return res.status(404).json({error: 'Profile not found'});
   }
+
+  // ENFORCE "Pause Profile" visibility rules
+  if (profile.isPaused && viewerId !== targetUserId) {
+    return res.status(404).json({
+      error: 'Profile is paused',
+      message: 'This profile is currently paused and non-visible.',
+    });
+  }
+
   res.status(200).json({profile});
 });
 
@@ -574,39 +583,58 @@ export const getProfileInteractionsController = asyncHandler(async (req, res) =>
     let populatedSenders = {};
     if (uniqueSenderIds.length > 0) {
       const senderProfiles = await Profile.find(
-        { userId: { $in: uniqueSenderIds } },
-        { userId: 1, 'basicInfo.firstName': 1, 'basicInfo.name': 1, name: 1, photos: 1, media: 1 }
+        {
+          userId: {$in: uniqueSenderIds},
+          isPaused: {$ne: true},
+          isHidden: {$ne: true},
+        },
+        {
+          userId: 1,
+          isPaused: 1,
+          isHidden: 1,
+          'basicInfo.firstName': 1,
+          'basicInfo.name': 1,
+          name: 1,
+          photos: 1,
+          media: 1,
+        },
       ).lean();
 
       senderProfiles.forEach(p => {
         populatedSenders[p.userId] = {
           userId: p.userId,
           name: p.basicInfo?.firstName || p.basicInfo?.name || p.name || 'User',
-          avatar: p.photos?.[0] || (p.media?.media?.[0]?.url) || null
+          avatar: p.photos?.[0] || p.media?.media?.[0]?.url || null,
         };
       });
     }
 
-    // Attach sender info
-    const enrichedPhotoLikes = photoLikes.map(l => ({
-      ...l,
-      sender: populatedSenders[l.senderId] || null
-    }));
+    // Attach sender info AND FILTER OUT PAUSED SENDERS
+    const enrichedPhotoLikes = photoLikes
+      .filter(l => populatedSenders[l.senderId])
+      .map(l => ({
+        ...l,
+        sender: populatedSenders[l.senderId],
+      }));
 
-    const enrichedProfileLikes = profileLikes.map(l => ({
-      ...l,
-      sender: populatedSenders[l.senderId] || null
-    }));
+    const enrichedProfileLikes = profileLikes
+      .filter(l => populatedSenders[l.senderId])
+      .map(l => ({
+        ...l,
+        sender: populatedSenders[l.senderId],
+      }));
 
-    const enrichedComments = commentsList.map(c => ({
-      ...c,
-      sender: populatedSenders[c.senderId] || null
-    }));
+    const enrichedComments = commentsList
+      .filter(c => populatedSenders[c.senderId])
+      .map(c => ({
+        ...c,
+        sender: populatedSenders[c.senderId],
+      }));
 
     res.status(200).json({
       success: true,
       interactions: {
-        totalLikes,
+        totalLikes: enrichedPhotoLikes.length + enrichedProfileLikes.length,
         photoLikes: enrichedPhotoLikes,
         profileLikes: enrichedProfileLikes,
         comments: enrichedComments,

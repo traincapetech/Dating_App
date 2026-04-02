@@ -303,7 +303,11 @@ export async function getMatchedProfiles(userId, options = {}) {
         maxDistance: (maxDistance || 5000) * 1000, // Convert km to meters
         distanceMultiplier: 0.001, // Convert meters to km
         spherical: true,
-        query: {userId: {$ne: userId}}, // Exclude current user
+        query: {
+          userId: {$ne: userId},
+          isPaused: {$ne: true},
+          isHidden: {$ne: true},
+        }, // Exclude current user and paused/hidden users
       },
     });
   } else {
@@ -314,8 +318,14 @@ export async function getMatchedProfiles(userId, options = {}) {
         `[getMatchedProfiles] maxDistance ${maxDistance} requested but user ${userId} has no location. Ignoring distance filter.`,
       );
     }
-    // Fallback: just exclude self
-    pipeline.push({$match: {userId: {$ne: userId}}});
+    // Fallback: exclude self and paused/hidden users
+    pipeline.push({
+      $match: {
+        userId: {$ne: userId},
+        isPaused: {$ne: true},
+        isHidden: {$ne: true},
+      },
+    });
   }
 
   // B. Gender Filter

@@ -3,6 +3,7 @@ import Message from '../models/Message.js';
 import {getProfile} from '../services/profileService.js';
 import User from '../models/User.js';
 import { resolveDisplayName } from '../utils/nameUtils.js';
+import Like from '../models/Like.js';
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -31,6 +32,22 @@ async function syncMatchExpiration(match) {
     match.status = 'expired';
     match.chatEnabled = false;
     await match.save();
+
+    // Reset likes to allow re-swiping (Requirement #3)
+    try {
+      const res = await Like.deleteMany({
+        $or: [
+          {senderId: match.users[0], receiverId: match.users[1]},
+          {senderId: match.users[1], receiverId: match.users[0]},
+        ],
+      });
+      console.log(
+        `[Match Reset] Deleted ${res.deletedCount} likes for expired match: ${match._id}`,
+      );
+    } catch (err) {
+      console.error('[Match Reset] Error deleting likes:', err);
+    }
+
     return true;
   }
 
@@ -42,18 +59,33 @@ async function syncMatchExpiration(match) {
       `[Expiry Fix] Recovered prematurely expired match: ${match._id}`,
     );
     await match.save();
-    return false;
+    return false; // Not expired anymore
   }
 
-  // Optional: Keep expiresAt field synced with the 7-day rule for legacy reasons or visibility
+  // If it's already expired and remains inactive, ensure likes are cleaned up (legacy data heal)
+  if (match.status === 'expired') {
+    const {deletedCount} = await Like.deleteMany({
+      $or: [
+        {senderId: match.users[0], receiverId: match.users[1]},
+        {senderId: match.users[1], receiverId: match.users[0]},
+      ],
+    });
+    if (deletedCount > 0) {
+      console.log(
+        `[Match Heal] Cleaned ${deletedCount} stale likes for expired match: ${match._id}`,
+      );
+    }
+    return true;
+  }
+
+  // Keep expiresAt field synced for active matches
   const newExpiresAt = new Date(lastInteractionTime.getTime() + SEVEN_DAYS_MS);
   if (!match.expiresAt || Math.abs(match.expiresAt - newExpiresAt) > 60000) {
-    // Only update if difference > 1 min to avoid constant saves
     match.expiresAt = newExpiresAt;
     await match.save();
   }
 
-  return false;
+  return false; // Active
 }
 
 export const getUserMatches = async (req, res) => {
@@ -66,12 +98,16 @@ export const getUserMatches = async (req, res) => {
         .json({success: false, message: 'userId is required'});
     }
 
-    // Include matches that are either active OR were marked as expired
-    // (so we can re-evaluate them for recovery)
+    // Include all possible match states for evaluation/display
     const allMatches = await Match.find({
       users: userId,
-      $or: [{chatEnabled: true}, {status: 'expired'}],
-    }).sort({createdAt: -1});
+      $or: [
+        {chatEnabled: true},
+        {status: 'active'},
+        {status: 'secured'},
+        {status: 'expired'},
+      ],
+    }).sort({lastMessageAt: -1, createdAt: -1});
 
     // Check expiration and potentially update matches
     // Note: We process them sequentially to ensure DB consistency during the fetch
@@ -93,43 +129,48 @@ export const getUserMatches = async (req, res) => {
     });
 
     // Enrich matches with profile info of the other user
-    const enrichedMatches = await Promise.all(
-      matches.map(async match => {
-        const theirId = match.users.find(u => u !== userId);
-        const theirProfile = await getProfile(theirId);
-        const theirUser = await (async () => {
-          try {
-            const User = (await import('../models/User.js')).default;
-            return await User.findById(theirId);
-          } catch (e) {
+    const enrichedMatches = (
+      await Promise.all(
+        matches.map(async match => {
+          const theirId = match.users.find(u => u !== userId);
+          const theirProfile = await getProfile(theirId);
+
+          // HIDE matches if the other user has paused their profile
+          if (!theirProfile || theirProfile.isPaused || theirProfile.isHidden) {
             return null;
           }
-        })();
 
-        const profileName = `${theirProfile?.basicInfo?.firstName || ''} ${
-          theirProfile?.basicInfo?.lastName || ''
-        }`.trim();
+          const theirUser = await (async () => {
+            try {
+              const User = (await import('../models/User.js')).default;
+              return await User.findById(theirId);
+            } catch (e) {
+              return null;
+            }
+          })();
 
-        return {
-          _id: match._id,
-          users: match.users,
-          createdAt: match.createdAt,
-          chatEnabled: match.chatEnabled,
-          callEnabled: match.callEnabled,
-          theirId,
-          theirName: resolveDisplayName(theirProfile, theirUser),
-          theirPhoto:
-            theirProfile?.media?.media?.[0]?.url ||
-            theirProfile?.photos?.[0] ||
-            null,
-          theirAge:
-            theirProfile?.basicInfo?.age ||
-            theirProfile?.personalDetails?.age ||
-            theirProfile?.age ||
-            null,
-        };
-      }),
-    );
+          return {
+            _id: match._id,
+            users: match.users,
+            createdAt: match.createdAt,
+            lastMessageAt: match.lastMessageAt || match.createdAt,
+            chatEnabled: match.chatEnabled,
+            callEnabled: match.callEnabled,
+            theirId,
+            theirName: resolveDisplayName(theirProfile, theirUser),
+            theirPhoto:
+              theirProfile?.media?.media?.[0]?.url ||
+              theirProfile?.photos?.[0] ||
+              null,
+            theirAge:
+              theirProfile?.basicInfo?.age ||
+              theirProfile?.personalDetails?.age ||
+              theirProfile?.age ||
+              null,
+          };
+        }),
+      )
+    ).filter(Boolean);
 
     res.json({success: true, matches: enrichedMatches});
   } catch (error) {
@@ -366,5 +407,89 @@ export const unmatch = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({success: false, message: 'Error unmatching'});
+  }
+};
+
+// NEW: Get expired matches for "Previous Interactions" section
+export const getPreviousInteractions = async (req, res) => {
+  try {
+    const {userId} = req.params;
+
+    if (!userId) {
+      return res
+        .status(400)
+        .json({success: false, message: 'userId is required'});
+    }
+
+    // Fetch all matches for the user to determine current active state (Requirement #2: Prevent duplicates)
+    const [expiredMatches, activeMatches] = await Promise.all([
+      Match.find({ users: userId, status: 'expired' }).sort({ lastMessageAt: -1, createdAt: -1 }),
+      Match.find({ users: userId, status: { $in: ['active', 'secured'] } })
+    ]);
+
+    // Create a set of users who are ALREADY active matches
+    // These should NEVER appear as "previous" interactions
+    const activeUserIds = new Set();
+    activeMatches.forEach(m => {
+      const otherId = m.users.find(u => u !== userId);
+      if (otherId) activeUserIds.add(otherId);
+    });
+
+    // Enrich and filter matches
+    const uniqueUserIds = new Set();
+    const enrichedMatches = (
+      await Promise.all(
+        expiredMatches.map(async match => {
+          const theirId = match.users.find(u => u !== userId);
+          
+          // 🛑 CRITICAL FILTER: If they are active matches OR already in the prev list, skip (Requirement #2)
+          if (!theirId || activeUserIds.has(theirId) || uniqueUserIds.has(theirId)) {
+            return null;
+          }
+          uniqueUserIds.add(theirId);
+
+          const theirProfile = await getProfile(theirId);
+
+          // HIDE matches if the other user has paused their profile
+          if (!theirProfile || theirProfile.isPaused || theirProfile.isHidden) {
+            return null;
+          }
+
+          const theirUser = await (async () => {
+            try {
+              return await User.findById(theirId);
+            } catch (e) {
+              return null;
+            }
+          })();
+
+          return {
+            _id: match._id,
+            users: match.users,
+            createdAt: match.createdAt,
+            lastMessageAt: match.lastMessageAt || match.createdAt,
+            status: match.status,
+            theirId,
+            theirName: resolveDisplayName(theirProfile, theirUser),
+            theirPhoto:
+              theirProfile?.media?.media?.[0]?.url ||
+              theirProfile?.photos?.[0] ||
+              null,
+            theirAge:
+              theirProfile?.basicInfo?.age ||
+              theirProfile?.personalDetails?.age ||
+              theirProfile?.age ||
+              null,
+          };
+        }),
+      )
+    ).filter(Boolean);
+
+    res.json({success: true, matches: enrichedMatches});
+  } catch (error) {
+    console.error('[getPreviousInteractions] Error:', error);
+    res
+      .status(500)
+      .json({success: false, message: 'Error fetching previous interactions'});
   }
 };

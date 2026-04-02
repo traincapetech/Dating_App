@@ -26,7 +26,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
 import {colors, typography, spacing} from '../../../theme';
 import LinearGradient from 'react-native-linear-gradient';
-import {getDiscoverProfiles} from '../../../services/profile/profileService';
+import {getDiscoverProfiles, getProfile} from '../../../services/profile/profileService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MatchPopup from '../../../components/profile/MatchPopup.js';
 import {
@@ -522,7 +522,7 @@ const ProfileModal = ({
 
 // ─── HomeScreen ────────────────────────────────────────────────────────────────
 
-const HomeScreen = ({navigation}) => {
+const HomeScreen = ({navigation, route}) => {
   const {setLoading: setGlobalLoading} = useLoading();
   const {profile: myProfile} = useAuth();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -723,6 +723,7 @@ const HomeScreen = ({navigation}) => {
       distanceEnabled = useDistanceFilter,
       userLocationOverride = null,
       silent = false,
+      targetUserId = route?.params?.targetUserId,
     ) => {
       try {
         setLoadingLocal(silent ? false : true);
@@ -856,7 +857,70 @@ const HomeScreen = ({navigation}) => {
             })
             .filter(profile => profile.photos && profile.photos.length > 0);
 
-          setProfiles(transformedProfiles);
+          let finalProfiles = transformedProfiles;
+
+          // 🎯 PRIORITIZE TARGET USER (Requirement #1)
+          if (targetUserId) {
+            const index = finalProfiles.findIndex(p => p.id === targetUserId);
+            if (index !== -1) {
+              const targetProfile = finalProfiles[index];
+              finalProfiles = [
+                targetProfile,
+                ...finalProfiles.filter(p => p.id !== targetUserId),
+              ];
+            } else {
+              try {
+                const resp = await getProfile(targetUserId);
+                if (resp && (resp.profile || resp.id)) {
+                  const p = resp.profile || resp;
+                  const lat = parseFloat(p.latitude || p.location?.coordinates?.[1] || p.basicInfo?.locationDetails?.lat);
+                  const lon = parseFloat(p.longitude || p.location?.coordinates?.[0] || p.basicInfo?.locationDetails?.lng);
+                  let dist = null;
+                  if (userLoc && !isNaN(lat) && !isNaN(lon)) {
+                    dist = calculateDistance(userLoc.latitude, userLoc.longitude, lat, lon);
+                  }
+                  const transformedTarget = {
+                    id: p.userId || p.id,
+                    userId: p.userId || p.id,
+                    name: p.name || p.basicInfo?.firstName || 'Unknown',
+                    age: p.basicInfo?.age || p.personalDetails?.age || p.age || null,
+                    distance: dist !== null ? `${dist}` : null,
+                    bio: p.bio || '',
+                    interests: p.interests || p.lifestyle?.interests || [],
+                    photos: p.photos || p.media?.media?.map(m => m.url).filter(Boolean) || [],
+                    matchPercentage: p.matchScore ? Math.round(p.matchScore) : (p.matchPercentage || null),
+                    matchScore: p.matchScore || null,
+                    jobTitle: p.personalDetails?.jobTitle || '',
+                    school: p.personalDetails?.school || '',
+                    location: p.basicInfo?.location || '',
+                    city: p.basicInfo?.locationDetails?.city || '',
+                    gender: p.basicInfo?.gender || '',
+                    height: p.personalDetails?.height || '',
+                    drink: p.lifestyle?.drink || '',
+                    religion: p.lifestyle?.religiousBeliefs || '',
+                    politics: p.lifestyle?.politicalBeliefs || '',
+                    datingIntention: p.datingPreferences?.datingIntention || '',
+                    relationshipType: p.datingPreferences?.relationshipType || '',
+                    latitude: lat,
+                    longitude: lon,
+                    prompts: [
+                      p.profilePrompts?.aboutMe,
+                      p.profilePrompts?.selfCare,
+                      p.profilePrompts?.gettingPersonal,
+                    ].filter(pr => pr && pr.answer),
+                    isMostCompatible: p.isMostCompatible || false,
+                  };
+                  if (transformedTarget.photos.length > 0) {
+                    finalProfiles = [transformedTarget, ...finalProfiles];
+                  }
+                }
+              } catch (err) {
+                console.error('[HomeScreen] Failed to fetch target profile:', err);
+              }
+            }
+          }
+
+          setProfiles(finalProfiles);
           setCurrentIndex(0);
         } else {
           setProfiles([]);
@@ -1142,7 +1206,20 @@ const HomeScreen = ({navigation}) => {
   useFocusEffect(
     useCallback(() => {
       loadDailyLikeInfo();
-    }, [loadDailyLikeInfo]),
+      
+      // If targetUserId changed in params, reload to ensure it's at the top
+      if (route.params?.targetUserId) {
+        const tid = route.params.targetUserId;
+        // Only reload if the top card isn't already this user
+        if (!profiles.length || profiles[currentIndex]?.id !== tid) {
+          loadProfiles(null, useDistanceFilter, null, true, tid);
+          // Wait a bit then clear the param so it doesn't re-trigger on next focus
+          setTimeout(() => {
+            navigation.setParams({ targetUserId: null });
+          }, 1000);
+        }
+      }
+    }, [loadDailyLikeInfo, route.params?.targetUserId, profiles, currentIndex, loadProfiles]),
   );
 
   // ── Shared header ───────────────────────────────────────────────────────────

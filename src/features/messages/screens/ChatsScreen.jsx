@@ -195,6 +195,24 @@ const ChatsScreen = ({navigation}) => {
     return message.text || 'Tap to start chatting';
   };
 
+  const sortedMatches = React.useMemo(() => {
+    return [...matches].sort((a, b) => {
+      // Prioritize the real-time last message timestamp from socket/API, 
+      // fallback to the Match's lastActivityAt or the match's createdAt date.
+      const dateA = new Date(
+        lastMessages[a._id]?.lastMessage?.timestamp || 
+        a.lastMessageAt || 
+        a.createdAt
+      ).getTime();
+      const dateB = new Date(
+        lastMessages[b._id]?.lastMessage?.timestamp || 
+        b.lastMessageAt || 
+        b.createdAt
+      ).getTime();
+      return dateB - dateA; // Descending order
+    });
+  }, [matches, lastMessages]);
+
   if (loading && !visited.chats) {
     return (
       <FullScreenLoader
@@ -216,9 +234,9 @@ const ChatsScreen = ({navigation}) => {
           <Text style={styles.leaderboardText}>Top</Text>
         </Pressable>
       </View>
-
+ 
       <FlatList
-        data={matches}
+        data={sortedMatches}
         keyExtractor={item => item._id}
         ListEmptyComponent={
           !loading && matches.length === 0 ? <EmptyState /> : null
