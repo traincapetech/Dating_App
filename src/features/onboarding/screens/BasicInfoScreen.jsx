@@ -166,21 +166,22 @@ const BasicInfoScreen = () => {
             showGenderOnProfile: p.basicInfo?.showGenderOnProfile !== false,
           });
 
-          // 3. Determine the first incomplete step
+          // 3. Determine the first core incomplete step.
+          // We prioritize Name/DOB then Email then Gender/Location.
+          // We avoid forcing step 3 (notifications) if the user has already done some core steps.
           if (!firstName || !lastName || !dob) {
             setStep(1);
           } else if (!isVerified) {
             setStep(2);
-          } else if (notificationsEnabled === undefined) {
-            setStep(3);
-          } else if (!locationDetails) {
-            setStep(4);
           } else if (!gender) {
             setStep(5);
+          } else if (!locationDetails) {
+            setStep(4);
+          } else if (notificationsEnabled === undefined) {
+            // Only show step 3 if they're already mostly done but missing this.
+            setStep(3);
           } else {
-            // Everything done in basic info, maybe advance to next screen?
-            // Actually let's stay on step 5 or just navigate away
-            setStep(5);
+            setStep(5); // Default to last step if all core is done
           }
         } else {
           // Fallback to pre-fill from storage if profile fetch empty

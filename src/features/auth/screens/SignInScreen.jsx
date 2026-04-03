@@ -419,18 +419,15 @@ const SignInScreen = () => {
         password: form.password,
       });
       if (data?.user) {
-        await login(data.user);
+        const fetchedProfile = await login(data.user);
         
         // Use the centralized routing logic to decide where to go
-        const nextScreen = getNextOnboardingScreen();
-        console.log('[SignIn] Navigating to next screen:', nextScreen);
-
+        // We pass the fresh data to avoid context race conditions
+        const nextScreen = getNextOnboardingScreen(data.user, fetchedProfile);
         navigation.reset({
           index: 0,
           routes: [{ name: nextScreen }],
         });
-      } else {
-        navigation.navigate(AppRoute.Welcome);
       }
     } catch (error) {
       const message = error?.message || 'Unable to sign you in right now.';

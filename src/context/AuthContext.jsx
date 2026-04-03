@@ -39,7 +39,7 @@ export const AuthProvider = ({children}) => {
         if (data?.profile) {
           console.log('[AuthContext] Profile loaded successfully');
           setProfile(data.profile);
-          return true;
+          return data.profile;
         }
       } catch (error) {
         const status =
@@ -76,7 +76,7 @@ export const AuthProvider = ({children}) => {
     if (userData?.id) {
       return await loadProfile(userData.id);
     }
-    return false;
+    return null;
   };
 
   useEffect(() => {
@@ -104,79 +104,82 @@ export const AuthProvider = ({children}) => {
     initAuth();
   }, [loadProfile]);
 
-  const getNextOnboardingScreen = useCallback(() => {
-    if (!user) return AppRoute.SignIn;
+  /**
+   * Calculates the profile completion percentage
+   * This is used to guide the user to fill 'optional' details without blocking their journey.
+   */
+  const calculateProfileCompletion = useCallback((manualProfile) => {
+    const p = manualProfile || profile;
+    if (!p) return 0;
+    
+    let score = 0;
+    const totalWeight = 100;
+    
+    // Core (50%)
+    if (p.basicInfo?.firstName && p.basicInfo?.dob) score += 20;
+    if (p.datingPreferences?.whoToDate?.length > 0) score += 15;
+    if (p.media?.media?.length >= 1) score += 15;
+    
+    // Secondary/Detailed (50%)
+    if (p.personalDetails?.height) score += 10;
+    if (p.lifestyle?.drink) score += 10;
+    if (p.profilePrompts?.aboutMe?.question) score += 10;
+    if (p.media?.media?.length >= 5) score += 20; // Reaching the recommended photo count
+    
+    return Math.min(score, totalWeight);
+  }, [profile]);
 
-    console.log('[AuthContext] Determining next screen. Profile state:', {
-      hasProfile: !!profile,
-      hasBasicInfo: !!profile?.basicInfo,
-      isVerified: profile?.isVerified,
-      hasDatingPrefs: !!profile?.datingPreferences,
-      hasPersonalDetails: !!profile?.personalDetails,
-      hasLifestyle: !!profile?.lifestyle,
-      hasPrompts: !!profile?.profilePrompts,
-      mediaCount: profile?.media?.media?.length || 0,
+  /**
+   * Determines the absolute NECESSARY next step.
+   * This logic now only blocks for 'Core' data needed to show the user to others.
+   * Everything else is handled as 'Optional' via profile completion.
+   */
+  const getNextOnboardingScreen = useCallback((manualUser, manualProfile) => {
+    const u = manualUser || user;
+    const p = manualProfile || profile;
+
+    if (!u) return AppRoute.SignIn;
+
+    console.log('[AuthContext] Determining next core screen. Profile state:', {
+      hasProfile: !!p,
+      mediaCount: p?.media?.media?.length || 0,
     });
 
-    // Check if basic info is complete
+    // 1. CORE BASIC INFO (Name, Age, Location, Gender, Identity)
+    // We check if the absolute essentials exist.
     if (
-      !profile ||
-      !profile.basicInfo ||
-      !profile.basicInfo.firstName ||
-      !profile.basicInfo.lastName ||
-      !profile.basicInfo.dob ||
-      !profile.isVerified ||
-      !profile.basicInfo.locationDetails ||
-      !profile.basicInfo.gender
+      !p ||
+      !p.basicInfo ||
+      !p.basicInfo.firstName ||
+      !p.basicInfo.dob ||
+      !p.basicInfo.locationDetails || // Changed from locationDetails.coordinates
+      !p.basicInfo.gender
     ) {
-      console.log('[AuthContext] Basic info incomplete');
+      console.log('[AuthContext] CORE Basic info incomplete (Name/DOB/Location/Gender)');
       return AppRoute.BasicInfo;
     }
 
-    // Check if dating preferences are complete
+    // 2. CORE DATING INTENT (Who do you want to see?)
+    // This allows the app to function. Optional if we want to be even more permissive.
     if (
-      !profile.datingPreferences ||
-      !profile.datingPreferences.whoToDate ||
-      profile.datingPreferences.whoToDate.length === 0
+      !p.datingPreferences ||
+      !p.datingPreferences.whoToDate ||
+      p.datingPreferences.whoToDate.length === 0
     ) {
-      console.log('[AuthContext] Dating preferences incomplete');
+      console.log('[AuthContext] CORE Dating preferences missing');
       return AppRoute.DatingPreferences;
     }
 
-    // Check if personal details are complete
-    if (!profile.personalDetails || !profile.personalDetails.height) {
-      console.log('[AuthContext] Personal details incomplete');
-      return AppRoute.PersonalDetails;
-    }
-
-    // Check if lifestyle is complete
-    if (!profile.lifestyle || !profile.lifestyle.drink) {
-      console.log('[AuthContext] Lifestyle incomplete');
-      return AppRoute.Lifestyle;
-    }
-
-    // Check if profile prompts are complete
-    if (
-      !profile.profilePrompts ||
-      !profile.profilePrompts.aboutMe ||
-      !profile.profilePrompts.aboutMe.question
-    ) {
-      console.log('[AuthContext] Profile prompts incomplete');
-      return AppRoute.ProfilePrompts;
-    }
-
-    // Check if media is uploaded (at least 5)
-    if (
-      !profile.media ||
-      !profile.media.media ||
-      profile.media.media.length < 5
-    ) {
-      console.log('[AuthContext] Media incomplete');
+    // 3. CORE MEDIA (At least one photo)
+    const mediaCount = (p?.media?.media?.length || 0) || (p?.photos?.length || 0);
+    if (mediaCount < 1) {
+      console.log('[AuthContext] CORE Media incomplete (need at least 1)');
       return AppRoute.MediaUpload;
     }
 
-    console.log('[AuthContext] All steps complete, going to Home');
-    // Default to home if everything looks done
+    // EVERYTHING ELSE (Height, Lifestyle, Prompts, extra photos) 
+    // is now considered 'Secondary' and won't block the user from the app.
+    console.log('[AuthContext] Core stats complete. Redirecting to Home.');
     return AppRoute.HomeTabs;
   }, [user, profile]);
 
@@ -195,6 +198,8 @@ export const AuthProvider = ({children}) => {
         pendingIntent,
         setPendingIntent,
         getNextOnboardingScreen,
+        calculateProfileCompletion,
+        completionRate: calculateProfileCompletion(),
       }}>
       {children}
     </AuthContext.Provider>

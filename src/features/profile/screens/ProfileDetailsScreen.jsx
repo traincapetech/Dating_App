@@ -431,8 +431,41 @@ const ProfileDetailsScreen = () => {
     ]);
   };
 
+  const checkStoragePermission = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        if (Platform.Version >= 33) {
+          const hasFull = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES);
+          if (Platform.Version >= 34) {
+            const hasPartial = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_VISUAL_USER_SELECTED);
+            if (hasFull || hasPartial) return true;
+          } else if (hasFull) {
+            return true;
+          }
+          const results = await PermissionsAndroid.requestMultiple(
+            Platform.Version >= 34 
+              ? [PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES, PermissionsAndroid.PERMISSIONS.READ_MEDIA_VISUAL_USER_SELECTED]
+              : [PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES]
+          );
+          return results[PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES] === PermissionsAndroid.RESULTS.GRANTED ||
+                 results[PermissionsAndroid.PERMISSIONS.READ_MEDIA_VISUAL_USER_SELECTED] === PermissionsAndroid.RESULTS.GRANTED;
+        }
+        const hasLegacy = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE);
+        if (hasLegacy) return true;
+        const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE);
+        return result === PermissionsAndroid.RESULTS.GRANTED;
+      } catch (e) { return false; }
+    }
+    return true;
+  };
+
   const handleAddPhoto = async index => {
     try {
+      const hasPermission = await checkStoragePermission();
+      if (!hasPermission) {
+        Alert.alert('Permission Required', 'Pryvo needs access to your gallery to add photos.');
+        return;
+      }
       const result = await launchImageLibrary({
         mediaType: 'photo',
         quality: 0.8,

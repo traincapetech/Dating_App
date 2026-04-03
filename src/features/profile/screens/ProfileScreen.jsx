@@ -106,30 +106,13 @@ const ProfileScreen = () => {
     loadProfile();
   };
 
-  const calculateCompletion = () => {
-    if (!profile) return 0;
-    let score = 0;
-    const total = 7;
+  const {
+    profile: contextProfile, 
+    user: contextUser, 
+    completionRate
+  } = useAuth();
 
-    if (profile.photos?.length > 0 || profile.media?.media?.length > 0) score++;
-    if (profile.name || profile.basicInfo?.firstName) score++;
-    const bio =
-      profile.bio ||
-      profile.profilePrompts?.aboutMe?.answer ||
-      profile.profilePrompts?.bio ||
-      profile.basicInfo?.bio;
-    if (bio && bio.trim().length > 0) score++;
-    const interests = profile.interests || profile.lifestyle?.interests || [];
-    if (interests.length > 0) score++;
-    if (profile.age || profile.personalDetails?.age || profile.basicInfo?.dob)
-      score++;
-    if (profile.basicInfo?.location) score++;
-    if (profile.datingPreferences?.whoToDate?.length > 0) score++;
-
-    return Math.round((score / total) * 100);
-  };
-
-  const completionPercentage = calculateCompletion();
+  const completionPercentage = completionRate;
 
   const photos =
     profile?.photos ||

@@ -158,9 +158,13 @@ const SignUpScreen = () => {
         password: form.password,
       });
       if (data?.user) {
-        await login(data.user);
+        const fetchedProfile = await login(data.user);
+        const nextScreen = getNextOnboardingScreen(data.user, fetchedProfile);
+        navigation.reset({
+          index: 0,
+          routes: [{ name: nextScreen }],
+        });
       }
-      navigation.navigate(AppRoute.Welcome);
     } catch (error) {
       const message = error?.message || 'Failed to create your account.';
       setErrors(prev => ({ ...prev, api: message }));

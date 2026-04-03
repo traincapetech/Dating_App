@@ -190,36 +190,47 @@ const MediaUploadScreen = () => {
   const checkStoragePermission = async () => {
     if (Platform.OS === 'android') {
       try {
-        let permission;
+        console.log('[MediaUpload] Checking storage permission. API Level:', Platform.Version);
+        
+        // Android 13 (API 33) and above use READ_MEDIA_IMAGES
         if (Platform.Version >= 33) {
-          permission = PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES;
+          const hasFullAccess = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES);
+          
+          // Android 14 (API 34) adds "Partial Access"
+          if (Platform.Version >= 34) {
+            const hasPartialAccess = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_VISUAL_USER_SELECTED);
+            console.log('[MediaUpload] API 34+ Check:', { hasFullAccess, hasPartialAccess });
+            if (hasFullAccess || hasPartialAccess) return true;
+          } else {
+            console.log('[MediaUpload] API 33 Check:', { hasFullAccess });
+            if (hasFullAccess) return true;
+          }
+
+          // If not granted, request them
+          const permissionsToRequest = Platform.Version >= 34 
+            ? [PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES, PermissionsAndroid.PERMISSIONS.READ_MEDIA_VISUAL_USER_SELECTED]
+            : [PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES];
+            
+          const results = await PermissionsAndroid.requestMultiple(permissionsToRequest);
+          
+          const granted = results[PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES] === PermissionsAndroid.RESULTS.GRANTED ||
+                        results[PermissionsAndroid.PERMISSIONS.READ_MEDIA_VISUAL_USER_SELECTED] === PermissionsAndroid.RESULTS.GRANTED;
+          
+          return granted;
         } else {
-          permission = PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE;
+          // Legacy permission for Android 12 and below
+          const hasLegacy = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE);
+          if (hasLegacy) return true;
+          
+          const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE);
+          return result === PermissionsAndroid.RESULTS.GRANTED;
         }
-
-        // Check if permission is already granted
-        const checkResult = await PermissionsAndroid.check(permission);
-
-        if (checkResult) {
-          return true; // Already granted
-        }
-
-        // Request storage permission
-        const storageGranted = await PermissionsAndroid.request(permission, {
-          title: 'Storage Permission',
-          message: 'Pryvo needs access to your photos to select images',
-          buttonNeutral: 'Ask Me Later',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
-        });
-
-        return storageGranted === PermissionsAndroid.RESULTS.GRANTED;
       } catch (err) {
         console.error('Storage permission error:', err);
         return false;
       }
     }
-    return true; // iOS handles permissions automatically
+    return true; // iOS handles via Info.plist
   };
 
   const handleCamera = async index => {
