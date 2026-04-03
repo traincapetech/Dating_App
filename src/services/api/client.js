@@ -161,8 +161,11 @@ async function request(
   try {
     data = text && text !== 'undefined' ? JSON.parse(text) : null;
   } catch (parseError) {
-    console.warn('[API Client] Failed to parse response as JSON:', parseError);
-    console.warn('[API Client] Response text:', text.substring(0, 200));
+    // If it's not JSON, and it's not HTML, it's probably just a plain string or empty
+    data = null;
+    if (!text.trim().startsWith('<')) {
+      console.log('[API Client] Non-JSON response received:', text.substring(0, 50));
+    }
   }
 
   if (!response.ok) {

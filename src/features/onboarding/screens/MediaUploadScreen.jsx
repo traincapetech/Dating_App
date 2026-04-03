@@ -11,6 +11,7 @@ import {
   Platform,
   ActivityIndicator,
   SafeAreaView,
+  PermissionsAndroid,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';

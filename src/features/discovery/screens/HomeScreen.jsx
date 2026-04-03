@@ -570,6 +570,7 @@ const HomeScreen = ({navigation}) => {
   const translateY = useSharedValue(0);
   const opacity = useSharedValue(1);
   const focusValue = useSharedValue(0);
+  const gestureStateHaptic = useSharedValue(0); // Tracks if threshold haptic was fired
 
   useEffect(() => {
     focusValue.value = withTiming(isProfileFocused ? 1 : 0, {duration: 250});
@@ -970,12 +971,8 @@ const HomeScreen = ({navigation}) => {
   const processSwipe = async direction => {
     if (!currentProfile || !currentUserId) return;
 
-    if (direction === 'right' && dailyLikeInfo.remaining <= 0) {
-      Alert.alert(
-        'Daily Like Limit Reached',
-        `You've reached your daily like limit of ${dailyLikeInfo.limit}. Come back tomorrow for more likes!`,
-        [{text: 'OK'}],
-      );
+    if (direction === 'right' && dailyLikeInfo.remaining <= 0 && !dailyLikeInfo.isPremium) {
+      navigation.navigate('SubscriptionUpsell');
       return;
     }
 
@@ -1047,12 +1044,7 @@ const HomeScreen = ({navigation}) => {
         .catch(err => {
           console.error('Like error:', err);
           if (err?.response?.status === 429 || err?.limitReached) {
-            Alert.alert(
-              'Daily Like Limit Reached',
-              err?.message ||
-                "You've reached your daily like limit. Come back tomorrow!",
-              [{text: 'OK'}],
-            );
+            navigation.navigate('SubscriptionUpsell');
             loadDailyLikeInfo();
           }
         });
@@ -1076,8 +1068,19 @@ const HomeScreen = ({navigation}) => {
     .onUpdate(event => {
       translateX.value = event.translationX;
       translateY.value = event.translationY;
+
+      // Smart tactile feedback when crossing threshold
+      const absX = Math.abs(event.translationX);
+      if (absX > SWIPE_THRESHOLD && gestureStateHaptic.value === 0) {
+        gestureStateHaptic.value = 1;
+        runOnJS(triggerMediumHaptic)();
+      } else if (absX <= SWIPE_THRESHOLD && gestureStateHaptic.value === 1) {
+        // Reset if user pulls it back before dropping
+        gestureStateHaptic.value = 0;
+      }
     })
     .onEnd(event => {
+      gestureStateHaptic.value = 0; // Reset state for next card
       if (event.translationX > SWIPE_THRESHOLD || event.velocityX > 500) {
         runOnJS(processSwipe)('right');
       } else if (
@@ -1245,52 +1248,68 @@ const HomeScreen = ({navigation}) => {
   // ── Empty state ─────────────────────────────────────────────────────────────
   if (!currentProfile) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-        <StatusBar
-          barStyle="dark-content"
-          backgroundColor={colors.background}
-        />
-        {renderHeader()}
-        <View style={styles.emptyContainer}>
-          <View style={{marginBottom: 20}}>
-            <MaterialCommunityIcons
-              name="account-search"
-              size={80}
-              color={colors.primary}
-            />
+      <ThemeBackground>
+        <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+          <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+          {renderHeader()}
+          <View style={[styles.emptyContainer, {justifyContent: 'center', flex: 1, paddingHorizontal: 30}]}>
+            <View style={styles.emptyAnimationWrapper}>
+              <View style={styles.emptyCircleLarge}>
+                <LinearGradient
+                  colors={[colors.primary, '#E040C8']}
+                  style={styles.emptyCircleMedium}>
+                  <View style={styles.emptyCircleSmall}>
+                    <MaterialCommunityIcons
+                      name="star-four-points"
+                      size={52}
+                      color={colors.primary}
+                    />
+                  </View>
+                </LinearGradient>
+              </View>
+            </View>
+            <Text style={[styles.emptyTitle, {fontSize: 32, marginTop: 40, fontFamily: typography.fontFamilyBold}]}>
+              You're all caught up!
+            </Text>
+            <Text style={[styles.emptySubtitle, {fontSize: 16, lineHeight: 24, paddingHorizontal: 10, marginTop: 12}]}>
+              You've seen everyone nearby. Adjust your distance preferences or come back later for new matches.
+            </Text>
+            
+            <View style={{marginTop: 50, width: '100%'}}>
+              <Pressable
+                style={({pressed}) => [styles.primaryCtaBtn, pressed && {transform: [{scale: 0.96}]}]}
+                onPress={async () => {
+                  setProfiles([]);
+                  setCurrentIndex(0);
+                  translateX.value = 0;
+                  translateY.value = 0;
+                  opacity.value = 1;
+                  if (currentUserId) {
+                    try {
+                      await resetPasses(currentUserId);
+                    } catch (e) {}
+                  }
+                  await loadProfiles();
+                }}>
+                <LinearGradient
+                  colors={['#9411FA', '#E040C8']}
+                  start={{x: 0, y: 0}}
+                  end={{x: 1, y: 0}}
+                  style={styles.ctaGradientBtn}>
+                  <MaterialCommunityIcons name="refresh" size={22} color="#FFF" style={{marginRight: 8}} />
+                  <Text style={styles.ctaTextBtn}>Search Again</Text>
+                </LinearGradient>
+              </Pressable>
+
+              <Pressable
+                style={styles.secondaryCtaBtn}
+                onPress={() => navigation.navigate('AdvancedFilters')}>
+                <Text style={styles.secondaryCtaText}>Adjust Filters</Text>
+              </Pressable>
+            </View>
           </View>
-          <Text style={styles.emptyTitle}>No more profiles</Text>
-          <Text style={styles.emptySubtitle}>
-            We've run out of people nearby. Try adjusting your distance or age
-            filters to see more people.
-          </Text>
-          <Pressable
-            style={styles.refreshButton}
-            onPress={async () => {
-              setProfiles([]);
-              setCurrentIndex(0);
-              translateX.value = 0;
-              translateY.value = 0;
-              opacity.value = 1;
-              if (currentUserId) {
-                try {
-                  await resetPasses(currentUserId);
-                } catch (e) {
-                  console.error('Failed to reset passes:', e);
-                }
-              }
-              await loadProfiles();
-            }}>
-            <LinearGradient
-              colors={['#9411FA', '#E040C8', '#FF6B35']}
-              start={{x: 0, y: 0}}
-              end={{x: 1, y: 0}}
-              style={styles.refreshButtonGradient}>
-              <Text style={styles.refreshButtonText}>Refresh Profiles</Text>
-            </LinearGradient>
-          </Pressable>
-        </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </ThemeBackground>
     );
   }
 
@@ -1757,6 +1776,74 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontFamily: typography.fontFamilyBold,
     fontSize: 16,
+  },
+  emptyAnimationWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyCircleLarge: {
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(148, 17, 250, 0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyCircleMedium: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    justifyContent: 'center',
+    alignItems: 'center',
+    opacity: 0.8,
+  },
+  emptyCircleSmall: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#FFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 10},
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
+  },
+  primaryCtaBtn: {
+    borderRadius: 30,
+    overflow: 'hidden',
+    shadowColor: colors.primary,
+    shadowOffset: {width: 0, height: 8},
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    elevation: 6,
+    width: '100%',
+  },
+  ctaGradientBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+  },
+  ctaTextBtn: {
+    color: '#FFF',
+    fontSize: 18,
+    fontFamily: typography.fontFamilyBold,
+  },
+  secondaryCtaBtn: {
+    marginTop: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderRadius: 30,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  secondaryCtaText: {
+    color: colors.textPrimary,
+    fontSize: 16,
+    fontFamily: typography.fontFamilyBold,
   },
 
   // ── Floating ──────────────────────────────────────────────────────────────

@@ -1,204 +1,143 @@
-import React, {
-  createContext,
-  useState,
-  useContext,
-  useEffect,
-  useCallback,
-} from 'react';
+import React, {createContext, useState, useContext, useEffect, useMemo, useCallback} from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {getAccessToken, clearTokens} from '../services/storage/tokenStorage';
+import {getAccessToken} from '../services/storage/tokenStorage';
 import {getProfile} from '../services/profile/profileService';
 import {AppRoute} from '../constants/routes';
-import {useInitialLoad} from './InitialLoadContext';
 
-const AuthContext = createContext({});
+const AuthContext = createContext();
 
 export const AuthProvider = ({children}) => {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [profileLoading, setProfileLoading] = useState(false);
-  const [pendingIntent, setPendingIntent] = useState(null); // { type, userId, ... }
-  const {resetVisited} = useInitialLoad();
-
-  const logout = useCallback(async () => {
-    console.log('[AuthContext] Logging out');
-    await clearTokens();
-    await AsyncStorage.removeItem('@pryvo_user');
-    setUser(null);
-    setProfile(null);
-    resetVisited();
-  }, [resetVisited]);
-
-  const loadProfile = useCallback(
-    async userId => {
-      setProfileLoading(true);
-      try {
-        console.log('[AuthContext] Fetching profile for:', userId);
-        const data = await getProfile(userId);
-        if (data?.profile) {
-          console.log('[AuthContext] Profile loaded successfully');
-          setProfile(data.profile);
-          return true;
-        }
-      } catch (error) {
-        const status =
-          typeof error?.status === 'number' ? error.status : undefined;
-        console.error('[AuthContext] Error loading profile:', {
-          message: error?.message,
-          status,
-          isNetworkError: !!error?.isNetworkError,
-          path: error?.path,
-          baseUrl: error?.baseUrl,
-          method: error?.method,
-          originalMessage: error?.originalError?.message,
-        });
-        // If the session is invalid (401), we should log out locally
-        if (status === 401) {
-          console.log('[AuthContext] Session invalid (401) - logging out');
-          await logout();
-        }
-        // 404 just means no profile exists yet, which is fine for new users
-        if (status === 404) {
-          console.log('[AuthContext] No profile found (404) - user may be new');
-        }
-      } finally {
-        setProfileLoading(false);
-      }
-      return false;
-    },
-    [logout],
-  );
-
-  const login = async userData => {
-    console.log('[AuthContext] Login called with user:', userData?.id);
-    setUser(userData);
-    if (userData?.id) {
-      return await loadProfile(userData.id);
-    }
-    return false;
-  };
+  const [completionRate, setCompletionRate] = useState(0);
 
   useEffect(() => {
     const initAuth = async () => {
       try {
         const token = await getAccessToken();
         const storedUser = await AsyncStorage.getItem('@pryvo_user');
-
-        console.log('[AuthContext] Initializing auth state...', {
-          hasToken: !!token,
-          hasUser: !!storedUser,
-        });
-
+        
         if (token && storedUser) {
           const parsedUser = JSON.parse(storedUser);
           setUser(parsedUser);
+          // Load profile if user exists
           await loadProfile(parsedUser.id);
         }
       } catch (error) {
-        console.error('[AuthContext] Initialization error:', error);
+        console.error('[AuthContext] Init error:', error);
       } finally {
         setLoading(false);
       }
     };
+
     initAuth();
-  }, [loadProfile]);
+  }, []);
+
+  const loadProfile = async (userId) => {
+    try {
+      const response = await getProfile(userId);
+      const p = response?.profile || response;
+      setProfile(p);
+      
+      // Update completion rate when profile loads
+      if (p) {
+        calculateCompletion(p);
+      }
+      return p;
+    } catch (error) {
+      console.error('[AuthContext] Load profile error:', error);
+      return null;
+    }
+  };
+
+  const calculateCompletion = (p) => {
+    if (!p) return;
+    
+    let score = 0;
+    let total = 6; // Basic, Prompts, Details, Lifestyle, Dating, Media
+
+    if (p.basicInfo?.firstName && p.basicInfo?.dob) score += 1;
+    if (p.profilePrompts?.aboutMe?.answer || p.bio) score += 1;
+    if (p.personalDetails?.height || p.personalDetails?.jobTitle) score += 1;
+    if (p.lifestyle?.drink || p.lifestyle?.smoke) score += 1;
+    if (p.datingPreferences?.whoToDate?.length > 0) score += 1;
+    
+    const mediaCount = (p.media?.media?.length || 0) || (p.photos?.length || 0);
+    if (mediaCount >= 5) score += 1;
+    else if (mediaCount > 0) score += 0.5;
+
+    const rate = Math.round((score / total) * 100);
+    setCompletionRate(rate);
+  };
+
+  const login = async (userData, token) => {
+    await AsyncStorage.setItem('@pryvo/token', token);
+    await AsyncStorage.setItem('@pryvo_user', JSON.stringify(userData));
+    setUser(userData);
+    const p = await loadProfile(userData.id);
+    return { user: userData, profile: p };
+  };
+
+  const logout = async () => {
+    await AsyncStorage.multiRemove(['@pryvo/token', '@pryvo/refresh', '@pryvo_user']);
+    setUser(null);
+    setProfile(null);
+  };
+
+  const updateProfileState = (newProfile) => {
+    setProfile(newProfile);
+    calculateCompletion(newProfile);
+  };
 
   const getNextOnboardingScreen = useCallback(() => {
-    if (!user) return AppRoute.SignIn;
+    if (!user) return AppRoute.Welcome;
+    
+    // Use fresh profile data
+    const p = profile;
 
-    console.log('[AuthContext] Determining next screen. Profile state:', {
-      hasProfile: !!profile,
-      hasBasicInfo: !!profile?.basicInfo,
-      isVerified: profile?.isVerified,
-      hasDatingPrefs: !!profile?.datingPreferences,
-      hasPersonalDetails: !!profile?.personalDetails,
-      hasLifestyle: !!profile?.lifestyle,
-      hasPrompts: !!profile?.profilePrompts,
-      mediaCount: profile?.media?.media?.length || 0,
-    });
-
-    // Check if basic info is complete
+    // 1. CORE BASIC INFO (Name, Age, Location, Gender)
+    // These are the ONLY pages we block the user on.
     if (
-      !profile ||
-      !profile.basicInfo ||
-      !profile.basicInfo.firstName ||
-      !profile.basicInfo.lastName ||
-      !profile.basicInfo.dob ||
-      !profile.isVerified ||
-      !profile.basicInfo.locationDetails ||
-      !profile.basicInfo.gender
+      !p ||
+      !p.basicInfo ||
+      !p.basicInfo.firstName ||
+      !p.basicInfo.dob ||
+      !p.basicInfo.gender ||
+      !p.basicInfo.locationDetails
     ) {
-      console.log('[AuthContext] Basic info incomplete');
+      console.log('[AuthContext] CORE Basic info incomplete (Name/DOB/Location/Gender)');
       return AppRoute.BasicInfo;
     }
 
-    // Check if dating preferences are complete
-    if (
-      !profile.datingPreferences ||
-      !profile.datingPreferences.whoToDate ||
-      profile.datingPreferences.whoToDate.length === 0
-    ) {
-      console.log('[AuthContext] Dating preferences incomplete');
-      return AppRoute.DatingPreferences;
-    }
-
-    // Check if personal details are complete
-    if (!profile.personalDetails || !profile.personalDetails.height) {
-      console.log('[AuthContext] Personal details incomplete');
-      return AppRoute.PersonalDetails;
-    }
-
-    // Check if lifestyle is complete
-    if (!profile.lifestyle || !profile.lifestyle.drink) {
-      console.log('[AuthContext] Lifestyle incomplete');
-      return AppRoute.Lifestyle;
-    }
-
-    // Check if profile prompts are complete
-    if (
-      !profile.profilePrompts ||
-      !profile.profilePrompts.aboutMe ||
-      !profile.profilePrompts.aboutMe.question
-    ) {
-      console.log('[AuthContext] Profile prompts incomplete');
-      return AppRoute.ProfilePrompts;
-    }
-
-    // Check if media is uploaded (at least 5)
-    if (
-      !profile.media ||
-      !profile.media.media ||
-      profile.media.media.length < 5
-    ) {
-      console.log('[AuthContext] Media incomplete');
+    // 2. CORE MEDIA (At least one photo)
+    // We let them through with just 1 photo, though we remind them later to add 5.
+    const mediaCount = (p?.media?.media?.length || 0) || (p?.photos?.length || 0);
+    if (mediaCount < 1) {
+      console.log('[AuthContext] CORE Media incomplete (need at least 1)');
       return AppRoute.MediaUpload;
     }
 
-    console.log('[AuthContext] All steps complete, going to Home');
-    // Default to home if everything looks done
+    // Everything else (PersonalDetails, Lifestyle, ProfilePrompts, etc.)
+    // is secondary and does NOT block the user from swiping.
+    console.log('[AuthContext] Core checks passed -> HomeTabs');
     return AppRoute.HomeTabs;
   }, [user, profile]);
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        profile,
-        isAuthenticated: !!user,
-        loading,
-        profileLoading,
-        login,
-        logout,
-        setProfile,
-        loadProfile,
-        pendingIntent,
-        setPendingIntent,
-        getNextOnboardingScreen,
-      }}>
-      {children}
-    </AuthContext.Provider>
-  );
+  const value = {
+    user,
+    profile,
+    loading,
+    completionRate,
+    login,
+    logout,
+    loadProfile,
+    updateProfileState,
+    getNextOnboardingScreen,
+    isAuthenticated: !!user && !!profile,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => useContext(AuthContext);
