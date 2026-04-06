@@ -33,25 +33,8 @@ class PryvoNotificationModule(reactContext: ReactApplicationContext) : ReactCont
             notificationManager.createNotificationChannel(channel)
         }
 
-        val remoteViews = RemoteViews(context.packageName, R.layout.custom_notification)
-        remoteViews.setTextViewText(R.id.notification_title, title)
-        remoteViews.setTextViewText(R.id.notification_body, body)
+        val intent = Intent(context, FullScreenActivity::class.java)
 
-        // Set up the Chronometer
-        remoteViews.setChronometer(
-            R.id.notification_timer,
-            timestampMillis.toLong(),
-            null,
-            true // started
-        )
-        // Set countDown to true (requires API 24+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            remoteViews.setChronometerCountDown(R.id.notification_timer, true)
-        }
-
-        val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-        }
         val pendingIntent = PendingIntent.getActivity(
             context,
             0,
@@ -60,18 +43,16 @@ class PryvoNotificationModule(reactContext: ReactApplicationContext) : ReactCont
         )
 
         val notification = NotificationCompat.Builder(context, channelId)
-            // Use standard app icon for the status bar small icon
-            .setSmallIcon(R.mipmap.ic_launcher_round) 
-            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
-            .setCustomContentView(remoteViews)
-            .setCustomBigContentView(remoteViews)
-            .setContentIntent(pendingIntent)
+            .setSmallIcon(R.mipmap.ic_launcher_round)
+            .setContentTitle(title)
+            .setContentText(body)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setCategory(NotificationCompat.CATEGORY_CALL)
+            .setFullScreenIntent(pendingIntent, true) // 🔥 IMPORTANT
             .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setColor(0xFF6082B6.toInt()) // Schmooze blue
+            .setColor(0xFF6082B6.toInt())
             .build()
 
-        // generate a random id or use a fixed one if we want to replace
-        notificationManager.notify((Math.random() * 100000).toInt(), notification)
+        notificationManager.notify(1, notification)
     }
 }
