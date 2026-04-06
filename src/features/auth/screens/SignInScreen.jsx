@@ -421,8 +421,7 @@ const SignInScreen = () => {
       if (data?.user) {
         const fetchedProfile = await login(data.user);
         
-        // Use the centralized routing logic to decide where to go
-        // We pass the fresh data to avoid context race conditions
+        // Pass fresh user (with onboardingStep from server) to avoid context race condition
         const nextScreen = getNextOnboardingScreen(data.user, fetchedProfile);
         navigation.reset({
           index: 0,

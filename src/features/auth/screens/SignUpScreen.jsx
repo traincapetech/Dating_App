@@ -235,8 +235,10 @@ const SignUpScreen = () => {
         password: form.password,
       });
       if (data?.user) {
-        const fetchedProfile = await login(data.user);
-        const nextScreen = getNextOnboardingScreen(data.user, fetchedProfile);
+        await login(data.user);
+        // New users always have onboardingStep='BASIC_INFO' from server
+        // Pass data.user directly to avoid stale-context race condition
+        const nextScreen = getNextOnboardingScreen(data.user, null);
         navigation.reset({ index: 0, routes: [{ name: nextScreen }] });
       }
     } catch (error) {

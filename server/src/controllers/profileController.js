@@ -36,6 +36,13 @@ export const saveBasicInfoController = asyncHandler(async (req, res) => {
   }
   const parsed = basicInfoSchema.parse(req.body);
   const profile = await saveBasicInfo(userId, parsed);
+
+  // Advance onboarding step — user can now go to media upload
+  // Fire-and-forget: don't block the response on this
+  updateUser(userId, {onboardingStep: 'MEDIA'}).catch(e =>
+    console.warn('[Profile] Failed to set onboardingStep=MEDIA:', e.message),
+  );
+
   res.status(200).json({profile});
 });
 
@@ -98,6 +105,12 @@ export const saveMediaController = asyncHandler(async (req, res) => {
   }
   const parsed = mediaUploadSchema.parse(req.body);
   const profile = await saveMedia(userId, parsed);
+
+  // Mark onboarding as fully complete
+  updateUser(userId, {onboardingStep: 'COMPLETE'}).catch(e =>
+    console.warn('[Profile] Failed to set onboardingStep=COMPLETE:', e.message),
+  );
+
   res.status(200).json({profile});
 });
 

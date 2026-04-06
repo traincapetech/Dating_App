@@ -66,9 +66,9 @@ const SplashScreen = ({navigation}) => {
   const {width, height} = useWindowDimensions();
   const {
     isAuthenticated,
+    user,
     profile,
-    loading: authLoading,
-    profileLoading,
+    isAppReady,        // ← true only when session + profile are both resolved
     getNextOnboardingScreen,
   } = useAuth();
 
@@ -80,6 +80,7 @@ const SplashScreen = ({navigation}) => {
   const actionCardWidth = Math.min(400, width - 32);
 
   const [googleLoading, setGoogleLoading] = useState(false);
+  const hasNavigated = React.useRef(false); // prevent double-navigation
 
   // Animations
   const uiFadeAnim = useRef(new Animated.Value(0)).current;
@@ -102,23 +103,17 @@ const SplashScreen = ({navigation}) => {
     ]).start();
   }, []);
 
-  // Auth Routing logic (FIXED: Eliminated mandatory 1.5s delay for authenticated users)
+  // Auth Routing — fires ONLY once, and ONLY when app is fully ready
   useEffect(() => {
-    // Wait for the full auth initialization (session check + profile fetch)
-    if (!authLoading && !profileLoading) {
-      if (isAuthenticated) {
-        // USE context routing logic to ensure they actually finished onboarding
-        const nextScreen = getNextOnboardingScreen();
-        console.log('[SplashScreen] Next screen determined:', nextScreen);
-        
-        // Either HomeTabs or one of the Onboarding screens.
-        navigation?.reset({index: 0, routes: [{name: nextScreen}]});
-      } else {
-        // If guest, keep on Splash and show buttons (animations handle the rest)
-        console.log('[SplashScreen] No session found, stay on Splash');
-      }
-    }
-  }, [authLoading, profileLoading, isAuthenticated, profile, navigation]);
+    if (!isAppReady) return;          // Wait until session + profile settled
+    if (!isAuthenticated) return;      // Guest: show splash buttons
+    if (hasNavigated.current) return;  // Already navigated — don't re-trigger
+
+    hasNavigated.current = true;
+    const nextScreen = getNextOnboardingScreen();
+    console.log('[SplashScreen] isAppReady. Next screen:', nextScreen);
+    navigation?.reset({index: 0, routes: [{name: nextScreen}]});
+  }, [isAppReady, isAuthenticated, getNextOnboardingScreen, navigation]);
 
   const handleCreateAccount = () => {
     navigation?.navigate(AppRoute.SignIn);
@@ -133,12 +128,10 @@ const SplashScreen = ({navigation}) => {
     setGoogleLoading(true);
     try {
       const result = await googleSignIn();
-      if (result?.tokens) {
-        if (result.isNewUser) {
-          navigation?.reset({index: 0, routes: [{name: AppRoute.BasicInfo}]});
-        } else {
-          navigation?.reset({index: 0, routes: [{name: AppRoute.HomeTabs}]});
-        }
+      if (result?.user) {
+        // Use onboardingStep from server — no hardcoded navigation
+        const nextScreen = getNextOnboardingScreen(result.user, null);
+        navigation?.reset({index: 0, routes: [{name: nextScreen}]});
       }
     } catch (error) {
       console.error('Google Sign-In error:', error);
@@ -187,9 +180,8 @@ const SplashScreen = ({navigation}) => {
             opacity: uiFadeAnim,
             transform: [{translateY: uiTranslateY}],
           }}>
-          {/* Buttons — no glass card, floating directly on gradient */}
-          {/* Buttons — only show if NOT authenticated and NOT loading */}
-          {!isAuthenticated && !authLoading && (
+          {/* Show buttons only when: not authenticated AND app is fully ready */}
+          {!isAuthenticated && isAppReady && (
             <View style={[styles.actionsContainer, {width: actionCardWidth}]}>
               {/* Google Button */}
               <AnimatedPressable
