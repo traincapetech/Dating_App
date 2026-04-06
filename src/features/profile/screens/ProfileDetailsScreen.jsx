@@ -22,6 +22,7 @@ import {
   updateProfileApi,
   uploadProfileImage,
   updateMedia,
+  deleteImage,
 } from '../../../services/profile/profileService';
 import {launchImageLibrary} from 'react-native-image-picker';
 import {DraggableGrid} from 'react-native-draggable-grid';
@@ -47,14 +48,35 @@ const ProfileDetailsScreen = () => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState({});
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [scrollEnabled, setScrollEnabled] = useState(true);
+  const [newUploadedPhotos, setNewUploadedPhotos] = useState([]);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const contentY = useRef(new Animated.Value(20)).current;
+
+// Cleanup and navigation prevention if unsaved changes exist
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      // Only do special cleanup if we have unsaved uploads
+      if (isEditing && newUploadedPhotos.length > 0) {
+        // We don't block navigation, we just trigger cleanup in the background
+        console.log(`[Nav Cleanup] Abandoning ${newUploadedPhotos.length} uploads`);
+        const cleanupPromises = newUploadedPhotos.map(url => 
+            deleteImage(userId || profile?._id, url)
+        );
+        Promise.all(cleanupPromises).catch(err => 
+            console.error('[Cleanup] Error during navigation cleanup:', err)
+        );
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, isEditing, newUploadedPhotos, userId, profile?._id]);
 
   const userId = route.params?.userId || profile?._id || profile?.id;
 
@@ -207,6 +229,17 @@ const ProfileDetailsScreen = () => {
         return;
       }
 
+      // Check minimum photos before saving
+      const validPhotos = (editedProfile.photos || []).filter(p => p.url);
+      if (validPhotos.length < 5) {
+        Alert.alert(
+          'Minimum Photos Required',
+          'Please upload at least 5 photos before saving.',
+        );
+        setSaving(false);
+        return;
+      }
+
       // Build payload with proper validation
       const payload = {
         userId: currentUserId,
@@ -293,22 +326,20 @@ const ProfileDetailsScreen = () => {
         delete payload.datingPreferences;
 
       // Save photos (media)
-      const currentPhotos = editedProfile.photos || [];
       const mediaPayload = {
-        media: currentPhotos
-          .filter(p => p.url) // Only save slots with URLs
-          .map((p, index) => ({
-            type: 'photo',
-            url: p.url,
-            order: index,
-          })),
+        media: validPhotos.map((p, index) => ({
+          type: 'photo',
+          url: p.url,
+          order: index,
+        })),
       };
-
-      if (mediaPayload.media.length > 0 || profile?.photos?.length > 0) {
+ 
+      if (mediaPayload.media.length > 0) {
         await updateMedia(mediaPayload);
       }
-
+ 
       await updateProfileApi(payload);
+      setNewUploadedPhotos([]); // Successfully saved, clear cleanup tracking
       Alert.alert('Success', 'Profile updated successfully');
 
       // Reload global state if it's our own profile
@@ -327,17 +358,6 @@ const ProfileDetailsScreen = () => {
   };
 
   const handleDeletePhoto = index => {
-    const currentValidPhotosCount = editedProfile.photos.filter(
-      p => p.url,
-    ).length;
-    if (currentValidPhotosCount <= 5) {
-      Alert.alert(
-        'Cannot Delete',
-        'You must have at least 5 photos on your profile.',
-        [{text: 'OK'}],
-      );
-      return;
-    }
 
     Alert.alert('Delete Photo', 'Are you sure you want to delete this photo?', [
       {text: 'Cancel', style: 'cancel'},
@@ -368,6 +388,28 @@ const ProfileDetailsScreen = () => {
     ]);
   };
 
+  const handleCancelEditing = async () => {
+    // Cleanup any orphaned uploads that were not persisted
+    if (newUploadedPhotos.length > 0) {
+      console.log(`[Cleanup] Deleting ${newUploadedPhotos.length} unsaved uploads`);
+      try {
+        const cleanupPromises = newUploadedPhotos.map(url => 
+          deleteImage(userId || profile?._id, url)
+        );
+        // We don't await so the UI feels snappy, but we catch errors
+        Promise.all(cleanupPromises).catch(err => 
+          console.error('[Cleanup] Error during cancel:', err)
+        );
+      } catch (err) {
+        console.error('[Cleanup] Error mapping deletions:', err);
+      }
+    }
+    
+    setNewUploadedPhotos([]);
+    setIsEditing(false);
+    loadProfile(); // Refresh to restore saved state
+  };
+
   const handleAddPhoto = async index => {
     try {
       const result = await launchImageLibrary({
@@ -394,7 +436,7 @@ const ProfileDetailsScreen = () => {
           return;
         }
 
-        setSaving(true);
+        setPhotoUploading(true);
 
         try {
           const uploadResult = await uploadProfileImage(
@@ -404,6 +446,9 @@ const ProfileDetailsScreen = () => {
           );
 
           if (isEditing) {
+            // Track newly uploaded photos for cleanup if user cancels
+            setNewUploadedPhotos(prev => [...prev, uploadResult.url]);
+
             setEditedProfile(prev => {
               const newPhotos = [...prev.photos];
               newPhotos[index] = {
@@ -412,7 +457,6 @@ const ProfileDetailsScreen = () => {
               };
               return {...prev, photos: newPhotos};
             });
-            Alert.alert('Success', 'Photo uploaded');
           } else {
             Alert.alert('Success', 'Photo uploaded successfully');
             loadProfile();
@@ -421,7 +465,7 @@ const ProfileDetailsScreen = () => {
           console.error('[ProfileDetails] Photo upload failed:', uploadError);
           Alert.alert('Error', uploadError.message || 'Failed to upload photo');
         } finally {
-          setSaving(false);
+          setPhotoUploading(false);
         }
       }
     } catch (error) {
@@ -575,7 +619,7 @@ const ProfileDetailsScreen = () => {
           <View style={styles.simpleEditHeader}>
             <View style={styles.headerSideContainer}>
               <Pressable
-                onPress={() => setIsEditing(false)}
+                onPress={handleCancelEditing}
                 style={styles.headerIconBtn}>
                 <MaterialCommunityIcons
                   name="close"
@@ -641,11 +685,15 @@ const ProfileDetailsScreen = () => {
                           <Pressable
                             style={styles.photoPlaceholderBtn}
                             onPress={() => handleAddPhoto(index)}>
-                            <MaterialCommunityIcons
-                              name="plus"
-                              size={32}
-                              color="#1A1A1A"
-                            />
+                            {photoUploading ? (
+                              <ActivityIndicator size="small" color="#C084FC" />
+                            ) : (
+                              <MaterialCommunityIcons
+                                name="plus"
+                                size={32}
+                                color="#1A1A1A"
+                              />
+                            )}
                           </Pressable>
                         )}
                         {index === 0 && (

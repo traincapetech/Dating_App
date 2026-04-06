@@ -12,15 +12,21 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
  * and check if it has expired based on 7 days of inactivity.
  */
 async function syncMatchExpiration(match) {
-  if (match.status === 'secured' || !match.expiresAt) {
-    return false; // Secured matches never expire
+  // 1. EXIT GUARD: Secured matches (confirmed dates) never expire.
+  if (match.status === 'secured') {
+    return false;
   }
 
-  // Get latest message for this match
-  const latestMessage = await Message.findOne({matchId: match._id})
+  // 2. LIFECYCLE ISOLATION: Only look for messages within the current lifecycle (since createdAt).
+  // Using $gte ensures the first message in a new lifecycle is correctly captured.
+  const latestMessage = await Message.findOne({
+    matchId: match._id,
+    timestamp: { $gte: match.createdAt } 
+  })
     .sort({timestamp: -1})
     .select('timestamp');
 
+  // 3. ANCHOR: Use latest message timestamp, fallback to current lifecycle start.
   const lastInteractionTime = latestMessage
     ? new Date(latestMessage.timestamp)
     : new Date(match.createdAt);
@@ -28,22 +34,22 @@ async function syncMatchExpiration(match) {
   const now = new Date();
   const isExpired = now - lastInteractionTime > SEVEN_DAYS_MS;
 
+  // 4. TRANSITION: Active -> Expired (One-Directional)
   if (isExpired && match.status === 'active') {
     match.status = 'expired';
     match.chatEnabled = false;
     await match.save();
 
-    // Reset likes to allow re-swiping (Requirement #3)
+    console.log(`[Expiry Sync] Match ${match._id} expired.`);
+
+    // Cleanup likes to allow re-swiping
     try {
-      const res = await Like.deleteMany({
+      await Like.deleteMany({
         $or: [
           {senderId: match.users[0], receiverId: match.users[1]},
           {senderId: match.users[1], receiverId: match.users[0]},
         ],
       });
-      console.log(
-        `[Match Reset] Deleted ${res.deletedCount} likes for expired match: ${match._id}`,
-      );
     } catch (err) {
       console.error('[Match Reset] Error deleting likes:', err);
     }
@@ -51,41 +57,29 @@ async function syncMatchExpiration(match) {
     return true;
   }
 
-  // RECOVERY LOGIC: If it's marked expired but has recent interaction, re-enable it
-  if (!isExpired && match.status === 'expired') {
-    match.status = 'active';
-    match.chatEnabled = true;
-    console.log(
-      `[Expiry Fix] Recovered prematurely expired match: ${match._id}`,
-    );
-    await match.save();
-    return false; // Not expired anymore
+  // 5. METADATA SYNC: Keep 'expiresAt' accurate for the UI
+  // Only update for active matches to avoid logic conflicts in expired states.
+  if (match.status === 'active') {
+    const computedExpiresAt = new Date(lastInteractionTime.getTime() + SEVEN_DAYS_MS);
+    
+    // Update only if mismatch is significant (> 1 minute)
+    if (!match.expiresAt || Math.abs(match.expiresAt - computedExpiresAt) > 60000) {
+      match.expiresAt = computedExpiresAt;
+      await match.save();
+    }
   }
 
-  // If it's already expired and remains inactive, ensure stale likes are cleaned up (legacy data heal)
-  // IMPORTANT: Only delete likes older than 7 days — new re-engagement likes must NOT be touched
+  // 6. CLEANUP: If already expired and remains inactive, ensure stale likes are cleaned up
   if (match.status === 'expired') {
     const staleThreshold = new Date(Date.now() - SEVEN_DAYS_MS);
-    const {deletedCount} = await Like.deleteMany({
+    await Like.deleteMany({
       createdAt: {$lt: staleThreshold},
       $or: [
         {senderId: match.users[0], receiverId: match.users[1]},
         {senderId: match.users[1], receiverId: match.users[0]},
       ],
     });
-    if (deletedCount > 0) {
-      console.log(
-        `[Match Heal] Cleaned ${deletedCount} stale likes for expired match: ${match._id}`,
-      );
-    }
     return true;
-  }
-
-  // Keep expiresAt field synced for active matches
-  const newExpiresAt = new Date(lastInteractionTime.getTime() + SEVEN_DAYS_MS);
-  if (!match.expiresAt || Math.abs(match.expiresAt - newExpiresAt) > 60000) {
-    match.expiresAt = newExpiresAt;
-    await match.save();
   }
 
   return false; // Active
@@ -322,6 +316,7 @@ export const createMatch = async (req, res) => {
       if (!existingMatch.chatEnabled || existingMatch.status !== 'active') {
         existingMatch.chatEnabled = true;
         existingMatch.status = 'active';
+        existingMatch.createdAt = new Date(); // Reset lifecycle for expiration logic
         await existingMatch.save();
       }
       return res.json({success: true, match: existingMatch, existing: true});

@@ -345,21 +345,6 @@ export const uploadImageController = asyncHandler(async (req, res) => {
 
     console.log('[Image Upload] Public URL:', publicUrl);
 
-    // Update profile with new media
-    const existing = await getProfile(userId);
-    const existingMedia = existing?.media?.media || [];
-    const newMediaItem = {
-      type: 'photo',
-      url: publicUrl,
-      order: existingMedia.length,
-    };
-
-    await saveMedia(userId, {
-      media: [...existingMedia, newMediaItem],
-    });
-
-    console.log('[Image Upload] Profile updated with new media item');
-
     res.status(200).json({
       success: true,
       url: publicUrl,
@@ -643,5 +628,47 @@ export const getProfileInteractionsController = asyncHandler(async (req, res) =>
   } catch (error) {
     console.error('[getProfileInteractionsController] Error:', error);
     res.status(500).json({ error: 'Failed to fetch profile interactions' });
+  }
+});
+
+export const deleteImageController = asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.body.userId;
+  const { imageUrl } = req.body;
+
+  if (!userId || !imageUrl) {
+    return res.status(400).json({ error: 'User ID and Image URL are required' });
+  }
+
+  try {
+    let filePath = null;
+
+    if (imageUrl.includes('/api/files/')) {
+      filePath = new URL(imageUrl).pathname.replace('/api/files/', '');
+    } else if (
+      imageUrl.includes('r2.cloudflarestorage.com') ||
+      (config.r2.publicBaseUrl && imageUrl.includes(config.r2.publicBaseUrl))
+    ) {
+      const urlObj = new URL(imageUrl);
+      filePath = urlObj.pathname.replace(/^\//, '');
+    } else {
+      // General extraction from any URL
+      const urlObj = new URL(imageUrl);
+      filePath = urlObj.pathname.replace(/^\//, '');
+      const profilesIndex = filePath.indexOf('profiles/');
+      if (profilesIndex !== -1) {
+        filePath = filePath.substring(profilesIndex);
+      }
+    }
+
+    if (filePath) {
+      console.log(`[Delete Image] Deleting object: ${filePath}`);
+      await storage.deleteObject(filePath);
+      return res.status(200).json({ success: true, message: 'Image deleted from storage' });
+    } else {
+      return res.status(400).json({ error: 'Could not determine file path from URL' });
+    }
+  } catch (error) {
+    console.error('[Delete Image] Error:', error);
+    res.status(500).json({ error: 'Failed to delete image from storage' });
   }
 });

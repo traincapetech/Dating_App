@@ -144,6 +144,11 @@ export async function uploadMultipleImages(userId, images) {
   return Promise.all(uploadPromises);
 }
 
+export async function deleteImage(userId, imageUrl) {
+  const headers = await getAuthHeaders();
+  return apiClient.post('/profile/delete-image', { userId, imageUrl }, headers);
+}
+
 export async function deleteUser(userId) {
   const headers = await getAuthHeaders();
   return apiClient.delete(`/auth/user/${userId}`, headers);
