@@ -76,10 +76,10 @@ function buildMessage(deviceToken, notification) {
   const serializedData = serializeData(data);
   const ttl = resolveTtlSeconds(type, data?.endTime);
 
-  // For timer notifications we always force data-only delivery so the 
-  // background handler can render the countdown itself.
-  const forceDataOnly = type === 'timer' || type === 'live' || isDataOnly;
-  const priority = isHighPriority || type === 'timer' ? 'high' : 'normal';
+  // For timer/full_screen notifications we always force data-only delivery so the 
+  // background handler can render the view itself.
+  const forceDataOnly = type === 'timer' || type === 'full_screen' || type === 'live' || isDataOnly;
+  const priority = isHighPriority || type === 'timer' || type === 'full_screen' ? 'high' : 'normal';
 
   const message = {
     token: deviceToken,
