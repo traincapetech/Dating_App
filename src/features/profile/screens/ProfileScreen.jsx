@@ -234,7 +234,7 @@ const ProfileScreen = () => {
               />
             </Pressable>
             <Text style={styles.headerTitle} numberOfLines={1}>
-              {formatToTitleCase(firstName) || 'profile'}
+               My Persona ✨
             </Text>
             <View style={styles.headerActions}>
               <Pressable
@@ -316,29 +316,33 @@ const ProfileScreen = () => {
             )}
           </View>
 
-        {/* Stats Row: Refined Hierarchy */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statBox}>
-            <Text style={styles.statNumber}>{profile?.stats?.likes || 0}</Text>
-            <Text style={styles.statSublabel}>Likes</Text>
+          {/* Stats Row: Refined Hierarchy */}
+          <View style={styles.statsContainer}>
+            <View style={styles.statBox}>
+              <Text style={styles.statNumber}>
+                {profile?.stats?.likes || 0}
+              </Text>
+              <Text style={styles.statSublabel}>Likes</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statBox}>
+              <Text style={styles.statNumber}>
+                {profile?.stats?.matches || 0}
+              </Text>
+              <Text style={styles.statSublabel}>Matches</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statBox}>
+              <Text style={styles.statNumber}>
+                {profile?.stats?.views >= 1000
+                  ? `${(profile.stats.views / 1000).toFixed(1)}k`
+                  : profile?.stats?.views || 0}
+              </Text>
+              <Text style={styles.statSublabel}>Views</Text>
+            </View>
           </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statBox}>
-            <Text style={styles.statNumber}>{profile?.stats?.matches || 0}</Text>
-            <Text style={styles.statSublabel}>Matches</Text>
-          </View>
-          <View style={styles.statDivider} />
-          <View style={styles.statBox}>
-            <Text style={styles.statNumber}>
-              {profile?.stats?.views >= 1000
-                ? `${(profile.stats.views / 1000).toFixed(1)}k`
-                : profile?.stats?.views || 0}
-            </Text>
-            <Text style={styles.statSublabel}>Views</Text>
-          </View>
-        </View>
 
-        {/* Profile Strength Strategy (Floating Card) */}
+          {/* Profile Strength Strategy (Floating Card) */}
           {completionPercentage < 100 && (
             <Pressable
               onPress={() => navigation.navigate('ProfileDetails', {userId})}

@@ -30,13 +30,6 @@ async function storeNewTokens(tokens) {
 async function doRefresh() {
   const {refreshToken} = await getStoredTokens();
   if (!refreshToken) {
-    // If we have no refresh token to begin with, the session is corrupted
-    // Clear access token so the app knows it must re-authenticate
-    await AsyncStorage.multiRemove([
-      '@pryvo/token',
-      '@pryvo/refresh',
-      '@pryvo_user',
-    ]);
     throw new Error('No refresh token available');
   }
 
@@ -124,8 +117,7 @@ async function request(
   }
 
   // Auto-refresh on 401 (once per request, not on retry to avoid loops)
-  const isAuthRoute = path.includes('/auth/login') || path.includes('/auth/signup') || path.includes('/auth/refresh');
-  if (response.status === 401 && !isRetry && !isAuthRoute) {
+  if (response.status === 401 && !isRetry) {
     try {
       console.log('[API Client] Got 401 – attempting token refresh...');
       const newAccessToken = await refreshTokensOnce();
@@ -161,11 +153,8 @@ async function request(
   try {
     data = text && text !== 'undefined' ? JSON.parse(text) : null;
   } catch (parseError) {
-    // If it's not JSON, and it's not HTML, it's probably just a plain string or empty
-    data = null;
-    if (!text.trim().startsWith('<')) {
-      console.log('[API Client] Non-JSON response received:', text.substring(0, 50));
-    }
+    console.warn('[API Client] Failed to parse response as JSON:', parseError);
+    console.warn('[API Client] Response text:', text.substring(0, 200));
   }
 
   if (!response.ok) {

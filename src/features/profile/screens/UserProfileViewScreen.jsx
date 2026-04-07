@@ -269,7 +269,7 @@ const UserProfileViewScreen = ({navigation, route}) => {
         <Icon name="chevron-left" size={28} color={colors.textPrimary} />
       </Pressable>
       <Text style={styles.headerTitle} numberOfLines={1}>
-        {formatToTitleCase(name) || 'profile'}
+        Inside Their World 🌍
       </Text>
       {!isOwner ? (
         <Pressable style={styles.headerIconBtn} onPress={() => setShowReportModal(true)}>

@@ -36,13 +36,6 @@ export const saveBasicInfoController = asyncHandler(async (req, res) => {
   }
   const parsed = basicInfoSchema.parse(req.body);
   const profile = await saveBasicInfo(userId, parsed);
-
-  // Advance onboarding step — user can now go to media upload
-  // Fire-and-forget: don't block the response on this
-  updateUser(userId, {onboardingStep: 'MEDIA'}).catch(e =>
-    console.warn('[Profile] Failed to set onboardingStep=MEDIA:', e.message),
-  );
-
   res.status(200).json({profile});
 });
 
@@ -105,12 +98,6 @@ export const saveMediaController = asyncHandler(async (req, res) => {
   }
   const parsed = mediaUploadSchema.parse(req.body);
   const profile = await saveMedia(userId, parsed);
-
-  // Mark onboarding as fully complete
-  updateUser(userId, {onboardingStep: 'COMPLETE'}).catch(e =>
-    console.warn('[Profile] Failed to set onboardingStep=COMPLETE:', e.message),
-  );
-
   res.status(200).json({profile});
 });
 
@@ -137,31 +124,19 @@ export const getProfileController = asyncHandler(async (req, res) => {
 
   const profile = await getProfile(targetUserId, viewerId);
   if (!profile) {
-    if (viewerId === targetUserId) {
-      // User is viewing their own profile, but it hasn't been created yet (e.g. skipped onboarding)
-      // Return an empty template rather than 404 avoiding frontend crash
-      return res.status(200).json({
-        profile: {
-          userId: viewerId,
-          basicInfo: {},
-          personalDetails: {},
-          datingPreferences: {},
-          lifestyle: {},
-          profilePrompts: {},
-          media: { media: [] },
-          photos: [],
-          interests: [],
-          bio: '',
-          stats: { likes: 0, matches: 0, views: 0 },
-          interaction: { isLiked: false, isMatched: false, hasChat: false }
-        }
-      });
-    }
     return res.status(404).json({error: 'Profile not found'});
   }
+
+  // ENFORCE "Pause Profile" visibility rules
+  if (profile.isPaused && viewerId !== targetUserId) {
+    return res.status(404).json({
+      error: 'Profile is paused',
+      message: 'This profile is currently paused and non-visible.',
+    });
+  }
+
   res.status(200).json({profile});
 });
-
 
 export const updateProfileController = asyncHandler(async (req, res) => {
   const userId = req.user?.id || req.body.userId;
@@ -255,15 +230,6 @@ export const getAllProfilesController = asyncHandler(async (req, res) => {
   const sortBy = req.query.sortBy || 'score'; // 'score', 'distance', 'recent'
   const limit = req.query.limit ? parseInt(req.query.limit, 10) : null;
 
-  // Accept live GPS coordinates from the app (overrides stale DB location)
-  const liveLocation =
-    req.query.lat && req.query.lng
-      ? {
-          type: 'Point',
-          coordinates: [parseFloat(req.query.lng), parseFloat(req.query.lat)],
-        }
-      : null;
-
   // Advanced filters (premium feature)
   const filters = {};
   if (req.query.educationLevel) {
@@ -297,21 +263,10 @@ export const getAllProfilesController = asyncHandler(async (req, res) => {
     maxDistance,
     sortBy,
     limit,
-    liveLocation,
     filters: Object.keys(filters).length > 0 ? filters : null,
   };
 
   const profiles = await getAllProfiles(excludeUserId, options);
-  const profileSummary = (profiles || []).map(p => ({
-    name: p.name,
-    photos: p.photos?.length || 0,
-    dist: p.distance
-  }));
-  console.log(`[Discover API] Response size: ${profiles?.length || 0}. Profiles:`, JSON.stringify(profileSummary));
-  
-  // Safe logging for production
-  console.log(`[Discover] Result for ${excludeUserId}: Count ${profiles?.length}. Data: ${JSON.stringify(profileSummary)}`);
-  
   res.status(200).json({profiles});
 });
 
@@ -389,21 +344,6 @@ export const uploadImageController = asyncHandler(async (req, res) => {
       }/api/files/${filePath}`;
 
     console.log('[Image Upload] Public URL:', publicUrl);
-
-    // Update profile with new media
-    const existing = await getProfile(userId);
-    const existingMedia = existing?.media?.media || [];
-    const newMediaItem = {
-      type: 'photo',
-      url: publicUrl,
-      order: existingMedia.length,
-    };
-
-    await saveMedia(userId, {
-      media: [...existingMedia, newMediaItem],
-    });
-
-    console.log('[Image Upload] Profile updated with new media item');
 
     res.status(200).json({
       success: true,
@@ -628,39 +568,58 @@ export const getProfileInteractionsController = asyncHandler(async (req, res) =>
     let populatedSenders = {};
     if (uniqueSenderIds.length > 0) {
       const senderProfiles = await Profile.find(
-        { userId: { $in: uniqueSenderIds } },
-        { userId: 1, 'basicInfo.firstName': 1, 'basicInfo.name': 1, name: 1, photos: 1, media: 1 }
+        {
+          userId: {$in: uniqueSenderIds},
+          isPaused: {$ne: true},
+          isHidden: {$ne: true},
+        },
+        {
+          userId: 1,
+          isPaused: 1,
+          isHidden: 1,
+          'basicInfo.firstName': 1,
+          'basicInfo.name': 1,
+          name: 1,
+          photos: 1,
+          media: 1,
+        },
       ).lean();
 
       senderProfiles.forEach(p => {
         populatedSenders[p.userId] = {
           userId: p.userId,
           name: p.basicInfo?.firstName || p.basicInfo?.name || p.name || 'User',
-          avatar: p.photos?.[0] || (p.media?.media?.[0]?.url) || null
+          avatar: p.photos?.[0] || p.media?.media?.[0]?.url || null,
         };
       });
     }
 
-    // Attach sender info
-    const enrichedPhotoLikes = photoLikes.map(l => ({
-      ...l,
-      sender: populatedSenders[l.senderId] || null
-    }));
+    // Attach sender info AND FILTER OUT PAUSED SENDERS
+    const enrichedPhotoLikes = photoLikes
+      .filter(l => populatedSenders[l.senderId])
+      .map(l => ({
+        ...l,
+        sender: populatedSenders[l.senderId],
+      }));
 
-    const enrichedProfileLikes = profileLikes.map(l => ({
-      ...l,
-      sender: populatedSenders[l.senderId] || null
-    }));
+    const enrichedProfileLikes = profileLikes
+      .filter(l => populatedSenders[l.senderId])
+      .map(l => ({
+        ...l,
+        sender: populatedSenders[l.senderId],
+      }));
 
-    const enrichedComments = commentsList.map(c => ({
-      ...c,
-      sender: populatedSenders[c.senderId] || null
-    }));
+    const enrichedComments = commentsList
+      .filter(c => populatedSenders[c.senderId])
+      .map(c => ({
+        ...c,
+        sender: populatedSenders[c.senderId],
+      }));
 
     res.status(200).json({
       success: true,
       interactions: {
-        totalLikes,
+        totalLikes: enrichedPhotoLikes.length + enrichedProfileLikes.length,
         photoLikes: enrichedPhotoLikes,
         profileLikes: enrichedProfileLikes,
         comments: enrichedComments,
@@ -669,5 +628,47 @@ export const getProfileInteractionsController = asyncHandler(async (req, res) =>
   } catch (error) {
     console.error('[getProfileInteractionsController] Error:', error);
     res.status(500).json({ error: 'Failed to fetch profile interactions' });
+  }
+});
+
+export const deleteImageController = asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.body.userId;
+  const { imageUrl } = req.body;
+
+  if (!userId || !imageUrl) {
+    return res.status(400).json({ error: 'User ID and Image URL are required' });
+  }
+
+  try {
+    let filePath = null;
+
+    if (imageUrl.includes('/api/files/')) {
+      filePath = new URL(imageUrl).pathname.replace('/api/files/', '');
+    } else if (
+      imageUrl.includes('r2.cloudflarestorage.com') ||
+      (config.r2.publicBaseUrl && imageUrl.includes(config.r2.publicBaseUrl))
+    ) {
+      const urlObj = new URL(imageUrl);
+      filePath = urlObj.pathname.replace(/^\//, '');
+    } else {
+      // General extraction from any URL
+      const urlObj = new URL(imageUrl);
+      filePath = urlObj.pathname.replace(/^\//, '');
+      const profilesIndex = filePath.indexOf('profiles/');
+      if (profilesIndex !== -1) {
+        filePath = filePath.substring(profilesIndex);
+      }
+    }
+
+    if (filePath) {
+      console.log(`[Delete Image] Deleting object: ${filePath}`);
+      await storage.deleteObject(filePath);
+      return res.status(200).json({ success: true, message: 'Image deleted from storage' });
+    } else {
+      return res.status(400).json({ error: 'Could not determine file path from URL' });
+    }
+  } catch (error) {
+    console.error('[Delete Image] Error:', error);
+    res.status(500).json({ error: 'Failed to delete image from storage' });
   }
 });

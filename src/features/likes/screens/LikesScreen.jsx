@@ -12,6 +12,7 @@ import {
   Animated,
   Platform,
   StatusBar,
+  Alert,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -19,7 +20,7 @@ import {useFocusEffect} from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import {colors, typography, spacing} from '../../../theme';
 import {getLikesReceived, likeUser, rejectLike} from '../../../services/swipeActions';
-import {fetchMatches} from '../../../services/chatService';
+import {fetchMatches, fetchPreviousInteractions} from '../../../services/chatService';
 import {useLoading} from '../../../context/LoadingContext';
 import {useInitialLoad} from '../../../context/InitialLoadContext';
 import FullScreenLoader from '../../../components/layout/FullScreenLoader';
@@ -124,8 +125,10 @@ const LikesScreen = ({navigation}) => {
   const {profile: myProfile} = useAuth();
   const [likes, setLikes] = useState([]);
   const [matches, setMatches] = useState([]);
+  const [previousInteractions, setPreviousInteractions] = useState([]);
   const [likesCount, setLikesCount] = useState(0);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isPreviousExpanded, setIsPreviousExpanded] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -163,9 +166,10 @@ const LikesScreen = ({navigation}) => {
       if (userData && userData !== 'undefined') {
         const user = JSON.parse(userData);
         setCurrentUserId(user.id);
-        const [likesResponse, matchesResponse] = await Promise.all([
+        const [likesResponse, matchesResponse, previousResponse] = await Promise.all([
           getLikesReceived(user.id, true),
           fetchMatches(user.id),
+          fetchPreviousInteractions(user.id),
         ]);
         if (likesResponse.success) {
           setLikes(likesResponse.likes || []);
@@ -175,6 +179,9 @@ const LikesScreen = ({navigation}) => {
         if (matchesResponse.success) {
           const sorted = (matchesResponse.matches || []).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
           setMatches(sorted);
+        }
+        if (previousResponse.success) {
+          setPreviousInteractions(previousResponse.matches || []);
         }
       }
     } catch (error) {
@@ -222,25 +229,71 @@ const LikesScreen = ({navigation}) => {
 
   const currentMatchesList = isExpanded ? matches : matches.slice(0, 4);
 
-  const renderLikerItem = ({item}) => (
-    <Pressable style={styles.cardUnified}>
-      <Image source={{uri: item.photo || `https://ui-avatars.com/api/?background=6A0DAD&color=fff&name=${item.name || 'U'}`}} style={styles.cardAvatarUnified} />
-      <View style={styles.cardInfoUnified}>
-        <Text style={styles.cardNameUnified}>{item.name}{item.age ? `, ${item.age}` : ''}</Text>
-        <Text style={styles.cardSubtextUnified}>Liked your profile</Text>
-      </View>
-      <View style={styles.actionBtnsUnified}>
-        <Pressable style={styles.rejectBtnUnified} onPress={() => handleRejectLike(item.senderId)}>
-          <Text style={styles.rejectBtnTextUnified}>✕</Text>
-        </Pressable>
-        <Pressable style={styles.matchBtnUnified} onPress={() => handleLikeBack(item.senderId)}>
-          <LinearGradient colors={['#6A0DAD', '#9370DB']} style={styles.btnGradientUnified}>
-            <Text style={styles.btnTextUnified}>❤️ Match</Text>
-          </LinearGradient>
-        </Pressable>
-      </View>
-    </Pressable>
-  );
+  const renderLikerItem = ({item}) => {
+    const handleTeaserPress = () => {
+      Alert.alert(
+        'Premium Feature 💎',
+        'Upgrade to Premium to see who liked you and match with them!',
+        [
+          {text: 'Not Now', style: 'cancel'},
+          {
+            text: 'Get Premium',
+            onPress: () => navigation.navigate('Settings'),
+            style: 'default',
+          },
+        ],
+      );
+    };
+
+    return (
+      <Pressable
+        style={styles.cardUnified}
+        onPress={isPremiumRequired ? handleTeaserPress : null}>
+        <Image
+          source={{
+            uri:
+              item.photo ||
+              `https://ui-avatars.com/api/?background=6A0DAD&color=fff&name=${
+                item.name || 'U'
+              }`,
+          }}
+          style={styles.cardAvatarUnified}
+          blurRadius={isPremiumRequired ? 25 : 0}
+        />
+        <View style={styles.cardInfoUnified}>
+          <Text style={styles.cardNameUnified}>
+            {isPremiumRequired ? 'Someone' : item.name}
+            {!isPremiumRequired && item.age ? `, ${item.age}` : ''}
+          </Text>
+          <Text style={styles.cardSubtextUnified}>Liked your profile</Text>
+        </View>
+        <View style={styles.actionBtnsUnified}>
+          <Pressable
+            style={styles.rejectBtnUnified}
+            onPress={
+              isPremiumRequired
+                ? handleTeaserPress
+                : () => handleRejectLike(item.senderId)
+            }>
+            <Text style={styles.rejectBtnTextUnified}>✕</Text>
+          </Pressable>
+          <Pressable
+            style={styles.matchBtnUnified}
+            onPress={
+              isPremiumRequired
+                ? handleTeaserPress
+                : () => handleLikeBack(item.senderId)
+            }>
+            <LinearGradient
+              colors={['#6A0DAD', '#9370DB']}
+              style={styles.btnGradientUnified}>
+              <Text style={styles.btnTextUnified}>❤️ Match</Text>
+            </LinearGradient>
+          </Pressable>
+        </View>
+      </Pressable>
+    );
+  };
 
   const renderHeaderUnified = () => (
     <View style={styles.headerWrapperUnified}>
@@ -273,6 +326,39 @@ const LikesScreen = ({navigation}) => {
         </View>
       )}
 
+      {/* 🕰️ PREVIOUS INTERACTIONS (Requirement #4) */}
+      {previousInteractions.length > 0 && (
+        <View style={styles.sectionUnified}>
+          <SectionHeaderUnified
+            title="PREVIOUS INTERACTIONS"
+            isSubsection={true}
+            showSeeAll={previousInteractions.length > 4}
+            isExpanded={isPreviousExpanded}
+            onPressSeeAll={() => setIsPreviousExpanded(!isPreviousExpanded)}
+          />
+          <FlatList
+            horizontal
+            data={isPreviousExpanded ? previousInteractions : previousInteractions.slice(0, 4)}
+            keyExtractor={item => `prev-${item._id}`}
+            renderItem={({item}) => (
+              <MatchAvatar
+                item={item}
+                onPress={() => {
+                  // Redirect to Home/Swipe Screen (Requirement #5)
+                  navigation.navigate('HomeTabs', { 
+                    screen: 'Accueil',
+                    params: { targetUserId: item.theirId }
+                  });
+                }}
+              />
+            )}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.matchesScrollContent}
+          />
+          <View style={styles.dividerUnified} />
+        </View>
+      )}
+
       {/* 🧩 PEOPLE WHO LIKED YOU HEADER */}
       <View style={styles.likesHeaderUnified}>
         <Text style={styles.subsectionTitleUnified}>PEOPLE WHO LIKED YOU</Text>
@@ -287,7 +373,7 @@ const LikesScreen = ({navigation}) => {
   return (
     <ThemeBackground>
       <SafeAreaView style={styles.containerUnified} edges={['top']}>
-        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+        <StatusBar barStyle="dark-content" />
         <Animated.View style={[styles.flexFullUnified, {opacity: screenFadeAnim}]}>
           {/* Main Dominant Header */}
           <View style={styles.mainActionBarUnified}>

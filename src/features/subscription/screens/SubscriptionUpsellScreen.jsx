@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,27 +11,27 @@ import {
   Dimensions,
   Platform,
 } from 'react-native';
-import {useNavigation, useRoute} from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {StripeProvider, useStripe} from '@stripe/stripe-react-native';
+import { StripeProvider, useStripe } from '@stripe/stripe-react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import {AppRoute} from '../../../constants/routes';
-import {colors, typography, spacing} from '../../../theme';
+import { AppRoute } from '../../../constants/routes';
+import { colors, typography, spacing } from '../../../theme';
 import {
   getAvailablePlans,
   createPaymentOrder,
   verifyPaymentAndCreateSubscription,
   getSubscriptionStatus,
 } from '../../../services/subscription/subscriptionService';
-const {width, height} = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 import { Animated, Easing } from 'react-native';
 
 const FEATURES = [
-  {icon: '🔥', title: 'Unlimited Likes', desc: 'Swipe without restrictions'},
-  {icon: '👀', title: 'See Who Liked You', desc: 'No more guessing games'},
-  {icon: '📍', title: 'Advanced Filters', desc: 'Height, lifestyle & more'},
-  {icon: '⚡', title: '3x Priority Boost', desc: 'Be seen by more people'},
+  { icon: '🔥', title: 'Unlimited Likes', desc: 'Swipe without restrictions' },
+  { icon: '👀', title: 'See Who Liked You', desc: 'No more guessing games' },
+  { icon: '📍', title: 'Advanced Filters', desc: 'Height, lifestyle & more' },
+  { icon: '⚡', title: '3x Priority Boost', desc: 'Be seen by more people' },
 ];
 
 const SubscriptionUpsellScreenContent = () => {
@@ -95,14 +95,14 @@ const SubscriptionUpsellScreenContent = () => {
       setProcessing(true);
       const orderResponse = await createPaymentOrder(currentUserId, selectedPlan);
       if (!orderResponse?.success) throw new Error(orderResponse?.message || 'Failed to create order');
-      const {paymentOrder, plan} = orderResponse;
-      const {error: initError} = await stripe.initPaymentSheet({
+      const { paymentOrder, plan } = orderResponse;
+      const { error: initError } = await stripe.initPaymentSheet({
         paymentIntentClientSecret: paymentOrder.clientSecret,
         merchantDisplayName: 'Pryvo Premium',
-        appearance: {colors: {primary: colors.primary}},
+        appearance: { colors: { primary: colors.primary } },
       });
       if (initError) throw new Error(initError.message);
-      const {error: presentError} = await stripe.presentPaymentSheet();
+      const { error: presentError } = await stripe.presentPaymentSheet();
       if (presentError) { if (presentError.code === 'Canceled') return; throw new Error(presentError.message); }
       const verifyResponse = await verifyPaymentAndCreateSubscription(currentUserId, selectedPlan, paymentOrder.orderId, paymentOrder.orderId, '', 'stripe', paymentOrder.currency || 'USD', true);
       if (verifyResponse?.success) {
@@ -148,7 +148,7 @@ const SubscriptionUpsellScreenContent = () => {
             <View style={styles.pricingPill}>
               <Text style={styles.pricingPillText}>Pricing Plan</Text>
             </View>
-            <Pressable 
+            <Pressable
               onPress={() => {
                 if (fromOnboarding) {
                   navigation.reset({
@@ -158,10 +158,10 @@ const SubscriptionUpsellScreenContent = () => {
                 } else {
                   navigation.goBack();
                 }
-              }} 
+              }}
               style={styles.backButton}
             >
-               <MaterialCommunityIcons name="close" size={20} color="#fff" />
+              <MaterialCommunityIcons name="close" size={20} color="#fff" />
             </Pressable>
           </View>
           <Text style={styles.heroTitle}>Access Premium{'\n'}Features on Every Plan</Text>
@@ -210,14 +210,40 @@ const SubscriptionUpsellScreenContent = () => {
               </View>
               <View style={styles.giantDivider} />
               <View style={styles.bulletsContainer}>
-                {FEATURES.map((f, i) => <Text key={i} style={styles.bulletItem}>• {f.title}: {f.desc}</Text>)}
-                <Text style={styles.bulletItem}>• Billed securely via Stripe. Cancel anytime.</Text>
+                {FEATURES.map((f, i) => (
+                  <Text key={i} style={styles.bulletItem}>
+                    • {f.title}: {f.desc}
+                  </Text>
+                ))}
+                <Text style={styles.bulletItem}>
+                  • Billed securely via Stripe. Cancel anytime.
+                </Text>
               </View>
-            </LinearGradient>
-          </View>
+
+              {/* Custom Requests Row (aesthetic match) */}
+              <View style={styles.customRequestRow}>
+                <View style={styles.customLeft}>
+                  <MaterialCommunityIcons
+                    name="arrow-top-right"
+                    size={12}
+                    color="rgba(255,255,255,0.5)"
+                  />
+                  <Text style={styles.customText}>For Custom Requests</Text>
+                </View>
+                <View style={styles.customRight}>
+                  <Text style={styles.customLink}>Get started </Text>
+                  <MaterialCommunityIcons
+                    name="arrow-top-right"
+                    size={14}
+                    color="#6C48FB"
+                  />
+                </View>
+              </View >
+            </LinearGradient >
+          </View >
         )}
-      </ScrollView>
-    </View>
+      </ScrollView >
+    </View >
   );
 };
 
@@ -263,6 +289,11 @@ const styles = StyleSheet.create({
   bulletItem: { color: 'rgba(255, 255, 255, 0.4)', fontSize: 12, fontFamily: typography.fontFamilyMedium, lineHeight: 18 },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0A0014' },
   payButtonDisabled: { opacity: 0.6 },
+  customRequestRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.03)', borderRadius: 16, padding: 16, marginTop: 16, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.05)' },
+  customLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  customText: { color: 'rgba(255, 255, 255, 0.6)', fontSize: 13, fontFamily: typography.fontFamilyMedium },
+  customRight: { flexDirection: 'row', alignItems: 'center' },
+  customLink: { color: '#6C48FB', fontSize: 13, fontFamily: typography.fontFamilySemiBold },
 });
 
 const SubscriptionUpsellScreen = () => {

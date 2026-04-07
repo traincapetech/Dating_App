@@ -163,7 +163,7 @@ const TabNavigator = () => {
         },
       }}>
       <Tab.Screen
-        name="Discover"
+        name="Explore"
         component={HomeScreen}
         options={{
           tabBarIcon: ({color, size}) => (
@@ -233,7 +233,7 @@ const TabNavigator = () => {
         component={ProfileScreen}
         options={{
           tabBarLabel: userName,
-          tabBarItemStyle: { display: 'none' },
+          tabBarItemStyle: {display: 'none'},
         }}
       />
     </Tab.Navigator>

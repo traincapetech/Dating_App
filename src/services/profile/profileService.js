@@ -1,6 +1,5 @@
 import {apiClient} from '../api/client';
 import {getAccessToken} from '../storage/tokenStorage';
-import {API_BASE_URL} from '../../config/api';
 
 async function getAuthHeaders() {
   const token = await getAccessToken();
@@ -30,12 +29,6 @@ export async function getDiscoverProfiles(excludeUserId = null, options = {}) {
   }
   if (options.limit !== undefined && options.limit !== null) {
     params.limit = options.limit;
-  }
-
-  // Send live GPS so the backend always filters from the real current position
-  if (options.latitude !== undefined && options.longitude !== undefined) {
-    params.lat = options.latitude;
-    params.lng = options.longitude;
   }
 
   // Add advanced filters (premium feature)
@@ -72,58 +65,75 @@ export async function getDiscoverProfiles(excludeUserId = null, options = {}) {
   return apiClient.get(path, headers);
 }
 
-// Re-built uploadProfileImage using FormData for high-res images
 export async function uploadProfileImage(userId, imageData, fileName) {
   const headers = await getAuthHeaders();
-  const formData = new FormData();
-  formData.append('userId', userId);
 
-  let fileUri = null;
-  let fileType = 'image/jpeg';
-  let finalFileName = fileName || `photo_${Date.now()}.jpg`;
+  // imageData can be:
+  // 1. Base64 string (from react-native-image-picker with includeBase64: true)
+  // 2. Asset object with base64 property
+  // 3. Image URI (fallback)
+  let imageUri;
 
   if (typeof imageData === 'string') {
-    if (imageData.startsWith('file://') || imageData.startsWith('/')) {
-      fileUri = imageData;
-    } else if (imageData.startsWith('data:')) {
-      fileUri = imageData;
-      // Extract mimetype if possible
-      const match = imageData.match(/^data:(image\/\w+);base64,/);
-      if (match) fileType = match[1];
+    if (imageData.startsWith('data:')) {
+      // Already a data URI
+      imageUri = imageData;
+    } else if (imageData.startsWith('file://') || imageData.startsWith('/')) {
+      // Local file URI - for React Native, we need base64
+      // This should not happen if includeBase64: true is set
+      throw new Error(
+        'Image URI provided but base64 is required. Please ensure includeBase64: true in image picker.',
+      );
     } else {
-      fileUri = `data:image/jpeg;base64,${imageData}`;
+      // Assume it's base64 without data URI prefix
+      imageUri = `data:image/jpeg;base64,${imageData}`;
+    }
+  } else if (imageData && imageData.base64) {
+    // From react-native-image-picker with includeBase64: true
+    // Check if base64 already has data URI prefix
+    if (
+      typeof imageData.base64 === 'string' &&
+      imageData.base64.startsWith('data:')
+    ) {
+      imageUri = imageData.base64;
+    } else {
+      imageUri = `data:${imageData.type || 'image/jpeg'};base64,${
+        imageData.base64
+      }`;
     }
   } else if (imageData && imageData.uri) {
-    fileUri = imageData.uri;
-    fileType = imageData.type || 'image/jpeg';
-    finalFileName = imageData.fileName || finalFileName;
-  } else if (imageData && imageData.base64) {
-    fileUri = `data:${imageData.type || 'image/jpeg'};base64,${imageData.base64}`;
-    fileType = imageData.type || 'image/jpeg';
+    // Fallback: if no base64, try to use URI (server will need to handle)
+    // This is not ideal but works as fallback
+    imageUri = imageData.uri;
+    console.warn(
+      'Uploading image URI without base64. Server may not be able to process it.',
+    );
+  } else {
+    throw new Error(
+      'Invalid image data format. Expected base64 string or asset object with base64 property.',
+    );
   }
 
-  formData.append('image', {
-    uri: fileUri,
-    type: fileType,
-    name: finalFileName,
-  });
-
-  const response = await fetch(`${API_BASE_URL}/profile/upload-image`, {
-    method: 'POST',
-    headers: {
-      ...headers,
+  const result = await apiClient.post(
+    '/profile/upload-image',
+    {
+      userId,
+      imageUri,
+      fileName: fileName || `image_${Date.now()}.jpg`,
+      contentType: 'image/jpeg',
     },
-    body: formData,
-  });
+    headers,
+  );
 
-  return response.json();
+  return result;
 }
 
 export async function uploadMultipleImages(userId, images) {
   const uploadPromises = images
-    .filter(img => img && (img.uri || img.base64 || img.asset))
+    .filter(img => img && (img.uri || img.base64))
     .map((img, index) => {
-      const imageData = img.asset || img.base64 || img.uri;
+      // Prefer base64 if available, otherwise use URI
+      const imageData = img.base64 || img.asset || img.uri;
       return uploadProfileImage(
         userId,
         imageData,
@@ -132,6 +142,11 @@ export async function uploadMultipleImages(userId, images) {
     });
 
   return Promise.all(uploadPromises);
+}
+
+export async function deleteImage(userId, imageUrl) {
+  const headers = await getAuthHeaders();
+  return apiClient.post('/profile/delete-image', { userId, imageUrl }, headers);
 }
 
 export async function deleteUser(userId) {

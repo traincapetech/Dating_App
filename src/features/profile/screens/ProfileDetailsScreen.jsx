@@ -12,10 +12,8 @@ import {
   TextInput,
   Animated,
   FlatList,
-  PermissionsAndroid,
   Platform,
 } from 'react-native';
-import Geolocation from 'react-native-geolocation-service';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {colors, typography, spacing} from '../../../theme';
@@ -24,6 +22,7 @@ import {
   updateProfileApi,
   uploadProfileImage,
   updateMedia,
+  deleteImage,
 } from '../../../services/profile/profileService';
 import {launchImageLibrary} from 'react-native-image-picker';
 import {DraggableGrid} from 'react-native-draggable-grid';
@@ -49,15 +48,35 @@ const ProfileDetailsScreen = () => {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [photoUploading, setPhotoUploading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState({});
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [scrollEnabled, setScrollEnabled] = useState(true);
-  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [newUploadedPhotos, setNewUploadedPhotos] = useState([]);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const contentY = useRef(new Animated.Value(20)).current;
+
+// Cleanup and navigation prevention if unsaved changes exist
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      // Only do special cleanup if we have unsaved uploads
+      if (isEditing && newUploadedPhotos.length > 0) {
+        // We don't block navigation, we just trigger cleanup in the background
+        console.log(`[Nav Cleanup] Abandoning ${newUploadedPhotos.length} uploads`);
+        const cleanupPromises = newUploadedPhotos.map(url => 
+            deleteImage(userId || profile?._id, url)
+        );
+        Promise.all(cleanupPromises).catch(err => 
+            console.error('[Cleanup] Error during navigation cleanup:', err)
+        );
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, isEditing, newUploadedPhotos, userId, profile?._id]);
 
   const userId = route.params?.userId || profile?._id || profile?.id;
 
@@ -119,9 +138,8 @@ const ProfileDetailsScreen = () => {
         setCurrentUserId(me.id || me._id);
       }
 
-      if (!targetId || targetId === 'undefined') {
-        console.warn('User ID not found, skipping profile fetch');
-        setLoading(false);
+      if (!targetId) {
+        Alert.alert('Error', 'User ID not found');
         return;
       }
 
@@ -192,61 +210,6 @@ const ProfileDetailsScreen = () => {
     }
   };
 
-  // Auto-detect GPS location and reverse geocode to city name
-  const handleDetectLocation = async () => {
-    try {
-      if (Platform.OS === 'android') {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          {title: 'Location Permission', message: 'Pryvo needs your location to show nearby matches.', buttonPositive: 'Allow'},
-        );
-        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-          Alert.alert('Permission Denied', 'Please enable location in device settings.');
-          return;
-        }
-      }
-      setIsDetectingLocation(true);
-      const position = await new Promise((resolve, reject) =>
-        Geolocation.getCurrentPosition(resolve, reject, {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000}),
-      );
-      const {latitude, longitude} = position.coords;
-      // Reverse geocode using open API (no key required)
-      try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
-          {headers: {'Accept-Language': 'en'}},
-        );
-        const data = await res.json();
-        const city =
-          data.address?.city ||
-          data.address?.town ||
-          data.address?.village ||
-          data.address?.state ||
-          'Your Location';
-        const locationStr = data.address?.state
-          ? `${city}, ${data.address.state}`
-          : city;
-        setEditedProfile(prev => ({
-          ...prev,
-          location: locationStr,
-          locationDetails: {lat: latitude, lng: longitude, source: 'gps', timestamp: Date.now()},
-        }));
-        Alert.alert('📍 Location Detected', locationStr);
-      } catch {
-        // Fallback: just store coordinates as label
-        setEditedProfile(prev => ({
-          ...prev,
-          location: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
-          locationDetails: {lat: latitude, lng: longitude, source: 'gps', timestamp: Date.now()},
-        }));
-      }
-    } catch (error) {
-      Alert.alert('Location Error', 'Could not detect location. Make sure GPS is enabled.');
-    } finally {
-      setIsDetectingLocation(false);
-    }
-  };
-
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -263,6 +226,17 @@ const ProfileDetailsScreen = () => {
 
       if (!currentUserId) {
         Alert.alert('Error', 'User ID not found');
+        return;
+      }
+
+      // Check minimum photos before saving
+      const validPhotos = (editedProfile.photos || []).filter(p => p.url);
+      if (validPhotos.length < 5) {
+        Alert.alert(
+          'Minimum Photos Required',
+          'Please upload at least 5 photos before saving.',
+        );
+        setSaving(false);
         return;
       }
 
@@ -288,10 +262,6 @@ const ProfileDetailsScreen = () => {
       }
       if (editedProfile.location !== undefined) {
         payload.basicInfo.location = editedProfile.location.trim();
-      }
-      // Also sync GPS coordinates if available
-      if (editedProfile.locationDetails?.lat && editedProfile.locationDetails?.lng) {
-        payload.basicInfo.locationDetails = editedProfile.locationDetails;
       }
       if (editedProfile.gender) {
         payload.basicInfo.gender = editedProfile.gender;
@@ -356,22 +326,20 @@ const ProfileDetailsScreen = () => {
         delete payload.datingPreferences;
 
       // Save photos (media)
-      const currentPhotos = editedProfile.photos || [];
       const mediaPayload = {
-        media: currentPhotos
-          .filter(p => p.url) // Only save slots with URLs
-          .map((p, index) => ({
-            type: 'photo',
-            url: p.url,
-            order: index,
-          })),
+        media: validPhotos.map((p, index) => ({
+          type: 'photo',
+          url: p.url,
+          order: index,
+        })),
       };
-
-      if (mediaPayload.media.length > 0 || profile?.photos?.length > 0) {
+ 
+      if (mediaPayload.media.length > 0) {
         await updateMedia(mediaPayload);
       }
-
+ 
       await updateProfileApi(payload);
+      setNewUploadedPhotos([]); // Successfully saved, clear cleanup tracking
       Alert.alert('Success', 'Profile updated successfully');
 
       // Reload global state if it's our own profile
@@ -390,17 +358,6 @@ const ProfileDetailsScreen = () => {
   };
 
   const handleDeletePhoto = index => {
-    const currentValidPhotosCount = editedProfile.photos.filter(
-      p => p.url,
-    ).length;
-    if (currentValidPhotosCount <= 5) {
-      Alert.alert(
-        'Cannot Delete',
-        'You must have at least 5 photos on your profile.',
-        [{text: 'OK'}],
-      );
-      return;
-    }
 
     Alert.alert('Delete Photo', 'Are you sure you want to delete this photo?', [
       {text: 'Cancel', style: 'cancel'},
@@ -431,41 +388,30 @@ const ProfileDetailsScreen = () => {
     ]);
   };
 
-  const checkStoragePermission = async () => {
-    if (Platform.OS === 'android') {
+  const handleCancelEditing = async () => {
+    // Cleanup any orphaned uploads that were not persisted
+    if (newUploadedPhotos.length > 0) {
+      console.log(`[Cleanup] Deleting ${newUploadedPhotos.length} unsaved uploads`);
       try {
-        if (Platform.Version >= 33) {
-          const hasFull = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES);
-          if (Platform.Version >= 34) {
-            const hasPartial = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_VISUAL_USER_SELECTED);
-            if (hasFull || hasPartial) return true;
-          } else if (hasFull) {
-            return true;
-          }
-          const results = await PermissionsAndroid.requestMultiple(
-            Platform.Version >= 34 
-              ? [PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES, PermissionsAndroid.PERMISSIONS.READ_MEDIA_VISUAL_USER_SELECTED]
-              : [PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES]
-          );
-          return results[PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES] === PermissionsAndroid.RESULTS.GRANTED ||
-                 results[PermissionsAndroid.PERMISSIONS.READ_MEDIA_VISUAL_USER_SELECTED] === PermissionsAndroid.RESULTS.GRANTED;
-        }
-        const hasLegacy = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE);
-        if (hasLegacy) return true;
-        const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE);
-        return result === PermissionsAndroid.RESULTS.GRANTED;
-      } catch (e) { return false; }
+        const cleanupPromises = newUploadedPhotos.map(url => 
+          deleteImage(userId || profile?._id, url)
+        );
+        // We don't await so the UI feels snappy, but we catch errors
+        Promise.all(cleanupPromises).catch(err => 
+          console.error('[Cleanup] Error during cancel:', err)
+        );
+      } catch (err) {
+        console.error('[Cleanup] Error mapping deletions:', err);
+      }
     }
-    return true;
+    
+    setNewUploadedPhotos([]);
+    setIsEditing(false);
+    loadProfile(); // Refresh to restore saved state
   };
 
   const handleAddPhoto = async index => {
     try {
-      const hasPermission = await checkStoragePermission();
-      if (!hasPermission) {
-        Alert.alert('Permission Required', 'Pryvo needs access to your gallery to add photos.');
-        return;
-      }
       const result = await launchImageLibrary({
         mediaType: 'photo',
         quality: 0.8,
@@ -490,7 +436,7 @@ const ProfileDetailsScreen = () => {
           return;
         }
 
-        setSaving(true);
+        setPhotoUploading(true);
 
         try {
           const uploadResult = await uploadProfileImage(
@@ -500,6 +446,9 @@ const ProfileDetailsScreen = () => {
           );
 
           if (isEditing) {
+            // Track newly uploaded photos for cleanup if user cancels
+            setNewUploadedPhotos(prev => [...prev, uploadResult.url]);
+
             setEditedProfile(prev => {
               const newPhotos = [...prev.photos];
               newPhotos[index] = {
@@ -508,7 +457,6 @@ const ProfileDetailsScreen = () => {
               };
               return {...prev, photos: newPhotos};
             });
-            Alert.alert('Success', 'Photo uploaded');
           } else {
             Alert.alert('Success', 'Photo uploaded successfully');
             loadProfile();
@@ -517,7 +465,7 @@ const ProfileDetailsScreen = () => {
           console.error('[ProfileDetails] Photo upload failed:', uploadError);
           Alert.alert('Error', uploadError.message || 'Failed to upload photo');
         } finally {
-          setSaving(false);
+          setPhotoUploading(false);
         }
       }
     } catch (error) {
@@ -671,7 +619,7 @@ const ProfileDetailsScreen = () => {
           <View style={styles.simpleEditHeader}>
             <View style={styles.headerSideContainer}>
               <Pressable
-                onPress={() => setIsEditing(false)}
+                onPress={handleCancelEditing}
                 style={styles.headerIconBtn}>
                 <MaterialCommunityIcons
                   name="close"
@@ -737,11 +685,15 @@ const ProfileDetailsScreen = () => {
                           <Pressable
                             style={styles.photoPlaceholderBtn}
                             onPress={() => handleAddPhoto(index)}>
-                            <MaterialCommunityIcons
-                              name="plus"
-                              size={32}
-                              color="#1A1A1A"
-                            />
+                            {photoUploading ? (
+                              <ActivityIndicator size="small" color="#C084FC" />
+                            ) : (
+                              <MaterialCommunityIcons
+                                name="plus"
+                                size={32}
+                                color="#1A1A1A"
+                              />
+                            )}
                           </Pressable>
                         )}
                         {index === 0 && (
@@ -1060,10 +1012,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   heroWrapper: {
-    height: HERO_HEIGHT,
     width: SCREEN_WIDTH,
-    position: 'relative',
-    overflow: 'hidden',
+    height: HERO_HEIGHT,
+    backgroundColor: '#000',
   },
   heroSlide: {
     width: SCREEN_WIDTH,
@@ -1150,6 +1101,51 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
   },
+  simpleEditHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    backgroundColor: 'transparent',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+  },
+  headerSideContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  headerCenterContainer: {
+    flex: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitleTxt: {
+    fontSize: 18,
+    fontFamily: typography.fontFamilyBold,
+    color: '#000000',
+    fontWeight: '800',
+  },
+  headerIconBtn: {
+    padding: 4,
+  },
+  headerSaveBtnWrapper: {
+    zIndex: 10,
+  },
+  headerSavePill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerSaveTxt: {
+    fontSize: 15,
+    fontFamily: typography.fontFamilyBold,
+    color: '#FFF',
+    fontWeight: '700',
+  },
   bodyContent: {
     paddingHorizontal: 20,
     paddingTop: 10,
@@ -1180,6 +1176,7 @@ const styles = StyleSheet.create({
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.08,
     shadowRadius: 12,
+    // Removed elevation: 4 to fix Android 'ghost plate' artifacts on semi-transparent backgrounds
   },
   entryRow: {
     marginBottom: 14,
@@ -1269,7 +1266,7 @@ const styles = StyleSheet.create({
   pillContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 10, // Wider gap
     marginTop: 4,
   },
   staticPill: {
@@ -1421,52 +1418,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontFamily: typography.fontFamilyBold,
     marginLeft: 10,
-  },
-  // Simple Edit Header
-  simpleEditHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
-    paddingBottom: 15,
-    backgroundColor: 'transparent',
-  },
-  headerSideContainer: {
-    flex: 1,
-  },
-  headerCenterContainer: {
-    flex: 2,
-    alignItems: 'center',
-  },
-  headerIconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitleTxt: {
-    fontSize: 18,
-    fontFamily: typography.fontFamilyBold,
-    color: '#000',
-  },
-  headerSaveBtnWrapper: {
-    alignSelf: 'flex-end',
-  },
-  headerSavePill: {
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  headerSaveTxt: {
-    color: '#FFF',
-    fontFamily: typography.fontFamilyBold,
-    fontSize: 14,
-  },
-  editModule: {
-    marginTop: 0,
   },
 });
 

@@ -26,7 +26,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
 import {colors, typography, spacing} from '../../../theme';
 import LinearGradient from 'react-native-linear-gradient';
-import {getDiscoverProfiles} from '../../../services/profile/profileService';
+import {getDiscoverProfiles, getProfile} from '../../../services/profile/profileService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MatchPopup from '../../../components/profile/MatchPopup.js';
 import {
@@ -50,6 +50,7 @@ import PhotoInteractionViewer from '../../../components/profile/PhotoInteraction
 import {useAuth} from '../../../context/AuthContext';
 import {triggerMediumHaptic} from '../../../utils/haptics';
 import ThemeBackground from '../../../components/layout/ThemeBackground';
+
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - spacing.xl * 2;
@@ -521,7 +522,7 @@ const ProfileModal = ({
 
 // ─── HomeScreen ────────────────────────────────────────────────────────────────
 
-const HomeScreen = ({navigation}) => {
+const HomeScreen = ({navigation, route}) => {
   const {setLoading: setGlobalLoading} = useLoading();
   const {profile: myProfile} = useAuth();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -570,7 +571,6 @@ const HomeScreen = ({navigation}) => {
   const translateY = useSharedValue(0);
   const opacity = useSharedValue(1);
   const focusValue = useSharedValue(0);
-  const gestureStateHaptic = useSharedValue(0); // Tracks if threshold haptic was fired
 
   useEffect(() => {
     focusValue.value = withTiming(isProfileFocused ? 1 : 0, {duration: 250});
@@ -723,6 +723,7 @@ const HomeScreen = ({navigation}) => {
       distanceEnabled = useDistanceFilter,
       userLocationOverride = null,
       silent = false,
+      targetUserId = route?.params?.targetUserId,
     ) => {
       try {
         setLoadingLocal(silent ? false : true);
@@ -856,7 +857,70 @@ const HomeScreen = ({navigation}) => {
             })
             .filter(profile => profile.photos && profile.photos.length > 0);
 
-          setProfiles(transformedProfiles);
+          let finalProfiles = transformedProfiles;
+
+          // 🎯 PRIORITIZE TARGET USER (Requirement #1)
+          if (targetUserId) {
+            const index = finalProfiles.findIndex(p => p.id === targetUserId);
+            if (index !== -1) {
+              const targetProfile = finalProfiles[index];
+              finalProfiles = [
+                targetProfile,
+                ...finalProfiles.filter(p => p.id !== targetUserId),
+              ];
+            } else {
+              try {
+                const resp = await getProfile(targetUserId);
+                if (resp && (resp.profile || resp.id)) {
+                  const p = resp.profile || resp;
+                  const lat = parseFloat(p.latitude || p.location?.coordinates?.[1] || p.basicInfo?.locationDetails?.lat);
+                  const lon = parseFloat(p.longitude || p.location?.coordinates?.[0] || p.basicInfo?.locationDetails?.lng);
+                  let dist = null;
+                  if (userLoc && !isNaN(lat) && !isNaN(lon)) {
+                    dist = calculateDistance(userLoc.latitude, userLoc.longitude, lat, lon);
+                  }
+                  const transformedTarget = {
+                    id: p.userId || p.id,
+                    userId: p.userId || p.id,
+                    name: p.name || p.basicInfo?.firstName || 'Unknown',
+                    age: p.basicInfo?.age || p.personalDetails?.age || p.age || null,
+                    distance: dist !== null ? `${dist}` : null,
+                    bio: p.bio || '',
+                    interests: p.interests || p.lifestyle?.interests || [],
+                    photos: p.photos || p.media?.media?.map(m => m.url).filter(Boolean) || [],
+                    matchPercentage: p.matchScore ? Math.round(p.matchScore) : (p.matchPercentage || null),
+                    matchScore: p.matchScore || null,
+                    jobTitle: p.personalDetails?.jobTitle || '',
+                    school: p.personalDetails?.school || '',
+                    location: p.basicInfo?.location || '',
+                    city: p.basicInfo?.locationDetails?.city || '',
+                    gender: p.basicInfo?.gender || '',
+                    height: p.personalDetails?.height || '',
+                    drink: p.lifestyle?.drink || '',
+                    religion: p.lifestyle?.religiousBeliefs || '',
+                    politics: p.lifestyle?.politicalBeliefs || '',
+                    datingIntention: p.datingPreferences?.datingIntention || '',
+                    relationshipType: p.datingPreferences?.relationshipType || '',
+                    latitude: lat,
+                    longitude: lon,
+                    prompts: [
+                      p.profilePrompts?.aboutMe,
+                      p.profilePrompts?.selfCare,
+                      p.profilePrompts?.gettingPersonal,
+                    ].filter(pr => pr && pr.answer),
+                    isMostCompatible: p.isMostCompatible || false,
+                  };
+                  if (transformedTarget.photos.length > 0) {
+                    finalProfiles = [transformedTarget, ...finalProfiles];
+                  }
+                }
+              } catch (err) {
+                console.error('[HomeScreen] Failed to fetch target profile:', err);
+              }
+            }
+          }
+
+          setProfiles(finalProfiles);
           setCurrentIndex(0);
         } else {
           setProfiles([]);
@@ -971,8 +1035,12 @@ const HomeScreen = ({navigation}) => {
   const processSwipe = async direction => {
     if (!currentProfile || !currentUserId) return;
 
-    if (direction === 'right' && dailyLikeInfo.remaining <= 0 && !dailyLikeInfo.isPremium) {
-      navigation.navigate('SubscriptionUpsell');
+    if (direction === 'right' && dailyLikeInfo.remaining <= 0) {
+      Alert.alert(
+        'Daily Like Limit Reached',
+        `You've reached your daily like limit of ${dailyLikeInfo.limit}. Come back tomorrow for more likes!`,
+        [{text: 'OK'}],
+      );
       return;
     }
 
@@ -1044,7 +1112,12 @@ const HomeScreen = ({navigation}) => {
         .catch(err => {
           console.error('Like error:', err);
           if (err?.response?.status === 429 || err?.limitReached) {
-            navigation.navigate('SubscriptionUpsell');
+            Alert.alert(
+              'Daily Like Limit Reached',
+              err?.message ||
+                "You've reached your daily like limit. Come back tomorrow!",
+              [{text: 'OK'}],
+            );
             loadDailyLikeInfo();
           }
         });
@@ -1063,24 +1136,28 @@ const HomeScreen = ({navigation}) => {
     runOnJS(setIsProfileFocused)(false);
   };
 
+  // ✨ Haptic feedback state for gesture threshold
+  const hasTriggeredHaptic = useSharedValue(false);
+
   const panGesture = Gesture.Pan()
     .activeOffsetX([-10, 10])
     .onUpdate(event => {
       translateX.value = event.translationX;
       translateY.value = event.translationY;
 
-      // Smart tactile feedback when crossing threshold
+      // 📳 Trigger haptic when crossing the swipe threshold
       const absX = Math.abs(event.translationX);
-      if (absX > SWIPE_THRESHOLD && gestureStateHaptic.value === 0) {
-        gestureStateHaptic.value = 1;
+      if (absX >= SWIPE_THRESHOLD && !hasTriggeredHaptic.value) {
+        hasTriggeredHaptic.value = true;
         runOnJS(triggerMediumHaptic)();
-      } else if (absX <= SWIPE_THRESHOLD && gestureStateHaptic.value === 1) {
-        // Reset if user pulls it back before dropping
-        gestureStateHaptic.value = 0;
+      } else if (absX < SWIPE_THRESHOLD && hasTriggeredHaptic.value) {
+        // Reset if they pull back
+        hasTriggeredHaptic.value = false;
       }
     })
     .onEnd(event => {
-      gestureStateHaptic.value = 0; // Reset state for next card
+      hasTriggeredHaptic.value = false; // Reset for next gesture
+      
       if (event.translationX > SWIPE_THRESHOLD || event.velocityX > 500) {
         runOnJS(processSwipe)('right');
       } else if (
@@ -1129,7 +1206,20 @@ const HomeScreen = ({navigation}) => {
   useFocusEffect(
     useCallback(() => {
       loadDailyLikeInfo();
-    }, [loadDailyLikeInfo]),
+      
+      // If targetUserId changed in params, reload to ensure it's at the top
+      if (route.params?.targetUserId) {
+        const tid = route.params.targetUserId;
+        // Only reload if the top card isn't already this user
+        if (!profiles.length || profiles[currentIndex]?.id !== tid) {
+          loadProfiles(null, useDistanceFilter, null, true, tid);
+          // Wait a bit then clear the param so it doesn't re-trigger on next focus
+          setTimeout(() => {
+            navigation.setParams({ targetUserId: null });
+          }, 1000);
+        }
+      }
+    }, [loadDailyLikeInfo, route.params?.targetUserId, profiles, currentIndex, loadProfiles]),
   );
 
   // ── Shared header ───────────────────────────────────────────────────────────
@@ -1245,39 +1335,38 @@ const HomeScreen = ({navigation}) => {
     );
   }
 
-  // ── Empty state ─────────────────────────────────────────────────────────────
+  // ── Empty state (REFINED 10/10 Polish) ───────────────────────────────────────
   if (!currentProfile) {
     return (
-      <ThemeBackground>
-        <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-          <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-          {renderHeader()}
-          <View style={[styles.emptyContainer, {justifyContent: 'center', flex: 1, paddingHorizontal: 30}]}>
-            <View style={styles.emptyAnimationWrapper}>
-              <View style={styles.emptyCircleLarge}>
-                <LinearGradient
-                  colors={[colors.primary, '#E040C8']}
-                  style={styles.emptyCircleMedium}>
-                  <View style={styles.emptyCircleSmall}>
-                    <MaterialCommunityIcons
-                      name="star-four-points"
-                      size={52}
-                      color={colors.primary}
-                    />
-                  </View>
-                </LinearGradient>
-              </View>
-            </View>
-            <Text style={[styles.emptyTitle, {fontSize: 32, marginTop: 40, fontFamily: typography.fontFamilyBold}]}>
-              You're all caught up!
-            </Text>
-            <Text style={[styles.emptySubtitle, {fontSize: 16, lineHeight: 24, paddingHorizontal: 10, marginTop: 12}]}>
-              You've seen everyone nearby. Adjust your distance preferences or come back later for new matches.
-            </Text>
-            
-            <View style={{marginTop: 50, width: '100%'}}>
-              <Pressable
-                style={({pressed}) => [styles.primaryCtaBtn, pressed && {transform: [{scale: 0.96}]}]}
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <StatusBar
+          barStyle="dark-content"
+          backgroundColor={colors.background}
+        />
+        {renderHeader()}
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyIconCircle}>
+            <LinearGradient
+              colors={['#7C3AED', '#C026D3']}
+              style={StyleSheet.absoluteFill}
+              borderRadius={60}
+            />
+            <MaterialCommunityIcons
+              name="creation"
+              size={60}
+              color="#FFF"
+            />
+          </View>
+          
+
+          <Text style={styles.emptyTitle}>Discovery Complete!</Text>
+          <Text style={styles.emptySubtitle}>
+            You've seen all the amazing people nearby. We'll find more for you soon, or you can expand your search.
+          </Text>
+
+          <View style={styles.emptyOptions}>
+             <Pressable
+                style={styles.refreshButton}
                 onPress={async () => {
                   setProfiles([]);
                   setCurrentIndex(0);
@@ -1287,29 +1376,40 @@ const HomeScreen = ({navigation}) => {
                   if (currentUserId) {
                     try {
                       await resetPasses(currentUserId);
-                    } catch (e) {}
+                      triggerMediumHaptic();
+                    } catch (e) {
+                      console.error('Failed to reset passes:', e);
+                    }
                   }
                   await loadProfiles();
                 }}>
                 <LinearGradient
-                  colors={['#9411FA', '#E040C8']}
+                  colors={['#7C3AED', '#EC4899', '#F43F5E']}
                   start={{x: 0, y: 0}}
                   end={{x: 1, y: 0}}
-                  style={styles.ctaGradientBtn}>
-                  <MaterialCommunityIcons name="refresh" size={22} color="#FFF" style={{marginRight: 8}} />
-                  <Text style={styles.ctaTextBtn}>Search Again</Text>
+                  style={styles.refreshButtonGradient}>
+                  <Text style={styles.refreshButtonText}>Refresh Discover</Text>
                 </LinearGradient>
               </Pressable>
 
-              <Pressable
-                style={styles.secondaryCtaBtn}
-                onPress={() => navigation.navigate('AdvancedFilters')}>
-                <Text style={styles.secondaryCtaText}>Adjust Filters</Text>
+              <Pressable 
+                onPress={() => navigation.navigate('AdvancedFilters')}
+                style={styles.adjustFilterButton}>
+                 <Text style={styles.adjustFilterText}>Adjust Filters</Text>
               </Pressable>
-            </View>
           </View>
-        </SafeAreaView>
-      </ThemeBackground>
+
+          <View style={styles.discoveryTipCard}>
+             <MaterialCommunityIcons name="lightbulb-on-outline" size={24} color="#7C3AED" />
+             <View style={styles.tipTextContainer}>
+                <Text style={styles.tipTitle}>Pro Tip</Text>
+                <Text style={styles.tipDescription}>
+                  Users who update their bio get 3x more matches. Why not polish yours while we find more people?
+                </Text>
+             </View>
+          </View>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -1359,7 +1459,7 @@ const HomeScreen = ({navigation}) => {
   return (
     <ThemeBackground>
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       {renderHeader()}
 
@@ -1746,104 +1846,91 @@ const styles = StyleSheet.create({
   // ── Empty / Loading ───────────────────────────────────────────────────────
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
+    paddingHorizontal: 32,
     alignItems: 'center',
-    paddingHorizontal: spacing.xl,
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+  },
+  emptyIconCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#7C3AED',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 32,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
   },
   emptyTitle: {
-    fontSize: typography.headings.h2,
+    fontSize: 28,
     fontFamily: typography.fontFamilyBold,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
+    color: '#000',
+    textAlign: 'center',
+    marginBottom: 16,
   },
   emptySubtitle: {
-    fontSize: typography.body.large,
-    fontFamily: typography.fontFamilyRegular,
-    color: colors.textSecondary,
+    fontSize: 16,
+    fontFamily: typography.fontFamilyMedium,
+    color: '#666',
     textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 40,
+  },
+  emptyOptions: {
+    width: '100%',
+    gap: 16,
   },
   refreshButton: {
-    marginTop: 30,
-    borderRadius: 28,
+    width: '100%',
+    height: 60,
+    borderRadius: 30,
     overflow: 'hidden',
   },
   refreshButtonGradient: {
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 28,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   refreshButtonText: {
-    color: '#FFF',
-    fontFamily: typography.fontFamilyBold,
-    fontSize: 16,
-  },
-  emptyAnimationWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyCircleLarge: {
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: 'rgba(148, 17, 250, 0.08)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyCircleMedium: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    justifyContent: 'center',
-    alignItems: 'center',
-    opacity: 0.8,
-  },
-  emptyCircleSmall: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#FFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 10},
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 8,
-  },
-  primaryCtaBtn: {
-    borderRadius: 30,
-    overflow: 'hidden',
-    shadowColor: colors.primary,
-    shadowOffset: {width: 0, height: 8},
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    elevation: 6,
-    width: '100%',
-  },
-  ctaGradientBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-  },
-  ctaTextBtn: {
     color: '#FFF',
     fontSize: 18,
     fontFamily: typography.fontFamilyBold,
   },
-  secondaryCtaBtn: {
-    marginTop: 16,
-    paddingVertical: 14,
+  adjustFilterButton: {
+    width: '100%',
+    paddingVertical: 16,
     alignItems: 'center',
-    borderRadius: 30,
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    justifyContent: 'center',
   },
-  secondaryCtaText: {
-    color: colors.textPrimary,
+  discoveryTipCard: {
+    marginTop: 40,
+    padding: 20,
+    backgroundColor: '#FAFAFA',
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+    borderWidth: 1,
+    borderColor: '#F1F1F1',
+  },
+  tipTextContainer: {
+    flex: 1,
+  },
+  tipTitle: {
     fontSize: 16,
     fontFamily: typography.fontFamilyBold,
+    color: '#000',
+    marginBottom: 4,
+  },
+  tipDescription: {
+    fontSize: 13,
+    fontFamily: typography.fontFamilyRegular,
+    color: '#666',
+    lineHeight: 18,
   },
 
   // ── Floating ──────────────────────────────────────────────────────────────
