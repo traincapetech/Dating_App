@@ -10,14 +10,17 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
-import {SafeAreaView} from 'react-native-safe-area-context';
+import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useFocusEffect, useNavigation} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {colors, typography, spacing} from '../../../theme';
 import {getBlockedUsers, unblockUser} from '../../../services/blockService';
+import ThemeBackground from '../../../components/layout/ThemeBackground';
 
 const BlockedUsersScreen = () => {
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const [blockedUsers, setBlockedUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -69,92 +72,103 @@ const BlockedUsersScreen = () => {
   };
 
   const renderItem = ({item}) => (
-    <View style={styles.userItem}>
-      <Image
-        source={{
-          uri:
-            item.photo ||
-            'https://ui-avatars.com/api/?background=667eea&color=fff&name=' +
-              encodeURIComponent(item.name || 'User'),
-        }}
-        style={styles.avatar}
-      />
-      <View style={styles.userInfo}>
-        <Text style={styles.userName}>{item.name}</Text>
-        {item.reason && (
-          <Text style={styles.reason}>Reason: {item.reason}</Text>
-        )}
-        <Text style={styles.blockedDate}>
-          Blocked {new Date(item.blockedAt).toLocaleDateString()}
-        </Text>
+    <View style={styles.card}>
+      <View style={styles.userItem}>
+        <Image
+          source={{
+            uri:
+              item.photo ||
+              'https://ui-avatars.com/api/?background=667eea&color=fff&name=' +
+                encodeURIComponent(item.name || 'User'),
+          }}
+          style={styles.avatar}
+        />
+        <View style={styles.userInfo}>
+          <Text style={styles.userName}>{item.name}</Text>
+          {item.reason && (
+            <Text style={styles.reason}>Reason: {item.reason}</Text>
+          )}
+          <Text style={styles.blockedDate}>
+            Blocked {new Date(item.blockedAt).toLocaleDateString()}
+          </Text>
+        </View>
+        <Pressable
+          style={styles.unblockButton}
+          onPress={() => handleUnblock(item.blockedId, item.name)}>
+          <Text style={styles.unblockButtonText}>Unblock</Text>
+        </Pressable>
       </View>
-      <Pressable
-        style={styles.unblockButton}
-        onPress={() => handleUnblock(item.blockedId, item.name)}>
-        <Text style={styles.unblockButtonText}>Unblock</Text>
-      </Pressable>
     </View>
   );
-
-  if (loading) {
-    return (
-      <SafeAreaView style={styles.center}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </SafeAreaView>
-    );
-  }
 
   const Header = () => (
     <View style={styles.header}>
       <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-        <Text style={styles.backText}>←</Text>
+        <MaterialCommunityIcons
+          name="arrow-left"
+          size={28}
+          color={colors.textPrimary}
+        />
       </Pressable>
       <Text style={styles.headerTitle}>Blocked Users</Text>
       <View style={{width: 40}} />
     </View>
   );
 
-  if (blockedUsers.length === 0) {
+  if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <Header />
-        <View style={styles.center}>
-          <Text style={styles.emptyEmoji}>🚫</Text>
-          <Text style={styles.emptyTitle}>No blocked users</Text>
-          <Text style={styles.emptyText}>Users you block will appear here</Text>
-        </View>
-      </SafeAreaView>
+      <ThemeBackground>
+        <SafeAreaView style={styles.center}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </SafeAreaView>
+      </ThemeBackground>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Header />
-      <FlatList
-        data={blockedUsers}
-        keyExtractor={item => item.blockedId}
-        renderItem={renderItem}
-        contentContainerStyle={{paddingVertical: spacing.sm}}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              loadBlockedUsers();
-            }}
-            colors={[colors.primary]}
-            tintColor={colors.primary}
+    <ThemeBackground>
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <Header />
+        {blockedUsers.length === 0 ? (
+          <View style={styles.center}>
+            <View style={styles.emptyIconContainer}>
+              <MaterialCommunityIcons name="account-cancel-outline" size={80} color="rgba(107, 33, 168, 0.2)" />
+            </View>
+            <Text style={styles.emptyTitle}>No blocked users</Text>
+            <Text style={styles.emptyText}>Users you block will appear here</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={blockedUsers}
+            keyExtractor={item => item.blockedId}
+            renderItem={renderItem}
+            contentContainerStyle={[
+              styles.listContent,
+              {paddingBottom: insets.bottom + spacing.xl},
+            ]}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={() => {
+                  setRefreshing(true);
+                  loadBlockedUsers();
+                }}
+                colors={[colors.primary]}
+                tintColor={colors.primary}
+              />
+            }
           />
-        }
-      />
-    </SafeAreaView>
+        )}
+      </SafeAreaView>
+    </ThemeBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  safe: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: 'transparent',
   },
   center: {
     flex: 1,
@@ -166,27 +180,80 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
   },
   backButton: {
-    padding: spacing.sm,
-  },
-  backText: {
-    fontSize: 24,
-    color: '#1a1a1a',
+    padding: spacing.xs,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontFamily: typography.fontFamilyBold,
     color: colors.textPrimary,
   },
-  emptyEmoji: {
-    fontSize: 48,
+  listContent: {
+    paddingTop: spacing.md,
+  },
+  card: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    marginHorizontal: spacing.lg,
+    borderRadius: 24,
+    shadowColor: colors.primary,
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
     marginBottom: spacing.md,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(107, 33, 168, 0.1)',
+  },
+  userItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md + 4,
+  },
+  avatar: {
+    width: 60,
+    height: 60,
+    borderRadius: 16,
+    backgroundColor: 'rgba(107, 33, 168, 0.05)',
+  },
+  userInfo: {
+    flex: 1,
+    marginLeft: spacing.md,
+  },
+  userName: {
+    fontSize: 16,
+    fontFamily: typography.fontFamilySemiBold,
+    color: '#333',
+    marginBottom: 2,
+  },
+  reason: {
+    fontSize: 12,
+    fontFamily: typography.fontFamilyRegular,
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  blockedDate: {
+    fontSize: 11,
+    fontFamily: typography.fontFamilyRegular,
+    color: '#AAA',
+  },
+  unblockButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 12,
+    backgroundColor: 'rgba(107, 33, 168, 0.08)',
+  },
+  unblockButtonText: {
+    color: colors.primary,
+    fontFamily: typography.fontFamilyBold,
+    fontSize: 13,
+  },
+  emptyIconContainer: {
+    marginBottom: spacing.xl,
   },
   emptyTitle: {
     fontSize: 20,
@@ -195,54 +262,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   emptyText: {
-    fontSize: typography.body?.large || 16,
+    fontSize: 15,
+    fontFamily: typography.fontFamilyRegular,
     color: colors.textSecondary,
     textAlign: 'center',
-  },
-  userItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
-    backgroundColor: '#fff',
-  },
-  avatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#eee',
-    marginRight: spacing.md,
-  },
-  userInfo: {
-    flex: 1,
-  },
-  userName: {
-    fontSize: typography.body?.large || 16,
-    fontFamily: typography.fontFamilyMedium,
-    color: colors.textPrimary,
-    marginBottom: 4,
-  },
-  reason: {
-    fontSize: typography.body?.small || 14,
-    color: colors.textSecondary,
-    marginBottom: 2,
-  },
-  blockedDate: {
-    fontSize: typography.body?.small || 12,
-    color: colors.textSecondary,
-  },
-  unblockButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: 8,
-    backgroundColor: colors.primary,
-  },
-  unblockButtonText: {
-    color: colors.surface,
-    fontFamily: typography.fontFamilyMedium,
-    fontSize: typography.body?.small || 14,
   },
 });
 

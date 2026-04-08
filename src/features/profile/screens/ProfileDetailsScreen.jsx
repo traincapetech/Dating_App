@@ -33,6 +33,10 @@ import PhotoInteractionViewer from '../../../components/profile/PhotoInteraction
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import ThemeBackground from '../../../components/layout/ThemeBackground';
+import {
+  getCurrentLocation,
+  reverseGeocode,
+} from '../../../services/location/locationService';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 const GRID_PADDING = 20; // Matches bodyContent padding
@@ -54,6 +58,7 @@ const ProfileDetailsScreen = () => {
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const [newUploadedPhotos, setNewUploadedPhotos] = useState([]);
+  const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -164,6 +169,7 @@ const ProfileDetailsScreen = () => {
         occupation: profileData?.personalDetails?.jobTitle || '',
         education: profileData?.personalDetails?.school || '',
         location: profileData?.basicInfo?.location || '',
+        locationDetails: profileData?.basicInfo?.locationDetails || null,
         gender: profileData?.basicInfo?.gender || '',
         showGenderOnProfile:
           profileData?.basicInfo?.showGenderOnProfile ?? true,
@@ -210,6 +216,44 @@ const ProfileDetailsScreen = () => {
     }
   };
 
+  const handleUpdateLocationGPS = async () => {
+    try {
+      setIsUpdatingLocation(true);
+      const loc = await getCurrentLocation();
+      if (loc) {
+        const city = await reverseGeocode(loc.latitude, loc.longitude);
+        const locDetails = {
+          lat: loc.latitude,
+          lng: loc.longitude,
+          source: 'gps',
+          timestamp: Date.now(),
+          city: city || undefined,
+        };
+
+        setEditedProfile(prev => ({
+          ...prev,
+          location: city || `${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)}`,
+          locationDetails: locDetails,
+        }));
+        
+        triggerMediumHaptic();
+        Alert.alert('Location Updated', `Position captured: ${city || 'GPS Coords'}`);
+      }
+    } catch (error) {
+      console.error('Error updating location via GPS:', error);
+      Alert.alert('Location Error', 'Failed to get your current position. Please ensure GPS is enabled.');
+    } finally {
+      setIsUpdatingLocation(false);
+    }
+  };
+
+  const triggerMediumHaptic = () => {
+    // Shorthand for future impact feedback if needed
+    if (Platform.OS === 'ios' || Platform.OS === 'android') {
+      // Haptic logic could go here
+    }
+  };
+
   const handleSave = async () => {
     try {
       setSaving(true);
@@ -251,11 +295,26 @@ const ProfileDetailsScreen = () => {
       };
 
       // Basic Info - send empty strings to allow clearing
+      // Note: Backend requires min(1) for names, so we must validate here
       if (editedProfile.firstName !== undefined) {
-        payload.basicInfo.firstName = editedProfile.firstName.trim();
+        const trimmed = editedProfile.firstName.trim();
+        if (trimmed.length > 0) {
+          payload.basicInfo.firstName = trimmed;
+        } else {
+          Alert.alert('Validation Error', 'First name cannot be empty');
+          setSaving(false);
+          return;
+        }
       }
       if (editedProfile.lastName !== undefined) {
-        payload.basicInfo.lastName = editedProfile.lastName.trim();
+        const trimmed = editedProfile.lastName.trim();
+        if (trimmed.length > 0) {
+          payload.basicInfo.lastName = trimmed;
+        } else {
+          Alert.alert('Validation Error', 'Last name cannot be empty');
+          setSaving(false);
+          return;
+        }
       }
       if (editedProfile.dob !== undefined) {
         payload.basicInfo.dob = editedProfile.dob.trim();
@@ -269,6 +328,9 @@ const ProfileDetailsScreen = () => {
       if (editedProfile.showGenderOnProfile !== undefined) {
         payload.basicInfo.showGenderOnProfile =
           editedProfile.showGenderOnProfile;
+      }
+      if (editedProfile.locationDetails) {
+        payload.basicInfo.locationDetails = editedProfile.locationDetails;
       }
 
       // Profile Prompts
@@ -658,6 +720,42 @@ const ProfileDetailsScreen = () => {
         <View style={styles.bodyContent}>
           {isEditing && (
             <View style={styles.editModule}>
+              {renderSectionHeader('Basic Info', 'account-edit')}
+              <View style={styles.structuredCard}>
+                <View style={styles.horizontalSplit}>
+                  <View style={styles.splitCol}>
+                    <View style={styles.stackedInput}>
+                      <Text style={styles.miniLabel}>First Name</Text>
+                      <TextInput
+                        style={styles.cleanBottomInput}
+                        value={editedProfile.firstName}
+                        onChangeText={text =>
+                          setEditedProfile(prev => ({...prev, firstName: text}))
+                        }
+                        placeholder="Required"
+                        placeholderTextColor="rgba(255,255,255,0.3)"
+                        underlineColorAndroid="transparent"
+                      />
+                    </View>
+                  </View>
+                  <View style={styles.splitCol}>
+                    <View style={styles.stackedInput}>
+                      <Text style={styles.miniLabel}>Last Name</Text>
+                      <TextInput
+                        style={styles.cleanBottomInput}
+                        value={editedProfile.lastName}
+                        onChangeText={text =>
+                          setEditedProfile(prev => ({...prev, lastName: text}))
+                        }
+                        placeholder="Required"
+                        placeholderTextColor="rgba(255,255,255,0.3)"
+                        underlineColorAndroid="transparent"
+                      />
+                    </View>
+                  </View>
+                </View>
+              </View>
+
               {renderSectionHeader('Photos', 'camera')}
               <View style={[styles.photoGridContainer, {height: (PHOTO_SIZE * 1.35) * 2 + 20}]}>
                 <DraggableGrid
@@ -810,6 +908,43 @@ const ProfileDetailsScreen = () => {
                   <Text style={styles.mutedEmptyTxt}>No interests added</Text>
                 )}
               </View>
+            )}
+          </View>
+
+          {/* Location Section */}
+          {renderSectionHeader('Location', 'map-marker')}
+          <View style={styles.structuredCard}>
+            {isEditing ? (
+              <View style={styles.locationEditRow}>
+                <View style={[styles.stackedInput, {flex: 1}]}>
+                  <Text style={styles.miniLabel}>Current City</Text>
+                  <TextInput
+                    style={styles.cleanBottomInput}
+                    value={editedProfile.location}
+                    onChangeText={text =>
+                      setEditedProfile(prev => ({...prev, location: text}))
+                    }
+                    placeholder="City, Country"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    underlineColorAndroid="transparent"
+                  />
+                </View>
+                <Pressable 
+                  onPress={handleUpdateLocationGPS}
+                  disabled={isUpdatingLocation}
+                  style={styles.gpsPillBtn}>
+                  {isUpdatingLocation ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons name="crosshairs-gps" size={16} color="#FFF" />
+                      <Text style={styles.gpsPillTxt}>GPS</Text>
+                    </>
+                  )}
+                </Pressable>
+              </View>
+            ) : (
+              renderInfoItem('Living in', location || 'Not specified', 'map-marker-outline')
             )}
           </View>
 
@@ -1418,6 +1553,25 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontFamily: typography.fontFamilyBold,
     marginLeft: 10,
+  },
+  locationEditRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  gpsPillBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#7C3AED',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    gap: 4,
+  },
+  gpsPillTxt: {
+    color: '#FFF',
+    fontSize: 12,
+    fontFamily: typography.fontFamilyBold,
   },
 });
 

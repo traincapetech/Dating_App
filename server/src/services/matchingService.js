@@ -291,42 +291,40 @@ export async function getMatchedProfiles(userId, options = {}) {
 
   // A. Geo-Spatial Filter ($geoNear must be first)
   const viewerCoords = currentUserProfile.location?.coordinates;
+  // Enforce valid location check (Single Source of Truth)
   const hasViewerLocation =
-    viewerCoords && viewerCoords[0] !== 0 && viewerCoords[1] !== 0;
+    viewerCoords && 
+    Array.isArray(viewerCoords) && 
+    viewerCoords.length === 2 && 
+    !(viewerCoords[0] === 0 && viewerCoords[1] === 0);
 
-  if (hasViewerLocation) {
-    pipeline.push({
-      $geoNear: {
-        near: currentUserProfile.location,
-        distanceField: 'dist.calculated', // Output field for distance
-        // Use provided maxDistance, or a very large default (5000km) if none provided
-        maxDistance: (maxDistance || 5000) * 1000, // Convert km to meters
-        distanceMultiplier: 0.001, // Convert meters to km
-        spherical: true,
-        query: {
-          userId: {$ne: userId},
-          isPaused: {$ne: true},
-          isHidden: {$ne: true},
-        }, // Exclude current user and paused/hidden users
-      },
-    });
-  } else {
-    // If a specific distance filter was requested but viewer has no location, we can't filter.
-    // Return empty results to avoid "global leaks" when user expects a filter.
-    if (maxDistance !== null) {
-      console.log(
-        `[getMatchedProfiles] maxDistance ${maxDistance} requested but user ${userId} has no location. Ignoring distance filter.`,
-      );
-    }
-    // Fallback: exclude self and paused/hidden users
-    pipeline.push({
-      $match: {
+  if (!hasViewerLocation) {
+    console.log(`[getMatchedProfiles] User ${userId} has no valid location. Blocking discovery to prevent global leak.`);
+    return []; // STRICT: No location = No profiles
+  }
+
+  // Determine explicit radius (Convert KM to Meters)
+  // Standardize: If no maxDistance provided, use a reasonable default like 100km, 
+  // but NEVER undefined/5000km.
+  const radiusInMeters = (maxDistance || 100) * 1000;
+
+  pipeline.push({
+    $geoNear: {
+      near: currentUserProfile.location,
+      distanceField: 'dist.calculated',
+      maxDistance: radiusInMeters,
+      distanceMultiplier: 0.001, // Convert results to km
+      spherical: true,
+      query: {
         userId: {$ne: userId},
         isPaused: {$ne: true},
         isHidden: {$ne: true},
+        // IMPORTANT: Ensure we only match profiles with valid coordinates
+        'location.coordinates': {$exists: true, $ne: [0, 0]},
       },
-    });
-  }
+    },
+  });
+
 
   // B. Gender Filter
   const userGender = currentUserProfile.basicInfo?.gender;

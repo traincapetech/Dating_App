@@ -8,6 +8,7 @@ import {
   Alert,
   ActivityIndicator,
   Platform,
+  DeviceEventEmitter,
 } from 'react-native';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
@@ -114,8 +115,11 @@ const AdvancedFiltersScreen = () => {
             text: 'OK',
             onPress: () => {
               console.log(
-                '[AdvancedFiltersScreen] OK pressed, navigating back',
+                '[AdvancedFiltersScreen] OK pressed — emitting filtersUpdated event',
               );
+              // Emit a cross-navigator event so HomeScreen re-fetches
+              // regardless of how deeply nested this screen is.
+              DeviceEventEmitter.emit('pryvo:filtersUpdated');
               navigation.goBack();
             },
           },
@@ -136,7 +140,7 @@ const AdvancedFiltersScreen = () => {
         {
           text: 'Clear',
           style: 'destructive',
-          onPress: () => {
+          onPress: async () => {
             const clearedFilters = {
               educationLevel: null,
               minHeight: null,
@@ -148,7 +152,10 @@ const AdvancedFiltersScreen = () => {
               politicalBeliefs: null,
             };
             setFilters(clearedFilters);
-            AsyncStorage.removeItem(FILTER_STORAGE_KEY);
+            await AsyncStorage.removeItem(FILTER_STORAGE_KEY);
+            // Emit cross-navigator event so HomeScreen resets the feed
+            DeviceEventEmitter.emit('pryvo:filtersUpdated');
+            navigation.goBack();
           },
         },
       ],
