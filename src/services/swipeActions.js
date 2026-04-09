@@ -103,7 +103,7 @@ export const getDailyLikeInfo = async (userId, isPremium = false) => {
     return res;
   } catch (err) {
     console.error('Get Daily Like Info Error:', err?.message || err);
-    return {success: false, count: 0, limit: 50, remaining: 50};
+    return {success: false, count: 0, limit: 8, remaining: 8};
   }
 };
 

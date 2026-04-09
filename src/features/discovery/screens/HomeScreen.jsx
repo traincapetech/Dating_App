@@ -550,8 +550,8 @@ const HomeScreen = ({navigation, route}) => {
   const [currentLocation, setCurrentLocation] = useState(null);
   const [dailyLikeInfo, setDailyLikeInfo] = useState({
     count: 0,
-    limit: 50,
-    remaining: 50,
+    limit: 8,
+    remaining: 8,
     isPremium: false,
   });
   const [swipeCount, setSwipeCount] = useState(0);
@@ -733,8 +733,8 @@ const HomeScreen = ({navigation, route}) => {
           if (info.success) {
             setDailyLikeInfo({
               count: info.count || 0,
-              limit: info.limit || 50,
-              remaining: info.remaining || 50,
+              limit: info.limit || 8,
+              remaining: info.remaining || 8,
               isPremium: info.isPremium || false,
             });
           }
@@ -1075,8 +1075,8 @@ const HomeScreen = ({navigation, route}) => {
 
     if (direction === 'right' && dailyLikeInfo.remaining <= 0) {
       Alert.alert(
-        'Daily Like Limit Reached',
-        `You've reached your daily like limit of ${dailyLikeInfo.limit}. Come back tomorrow for more likes!`,
+        'Daily Limit Reached',
+        'Daily limit exceeded. Buy premium or try again tomorrow.',
         [{text: 'OK'}],
       );
       return;
@@ -1151,9 +1151,8 @@ const HomeScreen = ({navigation, route}) => {
           console.error('Like error:', err);
           if (err?.response?.status === 429 || err?.limitReached) {
             Alert.alert(
-              'Daily Like Limit Reached',
-              err?.message ||
-                "You've reached your daily like limit. Come back tomorrow!",
+              'Daily Limit Reached',
+              'Daily limit exceeded. Buy premium or try again tomorrow.',
               [{text: 'OK'}],
             );
             loadDailyLikeInfo();
