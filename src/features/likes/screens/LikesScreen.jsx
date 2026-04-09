@@ -344,9 +344,9 @@ const LikesScreen = ({navigation}) => {
               <MatchAvatar
                 item={item}
                 onPress={() => {
-                  // Redirect to Home/Swipe Screen (Requirement #5)
+                  // Navigate to the Explore (Home) tab with the target profile prioritised
                   navigation.navigate('HomeTabs', { 
-                    screen: 'Accueil',
+                    screen: 'Explore',
                     params: { targetUserId: item.theirId }
                   });
                 }}
