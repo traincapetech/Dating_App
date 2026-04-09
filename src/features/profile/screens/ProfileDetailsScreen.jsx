@@ -12,10 +12,8 @@ import {
   TextInput,
   Animated,
   FlatList,
-  PermissionsAndroid,
   Platform,
 } from 'react-native';
-import Geolocation from 'react-native-geolocation-service';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {colors, typography, spacing} from '../../../theme';
@@ -35,6 +33,10 @@ import PhotoInteractionViewer from '../../../components/profile/PhotoInteraction
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import ThemeBackground from '../../../components/layout/ThemeBackground';
+import {
+  getCurrentLocation,
+  reverseGeocode,
+} from '../../../services/location/locationService';
 
 const {width: SCREEN_WIDTH} = Dimensions.get('window');
 const GRID_PADDING = 20; // Matches bodyContent padding
@@ -56,7 +58,7 @@ const ProfileDetailsScreen = () => {
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [scrollEnabled, setScrollEnabled] = useState(true);
   const [newUploadedPhotos, setNewUploadedPhotos] = useState([]);
-  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -141,9 +143,8 @@ const ProfileDetailsScreen = () => {
         setCurrentUserId(me.id || me._id);
       }
 
-      if (!targetId || targetId === 'undefined') {
-        console.warn('User ID not found, skipping profile fetch');
-        setLoading(false);
+      if (!targetId) {
+        Alert.alert('Error', 'User ID not found');
         return;
       }
 
@@ -168,6 +169,7 @@ const ProfileDetailsScreen = () => {
         occupation: profileData?.personalDetails?.jobTitle || '',
         education: profileData?.personalDetails?.school || '',
         location: profileData?.basicInfo?.location || '',
+        locationDetails: profileData?.basicInfo?.locationDetails || null,
         gender: profileData?.basicInfo?.gender || '',
         showGenderOnProfile:
           profileData?.basicInfo?.showGenderOnProfile ?? true,
@@ -214,58 +216,41 @@ const ProfileDetailsScreen = () => {
     }
   };
 
-  // Auto-detect GPS location and reverse geocode to city name
-  const handleDetectLocation = async () => {
+  const handleUpdateLocationGPS = async () => {
     try {
-      if (Platform.OS === 'android') {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
-          {title: 'Location Permission', message: 'Pryvo needs your location to show nearby matches.', buttonPositive: 'Allow'},
-        );
-        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-          Alert.alert('Permission Denied', 'Please enable location in device settings.');
-          return;
-        }
-      }
-      setIsDetectingLocation(true);
-      const position = await new Promise((resolve, reject) =>
-        Geolocation.getCurrentPosition(resolve, reject, {enableHighAccuracy: true, timeout: 15000, maximumAge: 10000}),
-      );
-      const {latitude, longitude} = position.coords;
-      // Reverse geocode using open API (no key required)
-      try {
-        const res = await fetch(
-          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
-          {headers: {'Accept-Language': 'en'}},
-        );
-        const data = await res.json();
-        const city =
-          data.address?.city ||
-          data.address?.town ||
-          data.address?.village ||
-          data.address?.state ||
-          'Your Location';
-        const locationStr = data.address?.state
-          ? `${city}, ${data.address.state}`
-          : city;
+      setIsUpdatingLocation(true);
+      const loc = await getCurrentLocation();
+      if (loc) {
+        const city = await reverseGeocode(loc.latitude, loc.longitude);
+        const locDetails = {
+          lat: loc.latitude,
+          lng: loc.longitude,
+          source: 'gps',
+          timestamp: Date.now(),
+          city: city || undefined,
+        };
+
         setEditedProfile(prev => ({
           ...prev,
-          location: locationStr,
-          locationDetails: {lat: latitude, lng: longitude, source: 'gps', timestamp: Date.now()},
+          location: city || `${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)}`,
+          locationDetails: locDetails,
         }));
-        Alert.alert('📍 Location Detected', locationStr);
-      } catch {
-        // Fallback: just store coordinates as label
-        setEditedProfile(prev => ({
-          ...prev,
-          location: `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
-          locationDetails: {lat: latitude, lng: longitude, source: 'gps', timestamp: Date.now()},
-        }));
+        
+        triggerMediumHaptic();
+        Alert.alert('Location Updated', `Position captured: ${city || 'GPS Coords'}`);
       }
     } catch (error) {
-      Alert.alert('Location Error', 'Could not detect location. Make sure GPS is enabled.');
+      console.error('Error updating location via GPS:', error);
+      Alert.alert('Location Error', 'Failed to get your current position. Please ensure GPS is enabled.');
     } finally {
-      setIsDetectingLocation(false);
+      setIsUpdatingLocation(false);
+    }
+  };
+
+  const triggerMediumHaptic = () => {
+    // Shorthand for future impact feedback if needed
+    if (Platform.OS === 'ios' || Platform.OS === 'android') {
+      // Haptic logic could go here
     }
   };
 
@@ -310,11 +295,26 @@ const ProfileDetailsScreen = () => {
       };
 
       // Basic Info - send empty strings to allow clearing
+      // Note: Backend requires min(1) for names, so we must validate here
       if (editedProfile.firstName !== undefined) {
-        payload.basicInfo.firstName = editedProfile.firstName.trim();
+        const trimmed = editedProfile.firstName.trim();
+        if (trimmed.length > 0) {
+          payload.basicInfo.firstName = trimmed;
+        } else {
+          Alert.alert('Validation Error', 'First name cannot be empty');
+          setSaving(false);
+          return;
+        }
       }
       if (editedProfile.lastName !== undefined) {
-        payload.basicInfo.lastName = editedProfile.lastName.trim();
+        const trimmed = editedProfile.lastName.trim();
+        if (trimmed.length > 0) {
+          payload.basicInfo.lastName = trimmed;
+        } else {
+          Alert.alert('Validation Error', 'Last name cannot be empty');
+          setSaving(false);
+          return;
+        }
       }
       if (editedProfile.dob !== undefined) {
         payload.basicInfo.dob = editedProfile.dob.trim();
@@ -322,16 +322,15 @@ const ProfileDetailsScreen = () => {
       if (editedProfile.location !== undefined) {
         payload.basicInfo.location = editedProfile.location.trim();
       }
-      // Also sync GPS coordinates if available
-      if (editedProfile.locationDetails?.lat && editedProfile.locationDetails?.lng) {
-        payload.basicInfo.locationDetails = editedProfile.locationDetails;
-      }
       if (editedProfile.gender) {
         payload.basicInfo.gender = editedProfile.gender;
       }
       if (editedProfile.showGenderOnProfile !== undefined) {
         payload.basicInfo.showGenderOnProfile =
           editedProfile.showGenderOnProfile;
+      }
+      if (editedProfile.locationDetails) {
+        payload.basicInfo.locationDetails = editedProfile.locationDetails;
       }
 
       // Profile Prompts
@@ -473,41 +472,8 @@ const ProfileDetailsScreen = () => {
     loadProfile(); // Refresh to restore saved state
   };
 
-  const checkStoragePermission = async () => {
-    if (Platform.OS === 'android') {
-      try {
-        if (Platform.Version >= 33) {
-          const hasFull = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES);
-          if (Platform.Version >= 34) {
-            const hasPartial = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_VISUAL_USER_SELECTED);
-            if (hasFull || hasPartial) return true;
-          } else if (hasFull) {
-            return true;
-          }
-          const results = await PermissionsAndroid.requestMultiple(
-            Platform.Version >= 34 
-              ? [PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES, PermissionsAndroid.PERMISSIONS.READ_MEDIA_VISUAL_USER_SELECTED]
-              : [PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES]
-          );
-          return results[PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES] === PermissionsAndroid.RESULTS.GRANTED ||
-                 results[PermissionsAndroid.PERMISSIONS.READ_MEDIA_VISUAL_USER_SELECTED] === PermissionsAndroid.RESULTS.GRANTED;
-        }
-        const hasLegacy = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE);
-        if (hasLegacy) return true;
-        const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE);
-        return result === PermissionsAndroid.RESULTS.GRANTED;
-      } catch (e) { return false; }
-    }
-    return true;
-  };
-
   const handleAddPhoto = async index => {
     try {
-      const hasPermission = await checkStoragePermission();
-      if (!hasPermission) {
-        Alert.alert('Permission Required', 'Pryvo needs access to your gallery to add photos.');
-        return;
-      }
       const result = await launchImageLibrary({
         mediaType: 'photo',
         quality: 0.8,
@@ -754,6 +720,42 @@ const ProfileDetailsScreen = () => {
         <View style={styles.bodyContent}>
           {isEditing && (
             <View style={styles.editModule}>
+              {renderSectionHeader('Basic Info', 'account-edit')}
+              <View style={styles.structuredCard}>
+                <View style={styles.horizontalSplit}>
+                  <View style={styles.splitCol}>
+                    <View style={styles.stackedInput}>
+                      <Text style={styles.miniLabel}>First Name</Text>
+                      <TextInput
+                        style={styles.cleanBottomInput}
+                        value={editedProfile.firstName}
+                        onChangeText={text =>
+                          setEditedProfile(prev => ({...prev, firstName: text}))
+                        }
+                        placeholder="Required"
+                        placeholderTextColor="rgba(255,255,255,0.3)"
+                        underlineColorAndroid="transparent"
+                      />
+                    </View>
+                  </View>
+                  <View style={styles.splitCol}>
+                    <View style={styles.stackedInput}>
+                      <Text style={styles.miniLabel}>Last Name</Text>
+                      <TextInput
+                        style={styles.cleanBottomInput}
+                        value={editedProfile.lastName}
+                        onChangeText={text =>
+                          setEditedProfile(prev => ({...prev, lastName: text}))
+                        }
+                        placeholder="Required"
+                        placeholderTextColor="rgba(255,255,255,0.3)"
+                        underlineColorAndroid="transparent"
+                      />
+                    </View>
+                  </View>
+                </View>
+              </View>
+
               {renderSectionHeader('Photos', 'camera')}
               <View style={[styles.photoGridContainer, {height: (PHOTO_SIZE * 1.35) * 2 + 20}]}>
                 <DraggableGrid
@@ -906,6 +908,43 @@ const ProfileDetailsScreen = () => {
                   <Text style={styles.mutedEmptyTxt}>No interests added</Text>
                 )}
               </View>
+            )}
+          </View>
+
+          {/* Location Section */}
+          {renderSectionHeader('Location', 'map-marker')}
+          <View style={styles.structuredCard}>
+            {isEditing ? (
+              <View style={styles.locationEditRow}>
+                <View style={[styles.stackedInput, {flex: 1}]}>
+                  <Text style={styles.miniLabel}>Current City</Text>
+                  <TextInput
+                    style={styles.cleanBottomInput}
+                    value={editedProfile.location}
+                    onChangeText={text =>
+                      setEditedProfile(prev => ({...prev, location: text}))
+                    }
+                    placeholder="City, Country"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                    underlineColorAndroid="transparent"
+                  />
+                </View>
+                <Pressable 
+                  onPress={handleUpdateLocationGPS}
+                  disabled={isUpdatingLocation}
+                  style={styles.gpsPillBtn}>
+                  {isUpdatingLocation ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons name="crosshairs-gps" size={16} color="#FFF" />
+                      <Text style={styles.gpsPillTxt}>GPS</Text>
+                    </>
+                  )}
+                </Pressable>
+              </View>
+            ) : (
+              renderInfoItem('Living in', location || 'Not specified', 'map-marker-outline')
             )}
           </View>
 
@@ -1108,10 +1147,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   heroWrapper: {
-    height: HERO_HEIGHT,
     width: SCREEN_WIDTH,
-    position: 'relative',
-    overflow: 'hidden',
+    height: HERO_HEIGHT,
+    backgroundColor: '#000',
   },
   heroSlide: {
     width: SCREEN_WIDTH,
@@ -1198,6 +1236,51 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
   },
+  simpleEditHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    backgroundColor: 'transparent',
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+  },
+  headerSideContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  headerCenterContainer: {
+    flex: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitleTxt: {
+    fontSize: 18,
+    fontFamily: typography.fontFamilyBold,
+    color: '#000000',
+    fontWeight: '800',
+  },
+  headerIconBtn: {
+    padding: 4,
+  },
+  headerSaveBtnWrapper: {
+    zIndex: 10,
+  },
+  headerSavePill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerSaveTxt: {
+    fontSize: 15,
+    fontFamily: typography.fontFamilyBold,
+    color: '#FFF',
+    fontWeight: '700',
+  },
   bodyContent: {
     paddingHorizontal: 20,
     paddingTop: 10,
@@ -1228,6 +1311,7 @@ const styles = StyleSheet.create({
     shadowOffset: {width: 0, height: 4},
     shadowOpacity: 0.08,
     shadowRadius: 12,
+    // Removed elevation: 4 to fix Android 'ghost plate' artifacts on semi-transparent backgrounds
   },
   entryRow: {
     marginBottom: 14,
@@ -1317,7 +1401,7 @@ const styles = StyleSheet.create({
   pillContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 10, // Wider gap
     marginTop: 4,
   },
   staticPill: {
@@ -1470,51 +1554,24 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamilyBold,
     marginLeft: 10,
   },
-  // Simple Edit Header
-  simpleEditHeader: {
+  locationEditRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: Platform.OS === 'ios' ? 50 : 20,
-    paddingBottom: 15,
-    backgroundColor: 'transparent',
+    gap: 12,
   },
-  headerSideContainer: {
-    flex: 1,
-  },
-  headerCenterContainer: {
-    flex: 2,
+  gpsPillBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
-  },
-  headerIconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitleTxt: {
-    fontSize: 18,
-    fontFamily: typography.fontFamilyBold,
-    color: '#000',
-  },
-  headerSaveBtnWrapper: {
-    alignSelf: 'flex-end',
-  },
-  headerSavePill: {
-    paddingHorizontal: 18,
+    backgroundColor: '#7C3AED',
+    paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 20,
+    gap: 4,
   },
-  headerSaveTxt: {
+  gpsPillTxt: {
     color: '#FFF',
+    fontSize: 12,
     fontFamily: typography.fontFamilyBold,
-    fontSize: 14,
-  },
-  editModule: {
-    marginTop: 0,
   },
 });
 

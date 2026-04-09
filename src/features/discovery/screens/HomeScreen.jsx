@@ -12,6 +12,7 @@ import {
   ScrollView,
   Modal,
   FlatList,
+  DeviceEventEmitter,
 } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -51,10 +52,23 @@ import {useAuth} from '../../../context/AuthContext';
 import {triggerMediumHaptic} from '../../../utils/haptics';
 import ThemeBackground from '../../../components/layout/ThemeBackground';
 
+
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - spacing.xl * 2;
 const CARD_HEIGHT = SCREEN_HEIGHT * 0.70;
 const SWIPE_THRESHOLD = 120;
+const isValidLocation = (lat, lon) => {
+  if (lat === undefined || lon === undefined || lat === null || lon === null) return false;
+  const latitude = parseFloat(lat);
+  const longitude = parseFloat(lon);
+  if (isNaN(latitude) || isNaN(longitude)) return false;
+  return (
+    latitude !== 0 &&
+    longitude !== 0 &&
+    latitude >= -90 && latitude <= 90 &&
+    longitude >= -180 && longitude <= 180
+  );
+};
 
 // ─── Utility ──────────────────────────────────────────────────────────────────
 
@@ -152,24 +166,29 @@ const ProfileModal = ({
 
   // Distance display logic
   const getDistanceLabel = () => {
-    let dist = profile.distance ? parseFloat(profile.distance) : null;
-    if (
-      dist === null &&
-      currentLocation &&
-      !isNaN(profile.latitude) &&
-      !isNaN(profile.longitude)
-    ) {
-      dist = calculateDistance(
-        currentLocation.latitude,
-        currentLocation.longitude,
-        profile.latitude,
-        profile.longitude,
-      );
+    // 1. Check logged-in user location
+    const userLat = currentLocation?.latitude;
+    const userLon = currentLocation?.longitude;
+    const isUserLocValid = isValidLocation(userLat, userLon);
+
+    // 2. Check profile user location
+    const profileLat = profile.latitude;
+    const profileLon = profile.longitude;
+    const isProfileLocValid = isValidLocation(profileLat, profileLon);
+
+    if (!isProfileLocValid) return "No location";
+    if (!isUserLocValid) return "Location unavailable";
+
+    // 3. Calculate distance
+    const dist = calculateDistance(userLat, userLon, profileLat, profileLon);
+
+    if (dist !== null) {
+      if (dist < 1) {
+        return `${Math.round(dist * 1000)} m away`;
+      }
+      return `${dist} km away`;
     }
-    if (dist !== null && dist > 0) {
-      return dist > 1000 ? 'Far away' : `${dist} km away`;
-    }
-    return null;
+    return "Location unavailable";
   };
 
   const locationStr = profile.city || profile.location || '';
@@ -539,6 +558,7 @@ const HomeScreen = ({navigation, route}) => {
   const [showLikePopup, setShowLikePopup] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [isProfileFocused, setIsProfileFocused] = useState(false);
+  const [locationRequired, setLocationRequired] = useState(false);
   const {visited, markVisited} = useInitialLoad();
 
   // Auto-hide focus after inactivity
@@ -570,7 +590,6 @@ const HomeScreen = ({navigation, route}) => {
   const translateY = useSharedValue(0);
   const opacity = useSharedValue(1);
   const focusValue = useSharedValue(0);
-  const gestureStateHaptic = useSharedValue(0); // Tracks if threshold haptic was fired
 
   useEffect(() => {
     focusValue.value = withTiming(isProfileFocused ? 1 : 0, {duration: 250});
@@ -591,9 +610,20 @@ const HomeScreen = ({navigation, route}) => {
       let loc = null;
       try {
         loc = await getCurrentLocation();
-        if (loc) setCurrentLocation(loc);
+        if (loc) {
+          setCurrentLocation(loc);
+          setLocationRequired(false);
+        } else {
+          // Check if profile has location even if current GPS fails
+          if (!myProfile?.location?.coordinates || (myProfile.location.coordinates[0] === 0 && myProfile.location.coordinates[1] === 0)) {
+            setLocationRequired(true);
+          }
+        }
       } catch (e) {
         console.log('Error getting initial location:', e);
+        if (!myProfile?.location?.coordinates || (myProfile.location.coordinates[0] === 0 && myProfile.location.coordinates[1] === 0)) {
+          setLocationRequired(true);
+        }
       }
 
       const needsReset = await AsyncStorage.getItem(
@@ -622,9 +652,10 @@ const HomeScreen = ({navigation, route}) => {
     };
     init();
 
-    const locationWatcher = watchLocation(
+      const locationWatcher = watchLocation(
       async location => {
         setCurrentLocation(location);
+        setLocationRequired(false);
         const prefs = await loadDistancePrefs();
         await loadProfiles(
           prefs?.distance,
@@ -800,9 +831,7 @@ const HomeScreen = ({navigation, route}) => {
                 profile.distance !== undefined &&
                 profile.distance !== null
               ) {
-                let d = parseFloat(profile.distance);
-                if (d > 500) d = d / 1000;
-                distance = Math.round(d);
+                distance = Math.round(parseFloat(profile.distance));
               }
 
               return {
@@ -818,6 +847,8 @@ const HomeScreen = ({navigation, route}) => {
                 bio: profile.bio || '',
                 interests: profile.interests || [],
                 photos: profile.photos || [],
+                latitude: lat,
+                longitude: lon,
                 matchPercentage: profile.matchScore
                   ? Math.round(profile.matchScore)
                   : profile.matchPercentage || null,
@@ -939,6 +970,13 @@ const HomeScreen = ({navigation, route}) => {
     [maxDistance, useDistanceFilter, currentLocation],
   );
 
+  // ── Keep a ref to loadProfiles so event listeners always call the latest version
+  // without needing to re-subscribe every time useCallback rebuilds the function.
+  const loadProfilesRef = React.useRef(loadProfiles);
+  useEffect(() => {
+    loadProfilesRef.current = loadProfiles;
+  }, [loadProfiles]);
+
   // ── Distance Prefs ──────────────────────────────────────────────────────────
   const loadDistancePrefs = async () => {
     try {
@@ -1035,8 +1073,12 @@ const HomeScreen = ({navigation, route}) => {
   const processSwipe = async direction => {
     if (!currentProfile || !currentUserId) return;
 
-    if (direction === 'right' && dailyLikeInfo.remaining <= 0 && !dailyLikeInfo.isPremium) {
-      navigation.navigate('SubscriptionUpsell');
+    if (direction === 'right' && dailyLikeInfo.remaining <= 0) {
+      Alert.alert(
+        'Daily Like Limit Reached',
+        `You've reached your daily like limit of ${dailyLikeInfo.limit}. Come back tomorrow for more likes!`,
+        [{text: 'OK'}],
+      );
       return;
     }
 
@@ -1108,7 +1150,12 @@ const HomeScreen = ({navigation, route}) => {
         .catch(err => {
           console.error('Like error:', err);
           if (err?.response?.status === 429 || err?.limitReached) {
-            navigation.navigate('SubscriptionUpsell');
+            Alert.alert(
+              'Daily Like Limit Reached',
+              err?.message ||
+                "You've reached your daily like limit. Come back tomorrow!",
+              [{text: 'OK'}],
+            );
             loadDailyLikeInfo();
           }
         });
@@ -1127,24 +1174,28 @@ const HomeScreen = ({navigation, route}) => {
     runOnJS(setIsProfileFocused)(false);
   };
 
+  // ✨ Haptic feedback state for gesture threshold
+  const hasTriggeredHaptic = useSharedValue(false);
+
   const panGesture = Gesture.Pan()
     .activeOffsetX([-10, 10])
     .onUpdate(event => {
       translateX.value = event.translationX;
       translateY.value = event.translationY;
 
-      // Smart tactile feedback when crossing threshold
+      // 📳 Trigger haptic when crossing the swipe threshold
       const absX = Math.abs(event.translationX);
-      if (absX > SWIPE_THRESHOLD && gestureStateHaptic.value === 0) {
-        gestureStateHaptic.value = 1;
+      if (absX >= SWIPE_THRESHOLD && !hasTriggeredHaptic.value) {
+        hasTriggeredHaptic.value = true;
         runOnJS(triggerMediumHaptic)();
-      } else if (absX <= SWIPE_THRESHOLD && gestureStateHaptic.value === 1) {
-        // Reset if user pulls it back before dropping
-        gestureStateHaptic.value = 0;
+      } else if (absX < SWIPE_THRESHOLD && hasTriggeredHaptic.value) {
+        // Reset if they pull back
+        hasTriggeredHaptic.value = false;
       }
     })
     .onEnd(event => {
-      gestureStateHaptic.value = 0; // Reset state for next card
+      hasTriggeredHaptic.value = false; // Reset for next gesture
+      
       if (event.translationX > SWIPE_THRESHOLD || event.velocityX > 500) {
         runOnJS(processSwipe)('right');
       } else if (
@@ -1189,25 +1240,50 @@ const HomeScreen = ({navigation, route}) => {
     opacity: focusValue.value,
     transform: [{scale: interpolate(focusValue.value, [0, 1], [0.9, 1])}],
   }));
+  // ── Filter Refresh via DeviceEventEmitter ─────────────────────────────────
+  // Subscribes ONCE on mount. Uses loadProfilesRef.current so the handler
+  // always calls the latest version of loadProfiles — fixes the stale-closure
+  // bug where the previous approach captured an outdated closure on subscribe.
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener(
+      'pryvo:filtersUpdated',
+      () => {
+        console.log('[HomeScreen] pryvo:filtersUpdated — reloading profiles');
+        // Silent re-fetch: reads latest filters from AsyncStorage
+        // and refreshes the deck without showing the full-screen loader.
+        loadProfilesRef.current(null, undefined, null, true);
+      },
+    );
+    return () => subscription.remove();
+  }, []); // intentionally empty — ref keeps the callback current
+
 
   useFocusEffect(
     useCallback(() => {
       loadDailyLikeInfo();
-      
-      // If targetUserId changed in params, reload to ensure it's at the top
+
+      // ── Target-User prioritisation (existing flow — DO NOT modify) ──────────
       if (route.params?.targetUserId) {
         const tid = route.params.targetUserId;
         // Only reload if the top card isn't already this user
         if (!profiles.length || profiles[currentIndex]?.id !== tid) {
           loadProfiles(null, useDistanceFilter, null, true, tid);
-          // Wait a bit then clear the param so it doesn't re-trigger on next focus
+          // Clear the param after a short delay so it doesn't re-trigger
           setTimeout(() => {
-            navigation.setParams({ targetUserId: null });
+            navigation.setParams({targetUserId: null});
           }, 1000);
         }
       }
-    }, [loadDailyLikeInfo, route.params?.targetUserId, profiles, currentIndex, loadProfiles]),
+    }, [
+      loadDailyLikeInfo,
+      loadProfiles,
+      useDistanceFilter,
+      route.params?.targetUserId,
+      profiles,
+      currentIndex,
+    ]),
   );
+
 
   // ── Shared header ───────────────────────────────────────────────────────────
   const renderHeader = () => {
@@ -1322,40 +1398,58 @@ const HomeScreen = ({navigation, route}) => {
     );
   }
 
-  // ── Empty state ─────────────────────────────────────────────────────────────
-  if (!currentProfile) {
+  // ── Empty state (REFINED 10/10 Polish) ───────────────────────────────────────
+  if (locationRequired || !currentProfile) {
+    const isLocationError = locationRequired && !profiles.length;
+
     return (
-      <ThemeBackground>
-        <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-          <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-          {renderHeader()}
-          <View style={[styles.emptyContainer, {justifyContent: 'center', flex: 1, paddingHorizontal: 30}]}>
-            <View style={styles.emptyAnimationWrapper}>
-              <View style={styles.emptyCircleLarge}>
-                <LinearGradient
-                  colors={[colors.primary, '#E040C8']}
-                  style={styles.emptyCircleMedium}>
-                  <View style={styles.emptyCircleSmall}>
-                    <MaterialCommunityIcons
-                      name="star-four-points"
-                      size={52}
-                      color={colors.primary}
-                    />
-                  </View>
-                </LinearGradient>
-              </View>
-            </View>
-            <Text style={[styles.emptyTitle, {fontSize: 32, marginTop: 40, fontFamily: typography.fontFamilyBold}]}>
-              You're all caught up!
-            </Text>
-            <Text style={[styles.emptySubtitle, {fontSize: 16, lineHeight: 24, paddingHorizontal: 10, marginTop: 12}]}>
-              You've seen everyone nearby. Adjust your distance preferences or come back later for new matches.
-            </Text>
-            
-            <View style={{marginTop: 50, width: '100%'}}>
-              <Pressable
-                style={({pressed}) => [styles.primaryCtaBtn, pressed && {transform: [{scale: 0.96}]}]}
+      <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+        <StatusBar
+          barStyle="dark-content"
+          backgroundColor={colors.background}
+        />
+        {renderHeader()}
+        <View style={styles.emptyContainer}>
+          <View style={styles.emptyIconCircle}>
+            <LinearGradient
+              colors={isLocationError ? ['#F43F5E', '#FB923C'] : ['#7C3AED', '#C026D3']}
+              style={StyleSheet.absoluteFill}
+              borderRadius={60}
+            />
+            <MaterialCommunityIcons
+              name={isLocationError ? "map-marker-off" : "creation"}
+              size={60}
+              color="#FFF"
+            />
+          </View>
+          
+
+          <Text style={styles.emptyTitle}>
+            {isLocationError ? "Location Required" : "Discovery Complete!"}
+          </Text>
+          <Text style={styles.emptySubtitle}>
+            {isLocationError 
+              ? "To find amazing matches nearby, Pryvo needs your location. Please enable GPS permissions to continue."
+              : "You've seen all the amazing people nearby. We'll find more for you soon, or you can expand your search."}
+          </Text>
+
+          <View style={styles.emptyOptions}>
+             <Pressable
+                style={styles.refreshButton}
                 onPress={async () => {
+                  if (isLocationError) {
+                    try {
+                      const loc = await getCurrentLocation();
+                      if (loc) {
+                        setCurrentLocation(loc);
+                        setLocationRequired(false);
+                        await loadProfiles(undefined, undefined, loc);
+                      }
+                    } catch (e) {
+                      Alert.alert("Location Error", "Could not acquire GPS. Please check your settings.");
+                    }
+                    return;
+                  }
                   setProfiles([]);
                   setCurrentIndex(0);
                   translateX.value = 0;
@@ -1364,70 +1458,79 @@ const HomeScreen = ({navigation, route}) => {
                   if (currentUserId) {
                     try {
                       await resetPasses(currentUserId);
-                    } catch (e) {}
+                      triggerMediumHaptic();
+                    } catch (e) {
+                      console.error('Failed to reset passes:', e);
+                    }
                   }
                   await loadProfiles();
                 }}>
                 <LinearGradient
-                  colors={['#9411FA', '#E040C8']}
+                  colors={isLocationError ? ['#F43F5E', '#E11D48'] : ['#7C3AED', '#EC4899', '#F43F5E']}
                   start={{x: 0, y: 0}}
                   end={{x: 1, y: 0}}
-                  style={styles.ctaGradientBtn}>
-                  <MaterialCommunityIcons name="refresh" size={22} color="#FFF" style={{marginRight: 8}} />
-                  <Text style={styles.ctaTextBtn}>Search Again</Text>
+                  style={styles.refreshButtonGradient}>
+                  <Text style={styles.refreshButtonText}>
+                    {isLocationError ? "Enable Location" : "Refresh Discover"}
+                  </Text>
                 </LinearGradient>
               </Pressable>
 
-              <Pressable
-                style={styles.secondaryCtaBtn}
-                onPress={() => navigation.navigate('AdvancedFilters')}>
-                <Text style={styles.secondaryCtaText}>Adjust Filters</Text>
-              </Pressable>
-            </View>
+              {!isLocationError && (
+                <Pressable 
+                  onPress={() => navigation.navigate('AdvancedFilters')}
+                  style={styles.adjustFilterButton}>
+                   <Text style={styles.adjustFilterText}>Adjust Filters</Text>
+                </Pressable>
+              )}
           </View>
-        </SafeAreaView>
-      </ThemeBackground>
+
+          <View style={styles.discoveryTipCard}>
+             <MaterialCommunityIcons 
+               name={isLocationError ? "shield-check-outline" : "lightbulb-on-outline"} 
+               size={24} 
+               color="#7C3AED" 
+             />
+             <View style={styles.tipTextContainer}>
+                <Text style={styles.tipTitle}>{isLocationError ? "Your Privacy" : "Pro Tip"}</Text>
+                <Text style={styles.tipDescription}>
+                  {isLocationError 
+                    ? "Pryvo only uses your location to calculate distance to matches. We never share your exact spot."
+                    : "Users who update their bio get 3x more matches. Why not polish yours while we find more people?"}
+                </Text>
+             </View>
+          </View>
+        </View>
+      </SafeAreaView>
     );
   }
 
   // ── Distance label for card ─────────────────────────────────────────────────
   const getCardDistanceLabel = () => {
-    let dist = currentProfile.distance
-      ? parseFloat(currentProfile.distance)
-      : null;
-    if (
-      dist === null &&
-      currentLocation &&
-      !isNaN(currentProfile.latitude) &&
-      !isNaN(currentProfile.longitude)
-    ) {
-      dist = calculateDistance(
-        currentLocation.latitude,
-        currentLocation.longitude,
-        currentProfile.latitude,
-        currentProfile.longitude,
-      );
+    if (!currentProfile) return '';
+
+    // 1. Check profile location
+    const pLat = currentProfile.latitude;
+    const pLon = currentProfile.longitude;
+    const isProfileLocValid = isValidLocation(pLat, pLon);
+    
+    if (!isProfileLocValid) return "No location";
+
+    // 2. Check user location
+    const uLat = currentLocation?.latitude;
+    const uLon = currentLocation?.longitude;
+    const isUserLocValid = isValidLocation(uLat, uLon);
+
+    if (!isUserLocValid) return "Location unavailable";
+
+    // 3. Calculate and format
+    const dist = calculateDistance(uLat, uLon, pLat, pLon);
+    if (dist === null) return "Location unavailable";
+
+    if (dist < 1) {
+        return `${Math.round(dist * 1000)} m away`;
     }
-    const locationStr = currentProfile.city || currentProfile.location || '';
-    const isCoordinates =
-      /^\s*[-+]?\d+(\.\d+)?\s*,\s*[-+]?\d+(\.\d+)?\s*$/.test(locationStr);
-    const displayLocation = isCoordinates
-      ? currentProfile.city || ''
-      : locationStr;
-    const distLabel =
-      dist !== null && dist > 0
-        ? dist > 1000
-          ? 'Far away'
-          : `${dist} km away`
-        : null;
-    let final = '';
-    if (displayLocation) {
-      final = displayLocation;
-      if (distLabel) final += ` • ${distLabel}`;
-    } else if (distLabel) {
-      final = distLabel;
-    }
-    return final;
+    return `${dist} km away`;
   };
 
   const cardLocationLabel = getCardDistanceLabel();
@@ -1436,7 +1539,7 @@ const HomeScreen = ({navigation, route}) => {
   return (
     <ThemeBackground>
       <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       {renderHeader()}
 
@@ -1823,104 +1926,91 @@ const styles = StyleSheet.create({
   // ── Empty / Loading ───────────────────────────────────────────────────────
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
+    paddingHorizontal: 32,
     alignItems: 'center',
-    paddingHorizontal: spacing.xl,
+    justifyContent: 'center',
+    backgroundColor: colors.background,
+  },
+  emptyIconCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: '#7C3AED',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 32,
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
   },
   emptyTitle: {
-    fontSize: typography.headings.h2,
+    fontSize: 28,
     fontFamily: typography.fontFamilyBold,
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
+    color: '#000',
+    textAlign: 'center',
+    marginBottom: 16,
   },
   emptySubtitle: {
-    fontSize: typography.body.large,
-    fontFamily: typography.fontFamilyRegular,
-    color: colors.textSecondary,
+    fontSize: 16,
+    fontFamily: typography.fontFamilyMedium,
+    color: '#666',
     textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 40,
+  },
+  emptyOptions: {
+    width: '100%',
+    gap: 16,
   },
   refreshButton: {
-    marginTop: 30,
-    borderRadius: 28,
+    width: '100%',
+    height: 60,
+    borderRadius: 30,
     overflow: 'hidden',
   },
   refreshButtonGradient: {
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 28,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   refreshButtonText: {
-    color: '#FFF',
-    fontFamily: typography.fontFamilyBold,
-    fontSize: 16,
-  },
-  emptyAnimationWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyCircleLarge: {
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: 'rgba(148, 17, 250, 0.08)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyCircleMedium: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    justifyContent: 'center',
-    alignItems: 'center',
-    opacity: 0.8,
-  },
-  emptyCircleSmall: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#FFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 10},
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    elevation: 8,
-  },
-  primaryCtaBtn: {
-    borderRadius: 30,
-    overflow: 'hidden',
-    shadowColor: colors.primary,
-    shadowOffset: {width: 0, height: 8},
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    elevation: 6,
-    width: '100%',
-  },
-  ctaGradientBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-  },
-  ctaTextBtn: {
     color: '#FFF',
     fontSize: 18,
     fontFamily: typography.fontFamilyBold,
   },
-  secondaryCtaBtn: {
-    marginTop: 16,
-    paddingVertical: 14,
+  adjustFilterButton: {
+    width: '100%',
+    paddingVertical: 16,
     alignItems: 'center',
-    borderRadius: 30,
-    backgroundColor: '#FFF',
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    justifyContent: 'center',
   },
-  secondaryCtaText: {
-    color: colors.textPrimary,
+  discoveryTipCard: {
+    marginTop: 40,
+    padding: 20,
+    backgroundColor: '#FAFAFA',
+    borderRadius: 20,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 16,
+    borderWidth: 1,
+    borderColor: '#F1F1F1',
+  },
+  tipTextContainer: {
+    flex: 1,
+  },
+  tipTitle: {
     fontSize: 16,
     fontFamily: typography.fontFamilyBold,
+    color: '#000',
+    marginBottom: 4,
+  },
+  tipDescription: {
+    fontSize: 13,
+    fontFamily: typography.fontFamilyRegular,
+    color: '#666',
+    lineHeight: 18,
   },
 
   // ── Floating ──────────────────────────────────────────────────────────────

@@ -42,12 +42,24 @@ function deriveStepFromProfile(profile) {
     b.location ||
     (profile.location?.coordinates?.[0] !== 0 &&
       profile.location?.coordinates?.[1] !== 0);
+
   if (!hasName || !hasDob || !hasGender || !hasLocation) return 'BASIC_INFO';
-  const mediaCount =
-    profile.media?.media?.filter(m => m?.url)?.length ||
-    profile.photos?.length ||
-    0;
+
+  const dp = profile.datingPreferences || {};
+  if (!dp.whoToDate?.length) return 'DATING_PREFERENCES';
+
+  const pd = profile.personalDetails || {};
+  if (!pd.height && !pd.jobTitle && !pd.educationLevel) return 'PERSONAL_DETAILS';
+
+  const ls = profile.lifestyle || {};
+  if (!ls.drink && !ls.smokeTobacco && (!ls.interests || ls.interests.length === 0)) return 'LIFESTYLE';
+
+  const pp = profile.profilePrompts || {};
+  if (!pp.aboutMe?.answer && !pp.bio && Object.keys(pp).length <= 2) return 'PROFILE_PROMPTS';
+
+  const mediaCount = profile.media?.media?.filter(m => m?.url)?.length || profile.photos?.length || 0;
   if (mediaCount < 1) return 'MEDIA';
+
   return 'COMPLETE';
 }
 
@@ -56,6 +68,14 @@ function stepToRoute(step) {
   switch (step) {
     case 'BASIC_INFO':
       return AppRoute.BasicInfo;
+    case 'DATING_PREFERENCES':
+      return AppRoute.DatingPreferences;
+    case 'PERSONAL_DETAILS':
+      return AppRoute.PersonalDetails;
+    case 'LIFESTYLE':
+      return AppRoute.Lifestyle;
+    case 'PROFILE_PROMPTS':
+      return AppRoute.ProfilePrompts;
     case 'MEDIA':
       return AppRoute.MediaUpload;
     case 'COMPLETE':
@@ -130,6 +150,17 @@ export const AuthProvider = ({children}) => {
       if (freshProfile) {
         setProfile(freshProfile);
         calculateCompletion(freshProfile);
+        
+        // [ONBOARDING SYNC]
+        // If the profile includes a fresh onboardingStep, sync it back to the user object.
+        if (freshProfile.onboardingStep) {
+          setUser(prev => {
+            const next = prev ? { ...prev, onboardingStep: freshProfile.onboardingStep } : null;
+            if (next) AsyncStorage.setItem(KEYS.USER, JSON.stringify(next)).catch(() => {});
+            return next;
+          });
+        }
+
         // Update cache
         await AsyncStorage.setItem(KEYS.PROFILE_CACHE, JSON.stringify(freshProfile));
       }
@@ -158,6 +189,17 @@ export const AuthProvider = ({children}) => {
           } catch (_) {
             return; // Corrupt data — stay on splash
           }
+
+          // [RESUME PROTECTION]
+          // If the user hasn't finished onboarding, do not auto-login on cold start. 
+          // This forces a login check and prevents bypassing the splash buttons.
+          if (parsedUser.onboardingStep && parsedUser.onboardingStep !== 'COMPLETE') {
+            const keysToClear = [KEYS.TOKEN, KEYS.REFRESH, KEYS.USER, KEYS.PROFILE_CACHE];
+            await AsyncStorage.multiRemove(keysToClear);
+            setAuthLoading(false);
+            return;
+          }
+
           setUser(parsedUser);
           // Load profile (serves cache instantly, then fetches fresh)
           await loadProfile(parsedUser.id);

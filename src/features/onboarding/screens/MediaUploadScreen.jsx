@@ -106,23 +106,15 @@ const MediaUploadScreen = () => {
         cropping: true,
         cropperCircleOverlay: false,
         compressImageQuality: 0.8,
-        includeBase64: true,
       });
 
       if (croppedImage) {
-        const base64Data = croppedImage.data
-          ? `data:${croppedImage.mime || 'image/jpeg'};base64,${
-              croppedImage.data
-            }`
-          : null;
-
         setMedia(prev => {
           const newMedia = [...prev];
           newMedia[index] = {
             uri: croppedImage.path,
             type: 'photo',
             fileName: croppedImage.filename || `cropped_${index}.jpg`,
-            base64: base64Data,
             cropped: true,
           };
           return newMedia;
@@ -260,10 +252,9 @@ const MediaUploadScreen = () => {
 
       const options = {
         mediaType: 'photo',
-        includeBase64: true,
-        maxHeight: 1200, // Reduced to reduce file size
-        maxWidth: 1200, // Reduced to reduce file size
-        quality: 0.7, // Reduced to reduce file size
+        maxHeight: 1200,
+        maxWidth: 1200,
+        quality: 0.7,
         saveToPhotos: true,
       };
 
@@ -347,7 +338,6 @@ const MediaUploadScreen = () => {
                         uri: mediaUri,
                         type: mediaType,
                         fileName: asset.fileName || `media_${index}.jpg`,
-                        base64: base64Data,
                         asset: asset,
                       };
                       return newMedia;
@@ -410,10 +400,9 @@ const MediaUploadScreen = () => {
 
       const options = {
         mediaType: 'photo',
-        includeBase64: true,
-        maxHeight: 1200, // Reduced from 2000 to reduce file size
-        maxWidth: 1200, // Reduced from 2000 to reduce file size
-        quality: 0.7, // Reduced from 0.8 to reduce file size
+        maxHeight: 1200,
+        maxWidth: 1200,
+        quality: 0.7,
         selectionLimit: 1,
       };
 
@@ -503,7 +492,6 @@ const MediaUploadScreen = () => {
                           asset.fileName ||
                           asset.uri?.split('/').pop() ||
                           `media_${index}.jpg`,
-                        base64: base64Data,
                         asset: asset,
                       };
                       return newMedia;
@@ -626,23 +614,12 @@ const MediaUploadScreen = () => {
             } (order: ${originalIndex})`,
           );
 
-          let result;
-          // Prefer asset object (which includes base64), then base64, then URI
-          if (item.asset) {
-            result = await uploadProfileImage(
-              userId,
-              item.asset,
-              item.fileName,
-            );
-          } else if (item.base64) {
-            result = await uploadProfileImage(
-              userId,
-              item.base64,
-              item.fileName,
-            );
-          } else {
-            result = await uploadProfileImage(userId, item.uri, item.fileName);
-          }
+          // uploadProfileImage now handles asset/uri properly with FormData
+          const result = await uploadProfileImage(
+            userId,
+            item.asset || item.uri,
+            item.fileName,
+          );
 
           uploadResults.push({
             index: originalIndex,

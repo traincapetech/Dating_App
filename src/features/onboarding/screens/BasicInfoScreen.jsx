@@ -38,7 +38,7 @@ const BasicInfoScreen = () => {
   const { loadProfile } = useAuth();
   const navigation = useNavigation();
   const { height } = useWindowDimensions();
-  const [step, setStep] = useState(1); // 1: Name, 2: Email, 3: Notifications, 4: Location, 5: Gender
+  const [step, setStep] = useState(1); // 1: Name, 2: Notifications, 3: Location, 4: Gender
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
@@ -169,19 +169,18 @@ const BasicInfoScreen = () => {
           // 3. Determine the first core incomplete step.
           // We prioritize Name/DOB then Email then Gender/Location.
           // We avoid forcing step 3 (notifications) if the user has already done some core steps.
+          // 3. Determine the first core incomplete step.
+          // We prioritize Name/DOB then Gender/Location.
           if (!firstName || !lastName || !dob) {
             setStep(1);
-          } else if (!isVerified) {
-            setStep(2);
           } else if (!gender) {
-            setStep(5);
-          } else if (!locationDetails) {
             setStep(4);
-          } else if (notificationsEnabled === undefined) {
-            // Only show step 3 if they're already mostly done but missing this.
+          } else if (!locationDetails) {
             setStep(3);
+          } else if (notificationsEnabled === undefined) {
+            setStep(2);
           } else {
-            setStep(5); // Default to last step if all core is done
+            setStep(4); // Default to last step
           }
         } else {
           // Fallback to pre-fill from storage if profile fetch empty
@@ -450,7 +449,7 @@ const BasicInfoScreen = () => {
   };
 
   const handleNext = () => {
-    if (step < 5) {
+    if (step < 4) {
       setStep(step + 1);
     } else {
       handleSubmit();
@@ -580,26 +579,18 @@ const BasicInfoScreen = () => {
         ) {
           return false;
         }
-        // Verify age is 18+
         const ageCheck = verifyAge(form.dob);
         return ageCheck.valid;
       case 2:
-        return (
-          form.email.trim() &&
-          /\S+@\S+\.\S+/.test(form.email) &&
-          form.emailVerified
-        );
-      case 3:
         return true; // Notifications is optional
-      case 4:
-        // Require GPS coordinates
+      case 3:
         return (
           form.locationDetails &&
           form.locationDetails.lat &&
           form.locationDetails.lng &&
           form.locationDetails.source === 'gps'
         );
-      case 5:
+      case 4:
         return form.gender.trim();
       default:
         return false;
@@ -699,89 +690,6 @@ const BasicInfoScreen = () => {
           </View>
         );
       case 2:
-        return (
-          <View>
-            <Text style={styles.subtitle}>
-              After giving email, OTP will be sent over email and after
-              verification next screen will come.
-            </Text>
-            <Text style={[styles.label, { marginTop: spacing.lg }]}>Email</Text>
-            <TextInput
-              value={form.email}
-              onChangeText={value => handleChange('email', value)}
-              placeholder="you@example.com"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              style={styles.input}
-              placeholderTextColor="rgba(255, 255, 255, 0.6)"
-              editable={!form.emailVerified}
-            />
-            {form.emailVerified && (
-              <View style={styles.verifiedBadge}>
-                <Text style={styles.verifiedText}>✓ Email Verified</Text>
-              </View>
-            )}
-
-            {!form.emailVerified && (
-              <>
-                <Pressable
-                  style={[
-                    styles.otpButton,
-                    isSendingOTP && styles.otpButtonDisabled,
-                  ]}
-                  onPress={handleSendEmailOTP}
-                  disabled={isSendingOTP || !form.email.trim()}>
-                  {isSendingOTP ? (
-                    <ActivityIndicator
-                      color={colors.textInverse}
-                      size="small"
-                    />
-                  ) : (
-                    <Text style={styles.otpButtonText}>Send OTP</Text>
-                  )}
-                </Pressable>
-
-                {showOTPInput && (
-                  <View style={styles.otpContainer}>
-                    <Text style={styles.otpLabel}>Enter verification code</Text>
-                    <View style={styles.otpInputs}>
-                      {emailOTP.map((digit, index) => (
-                        <TextInput
-                          key={index}
-                          ref={ref => (otpInputRefs.current[index] = ref)}
-                          value={digit}
-                          onChangeText={value => handleOTPChange(value, index)}
-                          onKeyPress={e => handleOTPKeyPress(e, index)}
-                          keyboardType="number-pad"
-                          maxLength={1}
-                          style={styles.otpInput}
-                          textAlign="center"
-                        />
-                      ))}
-                    </View>
-                    <Pressable
-                      style={[
-                        styles.verifyButton,
-                        isVerifyingOTP && styles.verifyButtonDisabled,
-                      ]}
-                      onPress={handleVerifyEmailOTP}
-                      disabled={isVerifyingOTP}>
-                      {isVerifyingOTP ? (
-                        <ActivityIndicator
-                          color={colors.textInverse}
-                          size="small"
-                        />
-                      ) : (
-                        <Text style={styles.verifyButtonText}>Verify</Text>
-                      )}
-                    </Pressable>
-                  </View>
-                )}
-              </>
-            )}
-          </View>
-        );
-      case 3:
         return (
           <View>
             <Text style={styles.subtitle}>

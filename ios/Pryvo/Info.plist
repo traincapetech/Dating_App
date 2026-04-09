@@ -61,6 +61,7 @@
 	<false/>
 	<key>UIAppFonts</key>
 	<array>
+		<string>MaterialCommunityIcons.ttf</string>
 		<string>MonaSans-ExtraLightItalic.ttf</string>
 		<string>MonaSans-SemiBoldItalic.ttf</string>
 		<string>MonaSans-BoldItalic.ttf</string>

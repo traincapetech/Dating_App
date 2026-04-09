@@ -42,11 +42,7 @@ async function syncMatchExpiration(match) {
 
     console.log(`[Expiry Sync] Match ${match._id} expired.`);
 
-<<<<<<< HEAD
     // Reset likes to allow re-swiping (Requirement #3)
-=======
-    // Cleanup likes to allow re-swiping
->>>>>>> 2c93367 (chat-diabled-fully-implemented-plus-editsection-bugs-fixed)
     try {
       await Like.deleteMany({
         $or: [
@@ -61,7 +57,6 @@ async function syncMatchExpiration(match) {
     return true;
   }
 
-<<<<<<< HEAD
   // 5. RECOVERY LOGIC: If it's marked expired but has recent interaction, re-enable it
   if (!isExpired && match.status === 'expired') {
     match.status = 'active';
@@ -107,33 +102,6 @@ async function syncMatchExpiration(match) {
     return true;
   }
 
-=======
-  // 5. METADATA SYNC: Keep 'expiresAt' accurate for the UI
-  // Only update for active matches to avoid logic conflicts in expired states.
-  if (match.status === 'active') {
-    const computedExpiresAt = new Date(lastInteractionTime.getTime() + SEVEN_DAYS_MS);
-    
-    // Update only if mismatch is significant (> 1 minute)
-    if (!match.expiresAt || Math.abs(match.expiresAt - computedExpiresAt) > 60000) {
-      match.expiresAt = computedExpiresAt;
-      await match.save();
-    }
-  }
-
-  // 6. CLEANUP: If already expired and remains inactive, ensure stale likes are cleaned up
-  if (match.status === 'expired') {
-    const staleThreshold = new Date(Date.now() - SEVEN_DAYS_MS);
-    await Like.deleteMany({
-      createdAt: {$lt: staleThreshold},
-      $or: [
-        {senderId: match.users[0], receiverId: match.users[1]},
-        {senderId: match.users[1], receiverId: match.users[0]},
-      ],
-    });
-    return true;
-  }
-
->>>>>>> 2c93367 (chat-diabled-fully-implemented-plus-editsection-bugs-fixed)
   return false; // Active
 }
 

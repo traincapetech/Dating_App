@@ -15,26 +15,26 @@ PODS:
   - DoubleConversion (1.1.6)
   - fast_float (6.1.4)
   - FBLazyVector (0.78.3)
-  - Firebase/CoreOnly (11.5.0):
-    - FirebaseCore (= 11.5.0)
-  - Firebase/Messaging (11.5.0):
+  - Firebase/CoreOnly (11.11.0):
+    - FirebaseCore (~> 11.11.0)
+  - Firebase/Messaging (11.11.0):
     - Firebase/CoreOnly
-    - FirebaseMessaging (~> 11.5.0)
-  - FirebaseCore (11.5.0):
-    - FirebaseCoreInternal (= 11.5)
+    - FirebaseMessaging (~> 11.11.0)
+  - FirebaseCore (11.11.0):
+    - FirebaseCoreInternal (~> 11.11.0)
     - GoogleUtilities/Environment (~> 8.0)
     - GoogleUtilities/Logger (~> 8.0)
-  - FirebaseCoreExtension (11.5.0):
-    - FirebaseCore (= 11.5)
-  - FirebaseCoreInternal (11.5.0):
+  - FirebaseCoreExtension (11.11.0):
+    - FirebaseCore (~> 11.11.0)
+  - FirebaseCoreInternal (11.11.0):
     - "GoogleUtilities/NSData+zlib (~> 8.0)"
-  - FirebaseInstallations (11.5.0):
-    - FirebaseCore (= 11.5)
+  - FirebaseInstallations (11.11.0):
+    - FirebaseCore (~> 11.11.0)
     - GoogleUtilities/Environment (~> 8.0)
     - GoogleUtilities/UserDefaults (~> 8.0)
     - PromisesObjC (~> 2.4)
-  - FirebaseMessaging (11.5.0):
-    - FirebaseCore (= 11.5)
+  - FirebaseMessaging (11.11.0):
+    - FirebaseCore (~> 11.11.0)
     - FirebaseInstallations (~> 11.0)
     - GoogleDataTransport (~> 10.0)
     - GoogleUtilities/AppDelegateSwizzler (~> 8.0)
@@ -1367,6 +1367,70 @@ PODS:
     - Yoga
   - react-native-safe-area-context (5.7.0):
     - React-Core
+  - react-native-video (6.19.1):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.11.18.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - react-native-video/Video (= 6.19.1)
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
+  - react-native-video/Video (6.19.1):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.11.18.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
+  - react-native-worklets-core (1.6.3):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.11.18.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
   - React-NativeModulesApple (0.78.3):
     - glog
     - hermes-engine
@@ -1679,11 +1743,11 @@ PODS:
     - Yoga
   - RNDateTimePicker (8.6.0):
     - React-Core
-  - RNFBApp (21.6.1):
-    - Firebase/CoreOnly (= 11.5.0)
+  - RNFBApp (21.14.0):
+    - Firebase/CoreOnly (= 11.11.0)
     - React-Core
-  - RNFBMessaging (21.6.1):
-    - Firebase/Messaging (= 11.5.0)
+  - RNFBMessaging (21.14.0):
+    - Firebase/Messaging (= 11.11.0)
     - FirebaseCoreExtension
     - React-Core
     - RNFBApp
@@ -1708,7 +1772,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - RNGoogleSignin (16.1.1):
+  - RNGoogleSignin (16.1.2):
     - GoogleSignIn (~> 9.0)
     - React-Core
   - RNImageCropPicker (0.51.1):
@@ -1757,6 +1821,32 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - TOCropViewController (~> 2.8.0)
+    - Yoga
+  - RNNotifee (9.1.8):
+    - React-Core
+    - RNNotifee/NotifeeCore (= 9.1.8)
+  - RNNotifee/NotifeeCore (9.1.8):
+    - React-Core
+  - RNReactNativeHapticFeedback (2.3.4):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.11.18.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
     - Yoga
   - RNReanimated (3.19.5):
     - DoubleConversion
@@ -1877,7 +1967,7 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - RNScreens (4.7.0):
+  - RNScreens (4.24.0):
     - DoubleConversion
     - glog
     - hermes-engine
@@ -1899,8 +1989,27 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
-  - RNScreenshotPrevent (1.2.1):
-    - React
+  - RNScreenshotPrevent (1.2.2):
+    - DoubleConversion
+    - glog
+    - hermes-engine
+    - RCT-Folly (= 2024.11.18.00)
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - Yoga
   - RNVectorIcons (10.3.0):
     - DoubleConversion
     - glog
@@ -1929,9 +2038,9 @@ PODS:
     - StripePayments (= 25.0.1)
     - StripePaymentsUI (= 25.0.1)
     - StripeUICore (= 25.0.1)
-  - stripe-react-native (0.57.2):
-    - stripe-react-native/Core (= 0.57.2)
-  - stripe-react-native/Core (0.57.2):
+  - stripe-react-native (0.57.3):
+    - stripe-react-native/Core (= 0.57.3)
+  - stripe-react-native/Core (0.57.3):
     - React-Core
     - Stripe (~> 25.0.1)
     - StripeApplePay (~> 25.0.1)
@@ -2009,6 +2118,8 @@ DEPENDENCIES:
   - react-native-geolocation-service (from `../node_modules/react-native-geolocation-service`)
   - react-native-image-picker (from `../node_modules/react-native-image-picker`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
+  - react-native-video (from `../node_modules/react-native-video`)
+  - react-native-worklets-core (from `../node_modules/react-native-worklets-core`)
   - React-NativeModulesApple (from `../node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios`)
   - React-perflogger (from `../node_modules/react-native/ReactCommon/reactperflogger`)
   - React-performancetimeline (from `../node_modules/react-native/ReactCommon/react/performance/timeline`)
@@ -2045,6 +2156,8 @@ DEPENDENCIES:
   - RNGestureHandler (from `../node_modules/react-native-gesture-handler`)
   - "RNGoogleSignin (from `../node_modules/@react-native-google-signin/google-signin`)"
   - RNImageCropPicker (from `../node_modules/react-native-image-crop-picker`)
+  - "RNNotifee (from `../node_modules/@notifee/react-native`)"
+  - RNReactNativeHapticFeedback (from `../node_modules/react-native-haptic-feedback`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - RNScreenshotPrevent (from `../node_modules/react-native-screenshot-prevent`)
@@ -2167,6 +2280,10 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-image-picker"
   react-native-safe-area-context:
     :path: "../node_modules/react-native-safe-area-context"
+  react-native-video:
+    :path: "../node_modules/react-native-video"
+  react-native-worklets-core:
+    :path: "../node_modules/react-native-worklets-core"
   React-NativeModulesApple:
     :path: "../node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios"
   React-perflogger:
@@ -2239,6 +2356,10 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@react-native-google-signin/google-signin"
   RNImageCropPicker:
     :path: "../node_modules/react-native-image-crop-picker"
+  RNNotifee:
+    :path: "../node_modules/@notifee/react-native"
+  RNReactNativeHapticFeedback:
+    :path: "../node_modules/react-native-haptic-feedback"
   RNReanimated:
     :path: "../node_modules/react-native-reanimated"
   RNScreens:
@@ -2260,12 +2381,12 @@ SPEC CHECKSUMS:
   DoubleConversion: cb417026b2400c8f53ae97020b2be961b59470cb
   fast_float: 06eeec4fe712a76acc9376682e4808b05ce978b6
   FBLazyVector: e053802577a711add20e45bbbf5dd1180b6ca62e
-  Firebase: 7a56fe4f56b5ab81b86a6822f5b8f909ae6fc7e2
-  FirebaseCore: 93abc05437f8064cd2bc0a53b768fb0bc5a1d006
-  FirebaseCoreExtension: ddb2eb987f736b714d30f6386795b52c4670439e
-  FirebaseCoreInternal: f47dd28ae7782e6a4738aad3106071a8fe0af604
-  FirebaseInstallations: d8063d302a426d114ac531cd82b1e335a0565745
-  FirebaseMessaging: 9f4e42053241bd45ce8565c881bfdd9c1df2f7da
+  Firebase: 6a8f201c61eda24e98f1ce2b44b1b9c2caf525cc
+  FirebaseCore: 2321536f9c423b1f857e047a82b8a42abc6d9e2c
+  FirebaseCoreExtension: 3a64994969dd05f4bcb7e6896c654eded238e75b
+  FirebaseCoreInternal: 31ee350d87b30a9349e907f84bf49ef8e6791e5a
+  FirebaseInstallations: 781e0e37aa0e1c92b44d00e739aba79ad31b2dba
+  FirebaseMessaging: c7be9357fd8ba33bc45b9a6c3cdff0b466e1e2a4
   fmt: a40bb5bd0294ea969aaaba240a927bd33d878cdd
   glog: eb93e2f488219332457c3c4eafd2738ddc7e80b8
   GoogleDataTransport: aae35b7ea0c09004c3797d53c8c41f66f219d6a7
@@ -2311,6 +2432,8 @@ SPEC CHECKSUMS:
   react-native-geolocation-service: 32b2c2a3b91e70ce2a8d0c684801aaeb0a07e0ec
   react-native-image-picker: 82a9e4371e48c518a69882b3c54de11134196cd2
   react-native-safe-area-context: e89848fc12d32ccca63d0d7d16dd96918d07c730
+  react-native-video: 427345cc5fec1fab283e6a02fea37ebb12a402bd
+  react-native-worklets-core: 762c33fed2a4afc13f707796ca8de845a8362bfb
   React-NativeModulesApple: 7a9ec626a1852d444d0e699b016dc55a064b7569
   React-perflogger: d06f0fd0727356651a5535f6d717130187aeb667
   React-performancetimeline: c397114f2c025aa73412a9f21e021b08127fe820
@@ -2342,18 +2465,20 @@ SPEC CHECKSUMS:
   RNCAsyncStorage: b44e8a4e798c3e1f56bffccd0f591f674fb9198f
   RNCMaskedView: aef76c02bdf36e6baa5255b36672a640df938964
   RNDateTimePicker: 39a7b97196b9daaa1d52d71fb835da924a9c5776
-  RNFBApp: 72b96921c64702d51eca9f3ed579c1777efd0d7e
-  RNFBMessaging: 2ad5a47bd81da9f2d65188292d24115f40cbba74
+  RNFBApp: a448037d2df74af9d374a0b765be12ff1e844dc0
+  RNFBMessaging: 0f0498a95c605e3afcf13ac5f349d0b201ea65f6
   RNGestureHandler: a68cfe7e8fee67ffb1a6703ecff136d34aa69543
-  RNGoogleSignin: 5782dd7dad559608a06f3c6b1d4142c395fb5308
+  RNGoogleSignin: b11289afb825c32c250272e4d92446f71091814e
   RNImageCropPicker: eba87608af144435d3401c18ed0872cd89aa1119
+  RNNotifee: 5e3b271e8ea7456a36eec994085543c9adca9168
+  RNReactNativeHapticFeedback: a0e79f4151387df867c6698867a0d65f9455abfd
   RNReanimated: 8dd2e14937d59658695a27acb47ad544d70977b4
-  RNScreens: 8061f4d7de106231d5d32a0261133cac424fe574
-  RNScreenshotPrevent: 5f8473abaa2db2476561ef8f3704b66491ce7b01
+  RNScreens: 873a13a7ed9b3d514ffeb39d92147ab0d04913ec
+  RNScreenshotPrevent: 86ba0d9dc742c88494ff431f128c0b981e5a31ac
   RNVectorIcons: 9220340395b3a94edad59be7d507ca0aa443e6fb
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Stripe: 4728e3e0dd8df134e4a420ab504e929a93a815f0
-  stripe-react-native: 2ac4b4065242dbc9c07c31606ac64ada68297ca8
+  stripe-react-native: b9c44741d2cd2a86500684cf37bca8a4e9c7ff0d
   StripeApplePay: 43997281ace138a1c75a8f2d7be11925ea28644c
   StripeCore: 457c30e2fd3a7c4b274a5ad53d1ff03661eef2a0
   StripeFinancialConnections: 8c2e326f767fb014b53174b3a5f8592c0a45fa56

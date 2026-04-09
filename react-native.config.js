@@ -6,5 +6,8 @@ module.exports = {
       },
     },
   },
-  assets: ['./src/assets/fonts'],
+  assets: [
+    './src/assets/fonts', // your custom fonts ✅
+    './node_modules/react-native-vector-icons/Fonts', // 🔥 required for icons
+  ],
 };
