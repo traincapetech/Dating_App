@@ -57,9 +57,29 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    onboardingStep: {
+      type: String,
+      enum: ['BASIC_INFO', 'MEDIA', 'COMPLETE'],
+      // Optional — missing means legacy user; derive from profile data
+    },
     tokenVersion: {
       type: String,
       default: '0',
+    },
+    fcmToken: {
+      type: String,
+      trim: true,
+      index: true,
+    },
+    isPremium: {
+      type: Boolean,
+      default: false,
+    },
+    premiumExpiresAt: Date,
+    notificationSettings: {
+      pushEnabled: { type: Boolean, default: true },
+      matches: { type: Boolean, default: true },
+      messages: { type: Boolean, default: true },
     },
   },
   {

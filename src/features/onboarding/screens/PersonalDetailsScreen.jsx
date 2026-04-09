@@ -8,15 +8,17 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  SafeAreaView,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import {useNavigation} from '@react-navigation/native';
 import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
 import {savePersonalDetails} from '../../../services/profile/profileService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useAuth} from '../../../context/AuthContext';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {decodeJWT} from '../../../utils/safeUtils';
-
 const PersonalDetailsScreen = () => {
   const {profile, loadProfile} = useAuth();
   const navigation = useNavigation();
@@ -128,9 +130,25 @@ const PersonalDetailsScreen = () => {
   };
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      showsVerticalScrollIndicator={false}>
+    <LinearGradient
+      colors={['#743A9A', '#9B5CC5']}
+      style={styles.flex}>
+      {/* Programmatic Botanical Shadows */}
+      <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+        <MaterialCommunityIcons name="leaf" size={180} color="#000" style={{ position: 'absolute', opacity: 0.08, top: -20, left: -60, transform: [{ rotate: '45deg' }] }} />
+        <MaterialCommunityIcons name="clover" size={140} color="#000" style={{ position: 'absolute', opacity: 0.08, top: 150, right: -40, transform: [{ rotate: '-20deg' }] }} />
+        <MaterialCommunityIcons name="leaf-maple" size={200} color="#000" style={{ position: 'absolute', opacity: 0.08, bottom: 80, left: -80, transform: [{ rotate: '70deg' }] }} />
+        <MaterialCommunityIcons name="cannabis" size={160} color="#000" style={{ position: 'absolute', opacity: 0.08, bottom: -30, right: 30, transform: [{ rotate: '-10deg' }] }} />
+      </View>
+      <LinearGradient
+        colors={['rgba(26, 24, 33, 0.4)', 'rgba(10, 9, 13, 0.7)']}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
+      <SafeAreaView style={styles.flex}>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.title}>More about you</Text>
@@ -316,27 +334,34 @@ const PersonalDetailsScreen = () => {
       </View>
 
       <Pressable
-        style={[
-          styles.primaryButton,
-          (isSubmitting || !canProceed()) && styles.primaryButtonDisabled,
-        ]}
+        style={(!canProceed() || isSubmitting) && styles.primaryButtonDisabled}
         onPress={handleContinue}
         disabled={isSubmitting || !canProceed()}>
-        {isSubmitting ? (
-          <ActivityIndicator color={colors.surface} />
-        ) : (
-          <Text style={styles.primaryButtonText}>Continue</Text>
-        )}
+        <LinearGradient
+          colors={['#7C3AED', '#C084FC']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.primaryButton}>
+          {isSubmitting ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.primaryButtonText}>Continue</Text>
+          )}
+        </LinearGradient>
       </Pressable>
-    </ScrollView>
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   container: {
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.xxl,
-    backgroundColor: colors.background,
   },
   header: {
     marginBottom: spacing.xl,
@@ -350,22 +375,35 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: typography.fontFamilyBold,
     fontSize: typography.headings.h2,
-    color: colors.textPrimary,
+    color: '#FFFFFF',
     flex: 1,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
   },
   skipButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   skipText: {
-    fontFamily: typography.fontFamilyBold,
-    fontSize: typography.body.medium,
-    color: colors.primary,
+    color: '#E5C49F',
+    fontWeight: '600',
+    fontSize: 13,
+    letterSpacing: 0.5,
   },
   subtitle: {
     fontFamily: typography.fontFamilyRegular,
     fontSize: typography.body.medium,
-    color: colors.textSecondary,
+    color: 'rgba(255,255,255,0.7)',
   },
   section: {
     marginBottom: spacing.xl,
@@ -373,30 +411,30 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontFamily: typography.fontFamilyBold,
     fontSize: typography.body.large,
-    color: colors.textPrimary,
+    color: '#FFFFFF',
     marginBottom: spacing.md,
   },
   optionButton: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
     borderRadius: 14,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
     marginBottom: spacing.md,
-    backgroundColor: colors.inputBackground,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   optionButtonSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.secondary,
+    borderColor: '#C084FC',
+    backgroundColor: 'rgba(124, 58, 237, 0.3)',
   },
   optionText: {
     fontFamily: typography.fontFamilyMedium,
     fontSize: typography.body.medium,
-    color: colors.textPrimary,
+    color: 'rgba(255,255,255,0.85)',
   },
   optionTextSelected: {
     fontFamily: typography.fontFamilyBold,
-    color: colors.primary,
+    color: '#EACCFF',
   },
   heightContainer: {
     flexDirection: 'row',
@@ -404,51 +442,56 @@ const styles = StyleSheet.create({
   },
   heightButton: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
     borderRadius: 14,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    backgroundColor: colors.inputBackground,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     minWidth: 60,
     alignItems: 'center',
   },
   heightButtonSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.secondary,
+    borderColor: '#C084FC',
+    backgroundColor: 'rgba(124, 58, 237, 0.3)',
   },
   heightText: {
     fontFamily: typography.fontFamilyMedium,
     fontSize: typography.body.medium,
-    color: colors.textPrimary,
+    color: 'rgba(255,255,255,0.85)',
   },
   heightTextSelected: {
     fontFamily: typography.fontFamilyBold,
-    color: colors.primary,
+    color: '#EACCFF',
   },
   input: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
     borderRadius: 14,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     fontSize: typography.body.medium,
-    color: colors.textPrimary,
-    backgroundColor: colors.inputBackground,
+    color: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
   },
   primaryButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.md,
-    borderRadius: 18,
+    paddingVertical: 18,
+    borderRadius: 999,
     alignItems: 'center',
     marginTop: spacing.xl,
+    elevation: 4,
+    shadowColor: '#7C3AED',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   primaryButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   primaryButtonText: {
-    color: colors.surface,
+    color: '#FFFFFF',
     fontFamily: typography.fontFamilyBold,
     fontSize: typography.body.large,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
 });
 

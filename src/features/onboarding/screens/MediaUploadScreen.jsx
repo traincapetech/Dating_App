@@ -1,4 +1,5 @@
 import React, {useState, useEffect} from 'react';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
   View,
   Text,
@@ -8,9 +9,11 @@ import {
   Image,
   Alert,
   Platform,
-  PermissionsAndroid,
   ActivityIndicator,
+  SafeAreaView,
+  PermissionsAndroid,
 } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import {launchCamera, launchImageLibrary} from 'react-native-image-picker';
 import ImagePicker from 'react-native-image-crop-picker';
 import {useNavigation} from '@react-navigation/native';
@@ -103,23 +106,15 @@ const MediaUploadScreen = () => {
         cropping: true,
         cropperCircleOverlay: false,
         compressImageQuality: 0.8,
-        includeBase64: true,
       });
 
       if (croppedImage) {
-        const base64Data = croppedImage.data
-          ? `data:${croppedImage.mime || 'image/jpeg'};base64,${
-              croppedImage.data
-            }`
-          : null;
-
         setMedia(prev => {
           const newMedia = [...prev];
           newMedia[index] = {
             uri: croppedImage.path,
             type: 'photo',
             fileName: croppedImage.filename || `cropped_${index}.jpg`,
-            base64: base64Data,
             cropped: true,
           };
           return newMedia;
@@ -188,36 +183,47 @@ const MediaUploadScreen = () => {
   const checkStoragePermission = async () => {
     if (Platform.OS === 'android') {
       try {
-        let permission;
+        console.log('[MediaUpload] Checking storage permission. API Level:', Platform.Version);
+        
+        // Android 13 (API 33) and above use READ_MEDIA_IMAGES
         if (Platform.Version >= 33) {
-          permission = PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES;
+          const hasFullAccess = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES);
+          
+          // Android 14 (API 34) adds "Partial Access"
+          if (Platform.Version >= 34) {
+            const hasPartialAccess = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_MEDIA_VISUAL_USER_SELECTED);
+            console.log('[MediaUpload] API 34+ Check:', { hasFullAccess, hasPartialAccess });
+            if (hasFullAccess || hasPartialAccess) return true;
+          } else {
+            console.log('[MediaUpload] API 33 Check:', { hasFullAccess });
+            if (hasFullAccess) return true;
+          }
+
+          // If not granted, request them
+          const permissionsToRequest = Platform.Version >= 34 
+            ? [PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES, PermissionsAndroid.PERMISSIONS.READ_MEDIA_VISUAL_USER_SELECTED]
+            : [PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES];
+            
+          const results = await PermissionsAndroid.requestMultiple(permissionsToRequest);
+          
+          const granted = results[PermissionsAndroid.PERMISSIONS.READ_MEDIA_IMAGES] === PermissionsAndroid.RESULTS.GRANTED ||
+                        results[PermissionsAndroid.PERMISSIONS.READ_MEDIA_VISUAL_USER_SELECTED] === PermissionsAndroid.RESULTS.GRANTED;
+          
+          return granted;
         } else {
-          permission = PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE;
+          // Legacy permission for Android 12 and below
+          const hasLegacy = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE);
+          if (hasLegacy) return true;
+          
+          const result = await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE);
+          return result === PermissionsAndroid.RESULTS.GRANTED;
         }
-
-        // Check if permission is already granted
-        const checkResult = await PermissionsAndroid.check(permission);
-
-        if (checkResult) {
-          return true; // Already granted
-        }
-
-        // Request storage permission
-        const storageGranted = await PermissionsAndroid.request(permission, {
-          title: 'Storage Permission',
-          message: 'Pryvo needs access to your photos to select images',
-          buttonNeutral: 'Ask Me Later',
-          buttonNegative: 'Cancel',
-          buttonPositive: 'OK',
-        });
-
-        return storageGranted === PermissionsAndroid.RESULTS.GRANTED;
       } catch (err) {
         console.error('Storage permission error:', err);
         return false;
       }
     }
-    return true; // iOS handles permissions automatically
+    return true; // iOS handles via Info.plist
   };
 
   const handleCamera = async index => {
@@ -246,10 +252,9 @@ const MediaUploadScreen = () => {
 
       const options = {
         mediaType: 'photo',
-        includeBase64: true,
-        maxHeight: 1200, // Reduced to reduce file size
-        maxWidth: 1200, // Reduced to reduce file size
-        quality: 0.7, // Reduced to reduce file size
+        maxHeight: 1200,
+        maxWidth: 1200,
+        quality: 0.7,
         saveToPhotos: true,
       };
 
@@ -333,7 +338,6 @@ const MediaUploadScreen = () => {
                         uri: mediaUri,
                         type: mediaType,
                         fileName: asset.fileName || `media_${index}.jpg`,
-                        base64: base64Data,
                         asset: asset,
                       };
                       return newMedia;
@@ -396,10 +400,9 @@ const MediaUploadScreen = () => {
 
       const options = {
         mediaType: 'photo',
-        includeBase64: true,
-        maxHeight: 1200, // Reduced from 2000 to reduce file size
-        maxWidth: 1200, // Reduced from 2000 to reduce file size
-        quality: 0.7, // Reduced from 0.8 to reduce file size
+        maxHeight: 1200,
+        maxWidth: 1200,
+        quality: 0.7,
         selectionLimit: 1,
       };
 
@@ -489,7 +492,6 @@ const MediaUploadScreen = () => {
                           asset.fileName ||
                           asset.uri?.split('/').pop() ||
                           `media_${index}.jpg`,
-                        base64: base64Data,
                         asset: asset,
                       };
                       return newMedia;
@@ -612,23 +614,12 @@ const MediaUploadScreen = () => {
             } (order: ${originalIndex})`,
           );
 
-          let result;
-          // Prefer asset object (which includes base64), then base64, then URI
-          if (item.asset) {
-            result = await uploadProfileImage(
-              userId,
-              item.asset,
-              item.fileName,
-            );
-          } else if (item.base64) {
-            result = await uploadProfileImage(
-              userId,
-              item.base64,
-              item.fileName,
-            );
-          } else {
-            result = await uploadProfileImage(userId, item.uri, item.fileName);
-          }
+          // uploadProfileImage now handles asset/uri properly with FormData
+          const result = await uploadProfileImage(
+            userId,
+            item.asset || item.uri,
+            item.fileName,
+          );
 
           uploadResults.push({
             index: originalIndex,
@@ -688,7 +679,10 @@ const MediaUploadScreen = () => {
             [
               {
                 text: 'OK',
-                onPress: () => navigation.navigate(AppRoute.SubscriptionUpsell),
+                onPress: () =>
+                  navigation.navigate(AppRoute.SubscriptionUpsell, {
+                    fromOnboarding: true,
+                  }),
               },
             ],
           );
@@ -704,7 +698,10 @@ const MediaUploadScreen = () => {
               },
               {
                 text: 'Continue',
-                onPress: () => navigation.navigate(AppRoute.SubscriptionUpsell),
+                onPress: () =>
+                  navigation.navigate(AppRoute.SubscriptionUpsell, {
+                    fromOnboarding: true,
+                  }),
               },
             ],
           );
@@ -733,14 +730,34 @@ const MediaUploadScreen = () => {
   };
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.container}
-      showsVerticalScrollIndicator={false}>
+    <LinearGradient
+      colors={['#743A9A', '#9B5CC5']}
+      style={styles.flex}>
+      {/* Programmatic Botanical Shadows */}
+      <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+        <MaterialCommunityIcons name="leaf" size={180} color="#000" style={{ position: 'absolute', opacity: 0.08, top: -20, left: -60, transform: [{ rotate: '45deg' }] }} />
+        <MaterialCommunityIcons name="clover" size={140} color="#000" style={{ position: 'absolute', opacity: 0.08, top: 150, right: -40, transform: [{ rotate: '-20deg' }] }} />
+        <MaterialCommunityIcons name="leaf-maple" size={200} color="#000" style={{ position: 'absolute', opacity: 0.08, bottom: 80, left: -80, transform: [{ rotate: '70deg' }] }} />
+        <MaterialCommunityIcons name="cannabis" size={160} color="#000" style={{ position: 'absolute', opacity: 0.08, bottom: -30, right: 30, transform: [{ rotate: '-10deg' }] }} />
+      </View>
+      <LinearGradient
+        colors={['rgba(26, 24, 33, 0.4)', 'rgba(10, 9, 13, 0.7)']}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
+      <SafeAreaView style={styles.flex}>
+        <ScrollView
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.title}>Pick your photos and videos</Text>
           <Pressable 
-            onPress={() => navigation.navigate(AppRoute.SubscriptionUpsell)}
+            onPress={() =>
+              navigation.navigate(AppRoute.SubscriptionUpsell, {
+                fromOnboarding: true,
+              })
+            }
             style={styles.skipButton}
           >
             <Text style={styles.skipText}>Skip</Text>
@@ -824,27 +841,34 @@ const MediaUploadScreen = () => {
       </View>
 
       <Pressable
-        style={[
-          styles.primaryButton,
-          uploading && styles.primaryButtonDisabled,
-        ]}
+        style={uploading && styles.primaryButtonDisabled}
         onPress={handleContinue}
         disabled={uploading}>
-        {uploading ? (
-          <ActivityIndicator color={colors.surface} />
-        ) : (
-          <Text style={styles.primaryButtonText}>Upload & Continue</Text>
-        )}
+        <LinearGradient
+          colors={['#7C3AED', '#C084FC']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.primaryButton}>
+          {uploading ? (
+            <ActivityIndicator color="#FFFFFF" />
+          ) : (
+            <Text style={styles.primaryButtonText}>Upload & Continue</Text>
+          )}
+        </LinearGradient>
       </Pressable>
-    </ScrollView>
+        </ScrollView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   container: {
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.xxl,
-    backgroundColor: colors.background,
   },
   header: {
     marginBottom: spacing.xl,
@@ -858,22 +882,35 @@ const styles = StyleSheet.create({
   title: {
     fontFamily: typography.fontFamilyBold,
     fontSize: typography.headings.h2,
-    color: colors.textPrimary,
+    color: '#FFFFFF',
     flex: 1,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
   },
   skipButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   skipText: {
-    fontFamily: typography.fontFamilyBold,
-    fontSize: typography.body.medium,
-    color: colors.primary,
+    color: '#E5C49F',
+    fontWeight: '600',
+    fontSize: 13,
+    letterSpacing: 0.5,
   },
   subtitle: {
     fontFamily: typography.fontFamilyRegular,
     fontSize: typography.body.medium,
-    color: colors.textSecondary,
+    color: 'rgba(255,255,255,0.7)',
   },
   mediaGrid: {
     flexDirection: 'row',
@@ -886,9 +923,9 @@ const styles = StyleSheet.create({
     aspectRatio: 1,
     borderRadius: 14,
     overflow: 'hidden',
-    backgroundColor: colors.surface,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   mediaContainer: {
     width: '100%',
@@ -916,7 +953,7 @@ const styles = StyleSheet.create({
   },
   videoIcon: {
     fontSize: 40,
-    color: colors.textInverse,
+    color: '#FFFFFF',
   },
   mediaControls: {
     position: 'absolute',
@@ -930,13 +967,12 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.primary,
+    backgroundColor: 'rgba(255,255,255,0.9)',
     alignItems: 'center',
     justifyContent: 'center',
-    opacity: 0.9,
   },
   reorderButtonText: {
-    color: colors.textInverse,
+    color: '#7C3AED',
     fontSize: 16,
     fontWeight: 'bold',
     lineHeight: 16,
@@ -945,12 +981,12 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: colors.error,
+    backgroundColor: 'rgba(255,0,0,0.8)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   removeButtonText: {
-    color: colors.textInverse,
+    color: '#FFFFFF',
     fontSize: 20,
     fontWeight: 'bold',
     lineHeight: 20,
@@ -962,13 +998,13 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: colors.primary,
+    backgroundColor: '#C084FC',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
   },
   orderBadgeText: {
-    color: colors.textInverse,
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: 'bold',
   },
@@ -977,51 +1013,56 @@ const styles = StyleSheet.create({
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: 'transparent',
   },
   mediaPlaceholderText: {
     fontSize: 32,
-    color: colors.textSecondary,
+    color: 'rgba(255,255,255,0.5)',
     marginBottom: spacing.xs,
   },
   mediaTypeText: {
     fontFamily: typography.fontFamilyMedium,
     fontSize: typography.caption,
-    color: colors.textSecondary,
+    color: 'rgba(255,255,255,0.6)',
   },
   infoSection: {
     marginBottom: spacing.xl,
     padding: spacing.md,
-    backgroundColor: colors.surface,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   infoTitle: {
     fontFamily: typography.fontFamilyBold,
     fontSize: typography.body.medium,
-    color: colors.textPrimary,
+    color: '#FFFFFF',
     marginBottom: spacing.xs,
   },
   infoText: {
     fontFamily: typography.fontFamilyRegular,
     fontSize: typography.body.small,
-    color: colors.textSecondary,
+    color: 'rgba(255,255,255,0.7)',
   },
   primaryButton: {
-    backgroundColor: colors.primary,
-    paddingVertical: spacing.md,
-    borderRadius: 18,
+    paddingVertical: 18,
+    borderRadius: 999,
     alignItems: 'center',
     marginTop: spacing.xl,
+    elevation: 4,
+    shadowColor: '#7C3AED',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
   primaryButtonText: {
-    color: colors.surface,
+    color: '#FFFFFF',
     fontFamily: typography.fontFamilyBold,
     fontSize: typography.body.large,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   primaryButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
 });
 

@@ -4,22 +4,28 @@ import './errorutils-polyfill.js';
 // IMPORTANT: react-native-gesture-handler must be imported AFTER polyfill
 import 'react-native-gesture-handler';
 import {enableScreens} from 'react-native-screens';
-
-enableScreens();
-
-import {AppRegistry} from 'react-native';
+import {AppRegistry, LogBox} from 'react-native';
 import App from './App';
 import {name as appName} from './app.json';
 import messaging from '@react-native-firebase/messaging';
 import {handleBackgroundMessage} from './src/services/notifications/backgroundHandler';
-
-// Register background handler
-messaging().setBackgroundMessageHandler(handleBackgroundMessage);
-
 import notifee, { EventType } from '@notifee/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { sendSmartMessage } from './src/services/chatSendService';
 import { updateNotificationWithReply, showFailedReply } from './src/services/notificationHelper';
+
+enableScreens();
+
+// Suppress common non-critical warnings
+LogBox.ignoreLogs([
+  'Setting a timer',
+  'AsyncStorage has been extracted',
+  'Non-serializable values were found in the navigation state',
+  'EventEmitter.removeListener',
+]);
+
+// Register background handler
+messaging().setBackgroundMessageHandler(handleBackgroundMessage);
 
 // Handle direct replies from notification
 notifee.onBackgroundEvent(async ({ type, detail }) => {
@@ -49,6 +55,11 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
         console.error('Notifee background reply processing failed:', e);
       }
     }
+  }
+  if (type === EventType.ACTION_PRESS && pressAction?.id === 'match_action') {
+    // If the user clicks "MATCH NOW", we clear the notification.
+    // App navigation is handled by navigation listeners on app wakeup.
+    await notifee.cancelNotification(notification.id);
   }
 });
 

@@ -93,6 +93,9 @@ const PrivacyScreen = () => {
           • Detect and prevent fraud, abuse, and other harmful activities
         </Text>
         <Text style={styles.listItem}>
+          • Moderate User Generated Content (UGC) to enforce our zero-tolerance policy against objectionable content
+        </Text>
+        <Text style={styles.listItem}>
           • Comply with legal obligations and enforce our Terms of Service
         </Text>
         <Text style={styles.listItem}>
@@ -190,13 +193,15 @@ const PrivacyScreen = () => {
           To exercise these rights, please contact us at privacy@pryvo.com.
         </Text>
 
-        <Text style={styles.title}>6. Data Retention</Text>
+        <Text style={styles.title}>6. Data Retention and Account Bans</Text>
         <Text style={styles.text}>
           We retain your personal information for as long as your account is
           active or as needed to provide our services. We may retain certain
           information after account deletion to comply with legal obligations,
-          resolve disputes, and enforce our agreements. Deleted information may
-          persist in backup systems for a limited time.
+          resolve disputes, and enforce our agreements.
+        </Text>
+        <Text style={styles.text}>
+          If your account is banned for violating our Terms of Service (such as posting Objectionable UGC), we will retain minimal necessary data (such as email or device identifiers) indefinitely to prevent you from creating a new account and to maintain the safety of other users.
         </Text>
 
         <Text style={styles.title}>7. Children's Privacy</Text>

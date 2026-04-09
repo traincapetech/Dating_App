@@ -118,7 +118,7 @@ export function calculateCompatibilityScore(
     'drink',
     'smokeTobacco',
     'smokeWeed',
-    'useDrugs',
+    'drugs',
     'politicalBeliefs',
     'religiousBeliefs',
   ];
@@ -255,7 +255,8 @@ export function calculateCompatibilityScore(
     }
   }
 
-  const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
+  const percentage =
+    maxScore > 0 ? Math.min(Math.round((score / maxScore) * 100), 100) : 0;
 
   return {
     score,
@@ -293,38 +294,41 @@ export async function getMatchedProfiles(userId, options = {}) {
   const viewerCoords = currentUserProfile.location?.coordinates;
   // Enforce valid location check (Single Source of Truth)
   const hasViewerLocation =
-    viewerCoords && 
-    Array.isArray(viewerCoords) && 
-    viewerCoords.length === 2 && 
+    viewerCoords &&
+    Array.isArray(viewerCoords) &&
+    viewerCoords.length === 2 &&
     !(viewerCoords[0] === 0 && viewerCoords[1] === 0);
 
   if (!hasViewerLocation) {
-    console.log(`[getMatchedProfiles] User ${userId} has no valid location. Blocking discovery to prevent global leak.`);
+    console.log(
+      `[getMatchedProfiles] User ${userId} has no valid location. Blocking discovery to prevent global leak.`,
+    );
     return []; // STRICT: No location = No profiles
   }
 
   // Determine explicit radius (Convert KM to Meters)
-  // Standardize: If no maxDistance provided, use a reasonable default like 100km, 
-  // but NEVER undefined/5000km.
-  const radiusInMeters = (maxDistance || 100) * 1000;
+  const isGlobal = currentUserProfile.datingPreferences?.global === true;
+  const radiusInMeters = isGlobal ? null : (maxDistance || 100) * 1000;
 
-  pipeline.push({
-    $geoNear: {
-      near: currentUserProfile.location,
-      distanceField: 'dist.calculated',
-      maxDistance: radiusInMeters,
-      distanceMultiplier: 0.001, // Convert results to km
-      spherical: true,
-      query: {
-        userId: {$ne: userId},
-        isPaused: {$ne: true},
-        isHidden: {$ne: true},
-        // IMPORTANT: Ensure we only match profiles with valid coordinates
-        'location.coordinates': {$exists: true, $ne: [0, 0]},
-      },
+  const geoNearOptions = {
+    near: currentUserProfile.location,
+    distanceField: 'dist.calculated',
+    distanceMultiplier: 0.001, // Convert results to km
+    spherical: true,
+    query: {
+      userId: {$ne: userId},
+      isPaused: {$ne: true},
+      isHidden: {$ne: true},
+      // IMPORTANT: Ensure we only match profiles with valid coordinates
+      'location.coordinates': {$exists: true, $ne: [0, 0]},
     },
-  });
+  };
 
+  if (radiusInMeters) {
+    geoNearOptions.maxDistance = radiusInMeters;
+  }
+
+  pipeline.push({$geoNear: geoNearOptions});
 
   // B. Gender Filter
   const userGender = currentUserProfile.basicInfo?.gender;

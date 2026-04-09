@@ -344,9 +344,9 @@ const LikesScreen = ({navigation}) => {
               <MatchAvatar
                 item={item}
                 onPress={() => {
-                  // Redirect to Home/Swipe Screen (Requirement #5)
+                  // Navigate to the Explore (Home) tab with the target profile prioritised
                   navigation.navigate('HomeTabs', { 
-                    screen: 'Accueil',
+                    screen: 'Explore',
                     params: { targetUserId: item.theirId }
                   });
                 }}
@@ -373,7 +373,7 @@ const LikesScreen = ({navigation}) => {
   return (
     <ThemeBackground>
       <SafeAreaView style={styles.containerUnified} edges={['top']}>
-        <StatusBar barStyle="dark-content" />
+        <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
         <Animated.View style={[styles.flexFullUnified, {opacity: screenFadeAnim}]}>
           {/* Main Dominant Header */}
           <View style={styles.mainActionBarUnified}>

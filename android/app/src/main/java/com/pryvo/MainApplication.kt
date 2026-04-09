@@ -19,7 +19,9 @@ class MainApplication : Application(), ReactApplication {
       object : DefaultReactNativeHost(this) {
         override fun getPackages(): List<ReactPackage> {
           // Use autolinking to keep native modules in sync
-          return PackageList(this).packages
+          val packages = PackageList(this).packages.toMutableList()
+          packages.add(PryvoPackage())
+          return packages
         }
 
         override fun getJSMainModuleName(): String = "index"

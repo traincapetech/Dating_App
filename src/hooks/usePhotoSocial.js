@@ -29,7 +29,6 @@ export const usePhotoSocial = (targetUserId, onInteraction) => {
     const fetchMe = async () => {
       try {
         const userData = await AsyncStorage.getItem('@pryvo_user');
-        console.log("[usePhotoSocial] FETCH ME USER:", userData);
         if (userData) {
           const user = JSON.parse(userData);
           setCurrentUserId(user.id || user._id);

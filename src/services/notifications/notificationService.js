@@ -135,7 +135,7 @@ export async function deleteFCMToken() {
 
 // Setup notification handlers
 import notifee, { EventType } from '@notifee/react-native';
-import { displayChatNotification, updateNotificationWithReply } from '../notificationHelper.js';
+import { displayChatNotification, updateNotificationWithReply, displayTimerNotification, showPryvoLiveNotification } from '../notificationHelper.js';
 import { sendSmartMessage } from '../chatSendService.js';
 
 // Setup notification handlers
@@ -148,6 +148,10 @@ export function setupNotificationHandlers(navigation) {
         // Only display if user is not actively chatting with them right now
         // Typically you'd check active route, but for safety we draw it
         await displayChatNotification(remoteMessage.data);
+      } else if (remoteMessage.data?.type === 'timer') {
+        await displayTimerNotification(remoteMessage.data);
+      } else if (remoteMessage.data?.type === 'live') {
+        await showPryvoLiveNotification(remoteMessage.data);
       }
     },
   );
@@ -170,10 +174,13 @@ export function setupNotificationHandlers(navigation) {
       }
     }
 
-    // Handle standard tap on the whole notification
-    if (type === EventType.ACTION_PRESS && pressAction?.id === 'default') {
+    // Handle standard tap or MATCH NOW button
+    if (type === EventType.ACTION_PRESS && (pressAction?.id === 'default' || pressAction?.id === 'match_action')) {
       if (notification?.data?.type === 'chat_message') {
-        navigation?.navigate('Messages'); // Or direct to ChatScreen if you pass params
+        navigation?.navigate('Messages');
+      } else if (notification?.data?.type === 'live' || notification?.data?.type === 'timer') {
+        // Navigate to the relevant tab of the dating app (HomeTabs or Discovery)
+        navigation?.navigate('HomeTabs');
       }
     }
   });

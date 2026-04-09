@@ -1,5 +1,6 @@
 import {apiClient} from '../api/client';
 import {getAccessToken} from '../storage/tokenStorage';
+import {API_BASE_URL} from '../../config/api';
 
 async function getAuthHeaders() {
   const token = await getAccessToken();
@@ -66,66 +67,69 @@ export async function getDiscoverProfiles(excludeUserId = null, options = {}) {
 }
 
 export async function uploadProfileImage(userId, imageData, fileName) {
-  const headers = await getAuthHeaders();
+  const token = await getAccessToken();
 
-  // imageData can be:
-  // 1. Base64 string (from react-native-image-picker with includeBase64: true)
-  // 2. Asset object with base64 property
-  // 3. Image URI (fallback)
-  let imageUri;
+  // Build multipart FormData — works reliably on all Android/iOS versions
+  // without needing base64 encoding (which can be unreliable on some devices).
+  const form = new FormData();
+  form.append('userId', userId);
 
-  if (typeof imageData === 'string') {
-    if (imageData.startsWith('data:')) {
-      // Already a data URI
-      imageUri = imageData;
-    } else if (imageData.startsWith('file://') || imageData.startsWith('/')) {
-      // Local file URI - for React Native, we need base64
-      // This should not happen if includeBase64: true is set
-      throw new Error(
-        'Image URI provided but base64 is required. Please ensure includeBase64: true in image picker.',
-      );
-    } else {
-      // Assume it's base64 without data URI prefix
-      imageUri = `data:image/jpeg;base64,${imageData}`;
-    }
-  } else if (imageData && imageData.base64) {
-    // From react-native-image-picker with includeBase64: true
-    // Check if base64 already has data URI prefix
-    if (
-      typeof imageData.base64 === 'string' &&
-      imageData.base64.startsWith('data:')
-    ) {
-      imageUri = imageData.base64;
-    } else {
-      imageUri = `data:${imageData.type || 'image/jpeg'};base64,${
-        imageData.base64
-      }`;
-    }
-  } else if (imageData && imageData.uri) {
-    // Fallback: if no base64, try to use URI (server will need to handle)
-    // This is not ideal but works as fallback
-    imageUri = imageData.uri;
-    console.warn(
-      'Uploading image URI without base64. Server may not be able to process it.',
+  if (imageData && imageData.uri) {
+    // Asset object from react-native-image-picker (preferred path)
+    const fileUri = imageData.uri;
+    const mimeType = imageData.type || 'image/jpeg';
+    const name = fileName || imageData.fileName || `photo_${Date.now()}.jpg`;
+
+    form.append('image', {
+      uri: fileUri,
+      type: mimeType,
+      name,
+    });
+  } else if (typeof imageData === 'string' && (imageData.startsWith('file://') || imageData.startsWith('/'))) {
+    // Raw file URI string
+    form.append('image', {
+      uri: imageData,
+      type: 'image/jpeg',
+      name: fileName || `photo_${Date.now()}.jpg`,
+    });
+  } else if (typeof imageData === 'string' && imageData.startsWith('data:')) {
+    // Base64 data URI — convert to buffer approach via JSON fallback
+    const result = await apiClient.post(
+      '/profile/upload-image',
+      {userId, imageUri: imageData, fileName: fileName || `photo_${Date.now()}.jpg`, contentType: 'image/jpeg'},
+      token ? {token} : {},
     );
+    return result;
   } else {
-    throw new Error(
-      'Invalid image data format. Expected base64 string or asset object with base64 property.',
-    );
+    throw new Error('Invalid image data. Expected asset object with uri, a file:// URI string, or a base64 data URI.');
   }
 
-  const result = await apiClient.post(
-    '/profile/upload-image',
-    {
-      userId,
-      imageUri,
-      fileName: fileName || `image_${Date.now()}.jpg`,
-      contentType: 'image/jpeg',
+  // Send as multipart/form-data (React Native fetch handles this natively)
+  const response = await fetch(`${API_BASE_URL}/profile/upload-image`, {
+    method: 'POST',
+    headers: {
+      // DO NOT set Content-Type here — fetch sets it automatically with boundary for FormData
+      ...(token ? {Authorization: `Bearer ${token}`, token} : {}),
     },
-    headers,
-  );
+    body: form,
+  });
 
-  return result;
+  const text = await response.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = null;
+  }
+
+  if (!response.ok) {
+    const msg = data?.message || data?.error || text || 'Image upload failed';
+    const err = new Error(msg);
+    err.status = response.status;
+    throw err;
+  }
+
+  return data;
 }
 
 export async function uploadMultipleImages(userId, images) {

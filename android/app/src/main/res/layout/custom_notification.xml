@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFFFFF"
+    android:padding="24dp">
+
+    <!-- Title -->
+    <TextView
+        android:id="@+id/title"
+        android:text="Peak time starts for you"
+        android:textSize="18sp"
+        android:textStyle="bold"
+        android:textColor="#111111"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerHorizontal="true"/>
+
+    <!-- Subtitle -->
+    <TextView
+        android:id="@+id/subtitle"
+        android:text="Open now to get best results"
+        android:textSize="14sp"
+        android:textColor="#6B6B6B"
+        android:layout_below="@id/title"
+        android:layout_marginTop="8dp"
+        android:layout_centerHorizontal="true"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
+    <!-- HUGE TIMER -->
+    <TextView
+        android:id="@+id/timer"
+        android:text="02:09:48"
+        android:textSize="72sp"
+        android:textStyle="bold"
+        android:textColor="#5A78FF"
+        android:fontFamily="monospace"
+        android:letterSpacing="0.08"
+        android:layout_centerInParent="true"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
+    <!-- JOIN BUTTON -->
+    <TextView
+        android:id="@+id/btnJoin"
+        android:text="Join Now"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:background="#3F6BFF"
+        android:paddingHorizontal="32dp"
+        android:paddingVertical="14dp"
+        android:layout_centerHorizontal="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginBottom="80dp"/>
+
+</RelativeLayout>

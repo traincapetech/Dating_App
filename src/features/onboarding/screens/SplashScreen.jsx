@@ -21,7 +21,13 @@ import {useAuth} from '../../../context/AuthContext';
 import google from '../../../assets/images/google.png';
 
 // Premium Animated Button Wrapper
-const AnimatedPressable = ({onPress, style, children, disabled, buttonStyle}) => {
+const AnimatedPressable = ({
+  onPress,
+  style,
+  children,
+  disabled,
+  buttonStyle,
+}) => {
   const scaleValue = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
@@ -58,8 +64,14 @@ const AnimatedPressable = ({onPress, style, children, disabled, buttonStyle}) =>
 
 const SplashScreen = ({navigation}) => {
   const {width, height} = useWindowDimensions();
-  const {isAuthenticated, profile, loading: authLoading} = useAuth();
-  
+  const {
+    isAuthenticated,
+    user,
+    profile,
+    isAppReady,        // ← true only when session + profile are both resolved
+    getNextOnboardingScreen,
+  } = useAuth();
+
   // Sizing logic
   const heroImageSize = Math.min(width * 0.4, 180);
   const heroFontSize = Math.min(36, Math.max(28, width * 0.09));
@@ -68,6 +80,7 @@ const SplashScreen = ({navigation}) => {
   const actionCardWidth = Math.min(400, width - 32);
 
   const [googleLoading, setGoogleLoading] = useState(false);
+  const hasNavigated = React.useRef(false); // prevent double-navigation
 
   // Animations
   const uiFadeAnim = useRef(new Animated.Value(0)).current;
@@ -90,24 +103,17 @@ const SplashScreen = ({navigation}) => {
     ]).start();
   }, []);
 
-  // Auth Routing logic (FIXED: Eliminated mandatory 1.5s delay for authenticated users)
+  // Auth Routing — fires ONLY once, and ONLY when app is fully ready
   useEffect(() => {
-    if (!authLoading) {
-      if (isAuthenticated) {
-        // NAVIGATE IMMEDIATELY if authenticated
-        if (profile) {
-          console.log('[SplashScreen] Session found with profile, navigating to Home');
-          navigation?.reset({index: 0, routes: [{name: AppRoute.HomeTabs}]});
-        } else {
-          console.log('[SplashScreen] Session found but no profile, navigating to Onboarding');
-          navigation?.reset({index: 0, routes: [{name: AppRoute.Welcome}]});
-        }
-      } else {
-        // If guest, keep on Splash and show buttons (animations handle the rest)
-        console.log('[SplashScreen] No session found, stay on Splash');
-      }
-    }
-  }, [authLoading, isAuthenticated, profile, navigation]);
+    if (!isAppReady) return;          // Wait until session + profile settled
+    if (!isAuthenticated) return;      // Guest: show splash buttons
+    if (hasNavigated.current) return;  // Already navigated — don't re-trigger
+
+    hasNavigated.current = true;
+    const nextScreen = getNextOnboardingScreen();
+    console.log('[SplashScreen] isAppReady. Next screen:', nextScreen);
+    navigation?.reset({index: 0, routes: [{name: nextScreen}]});
+  }, [isAppReady, isAuthenticated, getNextOnboardingScreen, navigation]);
 
   const handleCreateAccount = () => {
     navigation?.navigate(AppRoute.SignIn);
@@ -122,18 +128,21 @@ const SplashScreen = ({navigation}) => {
     setGoogleLoading(true);
     try {
       const result = await googleSignIn();
-      if (result?.tokens) {
-        if (result.isNewUser) {
-          navigation?.reset({index: 0, routes: [{name: AppRoute.BasicInfo}]});
-        } else {
-          navigation?.reset({index: 0, routes: [{name: AppRoute.HomeTabs}]});
-        }
+      if (result?.user) {
+        // Use onboardingStep from server — no hardcoded navigation
+        const nextScreen = getNextOnboardingScreen(result.user, null);
+        navigation?.reset({index: 0, routes: [{name: nextScreen}]});
       }
     } catch (error) {
       console.error('Google Sign-In error:', error);
-      const isCancelled = error?.code === 'SIGN_IN_CANCELLED' || error?.message?.includes('cancel');
+      const isCancelled =
+        error?.code === 'SIGN_IN_CANCELLED' ||
+        error?.message?.includes('cancel');
       if (!isCancelled) {
-        Alert.alert('Sign-In Failed', error?.message || 'Something went wrong. Please try again.');
+        Alert.alert(
+          'Sign-In Failed',
+          error?.message || 'Something went wrong. Please try again.',
+        );
       }
     } finally {
       setGoogleLoading(false);
@@ -153,7 +162,7 @@ const SplashScreen = ({navigation}) => {
         playWhenInactive={true}
         shutterColor="transparent"
       /> */}
-      
+
       {/* Dark overlay for readability */}
       <LinearGradient
         colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.8)']}
@@ -163,22 +172,27 @@ const SplashScreen = ({navigation}) => {
       <SafeAreaView style={styles.safeArea}>
         <Animated.ScrollView
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={[styles.scrollContent, {justifyContent: 'flex-end'}]}
+          contentContainerStyle={[
+            styles.scrollContent,
+            {justifyContent: 'flex-end'},
+          ]}
           style={{
             opacity: uiFadeAnim,
             transform: [{translateY: uiTranslateY}],
           }}>
-
-          {/* Buttons — no glass card, floating directly on gradient */}
-          {/* Buttons — only show if NOT authenticated and NOT loading */}
-          {!isAuthenticated && !authLoading && (
+          {/* Show buttons only when: not authenticated AND app is fully ready */}
+          {!isAuthenticated && isAppReady && (
             <View style={[styles.actionsContainer, {width: actionCardWidth}]}>
               {/* Google Button */}
               <AnimatedPressable
                 onPress={handleGoogleSignIn}
                 disabled={googleLoading}
                 style={{width: '100%', marginBottom: 12}}>
-                <View style={[styles.googleButton, googleLoading && {opacity: 0.7}]}>
+                <View
+                  style={[
+                    styles.googleButton,
+                    googleLoading && {opacity: 0.7},
+                  ]}>
                   {googleLoading ? (
                     <ActivityIndicator size="small" color="#000" />
                   ) : (
@@ -191,7 +205,9 @@ const SplashScreen = ({navigation}) => {
               </AnimatedPressable>
 
               {/* Log In Button (Gradient) */}
-              <AnimatedPressable onPress={handleCreateAccount} style={{width: '100%', marginBottom: 16}}>
+              <AnimatedPressable
+                onPress={handleCreateAccount}
+                style={{width: '100%', marginBottom: 16}}>
                 <LinearGradient
                   colors={['#7C3AED', '#C084FC']}
                   start={{x: 0, y: 0}}
@@ -202,13 +218,22 @@ const SplashScreen = ({navigation}) => {
               </AnimatedPressable>
 
               {/* Sign Up Text link */}
-              <Pressable onPress={handleSignIn} style={({pressed}) => [{opacity: pressed ? 0.7 : 1, marginTop: 8}]}>
+              <Pressable
+                onPress={handleSignIn}
+                style={({pressed}) => [
+                  {opacity: pressed ? 0.7 : 1, marginTop: 8},
+                ]}>
                 <Text style={styles.signUpPrompt}>
-                  Don't have an account? <Text style={styles.signUpHighlight}>Sign Up</Text>
+                  Don't have an account?{' '}
+                  <Text style={styles.signUpHighlight}>Sign Up</Text>
                 </Text>
               </Pressable>
 
-              <Text style={[styles.legalText, {maxWidth: Math.min(width - 40, 360)}]}>
+              <Text
+                style={[
+                  styles.legalText,
+                  {maxWidth: Math.min(width - 40, 360)},
+                ]}>
                 By continuing, you agree to our{' '}
                 <Text
                   style={styles.legalLink}
@@ -227,9 +252,9 @@ const SplashScreen = ({navigation}) => {
 
           {/* Optional: Add a simple loader if authenticated but waiting for navigation */}
           {isAuthenticated && (
-             <View style={{ marginBottom: 100 }}>
-                <ActivityIndicator color={colors.primary} size="large" />
-             </View>
+            <View style={{marginBottom: 100}}>
+              <ActivityIndicator color={colors.primary} size="large" />
+            </View>
           )}
         </Animated.ScrollView>
       </SafeAreaView>

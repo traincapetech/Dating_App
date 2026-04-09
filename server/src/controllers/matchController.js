@@ -42,7 +42,7 @@ async function syncMatchExpiration(match) {
 
     console.log(`[Expiry Sync] Match ${match._id} expired.`);
 
-    // Cleanup likes to allow re-swiping
+    // Reset likes to allow re-swiping (Requirement #3)
     try {
       await Like.deleteMany({
         $or: [
@@ -57,7 +57,18 @@ async function syncMatchExpiration(match) {
     return true;
   }
 
-  // 5. METADATA SYNC: Keep 'expiresAt' accurate for the UI
+  // 5. RECOVERY LOGIC: If it's marked expired but has recent interaction, re-enable it
+  if (!isExpired && match.status === 'expired') {
+    match.status = 'active';
+    match.chatEnabled = true;
+    console.log(
+      `[Expiry Fix] Recovered prematurely expired match: ${match._id}`,
+    );
+    await match.save();
+    return false; // Not expired anymore
+  }
+
+  // 6. METADATA SYNC: Keep 'expiresAt' accurate for the UI
   // Only update for active matches to avoid logic conflicts in expired states.
   if (match.status === 'active') {
     const computedExpiresAt = new Date(lastInteractionTime.getTime() + SEVEN_DAYS_MS);
@@ -69,16 +80,25 @@ async function syncMatchExpiration(match) {
     }
   }
 
-  // 6. CLEANUP: If already expired and remains inactive, ensure stale likes are cleaned up
+  // 7. CLEANUP: If already expired and remains inactive, ensure stale likes are cleaned up (Heal)
   if (match.status === 'expired') {
     const staleThreshold = new Date(Date.now() - SEVEN_DAYS_MS);
-    await Like.deleteMany({
-      createdAt: {$lt: staleThreshold},
-      $or: [
-        {senderId: match.users[0], receiverId: match.users[1]},
-        {senderId: match.users[1], receiverId: match.users[0]},
-      ],
-    });
+    try {
+      const {deletedCount} = await Like.deleteMany({
+        createdAt: {$lt: staleThreshold},
+        $or: [
+          {senderId: match.users[0], receiverId: match.users[1]},
+          {senderId: match.users[1], receiverId: match.users[0]},
+        ],
+      });
+      if (deletedCount > 0) {
+        console.log(
+          `[Match Heal] Cleaned ${deletedCount} stale likes for expired match: ${match._id}`,
+        );
+      }
+    } catch (err) {
+      console.error('[Match Heal] Error cleaning likes:', err);
+    }
     return true;
   }
 
@@ -397,9 +417,23 @@ export const unmatch = async (req, res) => {
       return res.status(403).json({success: false, message: 'Access denied'});
     }
 
-    // Disable chat for this match (unmatch)
+    // Fully expire the match so both users appear in each other's
+    // "Previous Interactions" and can re-swipe each other (Bug fix)
     match.chatEnabled = false;
+    match.status = 'expired';
     await match.save();
+
+    // Delete likes between the two users so re-swiping is allowed
+    try {
+      await Like.deleteMany({
+        $or: [
+          {senderId: match.users[0], receiverId: match.users[1]},
+          {senderId: match.users[1], receiverId: match.users[0]},
+        ],
+      });
+    } catch (err) {
+      console.error('[Unmatch] Error deleting likes:', err);
+    }
 
     res.json({success: true, message: 'Match unmatched successfully'});
   } catch (error) {
@@ -421,8 +455,16 @@ export const getPreviousInteractions = async (req, res) => {
 
     // Fetch all matches for the user to determine current active state (Requirement #2: Prevent duplicates)
     const [expiredMatches, activeMatches] = await Promise.all([
-      Match.find({ users: userId, status: 'expired' }).sort({ lastMessageAt: -1, createdAt: -1 }),
-      Match.find({ users: userId, status: { $in: ['active', 'secured'] } })
+      // Include expired matches AND legacy unmatched records (chatEnabled: false, status: active)
+      // The legacy case existed before the unmatch fix that now correctly sets status: 'expired'
+      Match.find({
+        users: userId,
+        $or: [
+          { status: 'expired' },
+          { status: 'active', chatEnabled: false },
+        ],
+      }).sort({ lastMessageAt: -1, createdAt: -1 }),
+      Match.find({ users: userId, status: { $in: ['active', 'secured'] }, chatEnabled: { $ne: false } })
     ]);
 
     // Create a set of users who are ALREADY active matches

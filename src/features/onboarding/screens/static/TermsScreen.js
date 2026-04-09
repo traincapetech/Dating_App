@@ -86,22 +86,18 @@ const TermsScreen = () => {
           You may not create multiple accounts, use another user's account, or allow others to use your account. Each user is limited to one account. We reserve the right to suspend or terminate accounts that violate this restriction.
         </Text>
 
-        <Text style={styles.title}>4. User Conduct and Prohibited Activities</Text>
+        <Text style={styles.title}>4. User Conduct and Prohibited Content (Zero Tolerance Policy)</Text>
         <Text style={styles.text}>
-          You agree to use the Service in a respectful, lawful, and appropriate manner. The following activities are strictly prohibited:
+          We have a STRICT ZERO TOLERANCE policy regarding objectionable content and abusive users. You agree to use the Service in a respectful, lawful, and appropriate manner. The following behaviors and User Generated Content (UGC) are strictly prohibited:
         </Text>
         <Text style={styles.listItem}>• Harassment, bullying, intimidation, or threatening behavior</Text>
+        <Text style={styles.listItem}>• Hate speech, discrimination, or promotion of violence against any group</Text>
+        <Text style={styles.listItem}>• Posting sexually explicit, pornographic, violent, illegal, or highly offensive content (Objectionable UGC)</Text>
         <Text style={styles.listItem}>• Impersonation, fraud, or misrepresentation of identity</Text>
-        <Text style={styles.listItem}>• Posting illegal, harmful, or offensive content</Text>
         <Text style={styles.listItem}>• Spamming, soliciting money, or engaging in commercial activities</Text>
-        <Text style={styles.listItem}>• Violating any applicable laws or regulations</Text>
-        <Text style={styles.listItem}>• Attempting to gain unauthorized access to the Service</Text>
-        <Text style={styles.listItem}>• Interfering with or disrupting the Service or servers</Text>
-        <Text style={styles.listItem}>• Using automated systems (bots, scrapers) to access the Service</Text>
         <Text style={styles.listItem}>• Collecting or harvesting user information without consent</Text>
-        <Text style={styles.listItem}>• Posting false, misleading, or deceptive information</Text>
         <Text style={styles.text}>
-          Violation of these rules may result in immediate account suspension or termination without refund.
+          Any user found to be uploading Objectionable UGC or engaging in abusive behavior will face IMMEDIATE permanent account termination and removal of their content without notice or refund.
         </Text>
 
         <Text style={styles.title}>5. Content and Intellectual Property</Text>
@@ -127,21 +123,19 @@ const TermsScreen = () => {
         <Text style={styles.title}>6. Safety, Moderation, and Reporting</Text>
         <Text style={styles.subtitle}>6.1 Content Moderation</Text>
         <Text style={styles.text}>
-          We reserve the right to review, moderate, edit, or remove any content that violates these Terms or is otherwise objectionable. We are not obligated to monitor all content but may do so at our discretion.
+          We utilize robust, effective, and ongoing moderation of all User Generated Content (UGC). We continuously review and reserve the absolute right to edit or remove any content that violates these Terms or is deemed objectionable.
         </Text>
 
-        <Text style={styles.subtitle}>6.2 User Safety</Text>
+        <Text style={styles.subtitle}>6.2 User Safety (Blocking & Reporting)</Text>
         <Text style={styles.text}>
-          We are committed to providing a safe environment but are not responsible for the conduct of users on or off the Service. You are solely responsible for your interactions with other users. We encourage you to:
+          Pryvo provides an in-app system designed to keep you safe. You have the ability and are highly encouraged to:
         </Text>
-        <Text style={styles.listItem}>• Report suspicious or inappropriate behavior</Text>
-        <Text style={styles.listItem}>• Block users who make you uncomfortable</Text>
-        <Text style={styles.listItem}>• Exercise caution when meeting matches in person</Text>
-        <Text style={styles.listItem}>• Never share financial information or send money</Text>
+        <Text style={styles.listItem}>• BLOCK users: You can immediately block any user to permanently prevent them from viewing your profile or messaging you.</Text>
+        <Text style={styles.listItem}>• REPORT users/content: You can report abusive users or objectionable UGC directly from their profile or chat using the in-app reporting tool.</Text>
 
-        <Text style={styles.subtitle}>6.3 Reporting</Text>
+        <Text style={styles.subtitle}>6.3 Action on Reports</Text>
         <Text style={styles.text}>
-          If you encounter content or behavior that violates these Terms, please report it immediately through the in-app reporting feature or by contacting pryvo@traincapetech.in.
+          Pryvo takes all user reports seriously. We aim to review reported users and content within 24 hours. Given our zero-tolerance policy, verified reports of objectionable content or abusive behavior will result in the immediate removal of the content and permanent ejection of the offending user from the Service.
         </Text>
 
         <Text style={styles.title}>7. Privacy and Data Protection</Text>
