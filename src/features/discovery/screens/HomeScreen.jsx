@@ -793,14 +793,14 @@ const HomeScreen = ({navigation, route}) => {
           console.error('Error loading advanced filters:', error);
         }
 
+        const targetMaxDist = distanceEnabled ? (typeof distanceOverride === 'number' ? distanceOverride : maxDistance) : undefined;
+        console.log(`[HomeScreen] Discovery request: Distance=${targetMaxDist}km, Enabled=${distanceEnabled}`);
+
         const response = await getDiscoverProfiles(excludeUserId, {
           useMatching: true,
           sortBy: 'score',
           minScore: 0,
-          maxDistance:
-            distanceEnabled && (distanceOverride || maxDistance)
-              ? distanceOverride || maxDistance
-              : undefined,
+          maxDistance: targetMaxDist,
           filters: advancedFilters,
         });
 
@@ -1277,24 +1277,43 @@ const HomeScreen = ({navigation, route}) => {
     useCallback(() => {
       loadDailyLikeInfo();
 
-      // ── Target-User prioritisation (existing flow — DO NOT modify) ──────────
+      // 🛰️ SYNC DISTANCE PREFS on Focus (Hardened against loops)
+      const syncOnFocus = async () => {
+        try {
+          const raw = await AsyncStorage.getItem(DISTANCE_PREF_KEY);
+          if (raw && raw !== 'undefined') {
+            const parsed = JSON.parse(raw);
+            const newDist = parsed.maxDistance ?? 100;
+            const newEnabled = parsed.useDistanceFilter ?? true;
+
+            // ONLY RELOAD IF CHANGED (To prevent infinite loops)
+            if (newDist !== maxDistance || newEnabled !== useDistanceFilter) {
+               setMaxDistance(newDist);
+               setUseDistanceFilter(newEnabled);
+               loadProfiles(newDist, newEnabled, null, true);
+            }
+          }
+        } catch (e) {
+          console.warn('[HomeScreen] Sync error:', e);
+        }
+      };
+      syncOnFocus();
+
+      // ── Target-User prioritisation (existing flow) ──────────────────────────
       if (route.params?.targetUserId) {
         const tid = route.params.targetUserId;
-        // Only reload if the top card isn't already this user
         if (!profiles.length || profiles[currentIndex]?.id !== tid) {
           loadProfiles(null, useDistanceFilter, null, true, tid);
-          // Clear the param after a short delay so it doesn't re-trigger
-          setTimeout(() => {
-            navigation.setParams({targetUserId: null});
-          }, 1000);
+          setTimeout(() => navigation.setParams({targetUserId: null}), 1000);
         }
       }
     }, [
       loadDailyLikeInfo,
-      loadProfiles,
+      // loadProfiles removed from dependencies to break the recursion chain
       useDistanceFilter,
+      maxDistance,
       route.params?.targetUserId,
-      profiles,
+      profiles.length,
       currentIndex,
     ]),
   );
