@@ -1092,6 +1092,14 @@ const HomeScreen = ({navigation, route}) => {
     if (direction === 'right') {
       const newSwipeCount = swipeCount + 1;
       setSwipeCount(newSwipeCount);
+      
+      // ✨ OPTIMISTIC UPDATE: Decrement remaining count immediately to block fast-swipers (Requirement #1)
+      setDailyLikeInfo(prev => ({
+        ...prev,
+        remaining: Math.max(0, prev.remaining - 1),
+        count: prev.count + 1
+      }));
+
       if (newSwipeCount % 10 === 0) {
         setShowLikePopup(true);
         setTimeout(() => setShowLikePopup(false), 2000);
@@ -1148,13 +1156,21 @@ const HomeScreen = ({navigation, route}) => {
           }
         })
         .catch(err => {
-          console.error('Like error:', err);
-          if (err?.response?.status === 429 || err?.limitReached) {
+          console.warn('[HomeScreen] Like request blocked:', err?.message);
+          
+          // Improved robust check for limit errors
+          const isLimitError = 
+            err?.response?.status === 429 || 
+            err?.limitReached || 
+            (err?.message && err.message.toLowerCase().includes('limit'));
+
+          if (isLimitError) {
             Alert.alert(
-              'Daily Limit Reached',
+              'Daily Limit reached',
               'Daily limit exceeded. Buy premium or try again tomorrow.',
-              [{text: 'OK'}],
+              [{ text: 'OK' }]
             );
+            // Refresh counts from server to stay in sync
             loadDailyLikeInfo();
           }
         });

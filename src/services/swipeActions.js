@@ -24,7 +24,7 @@ export const likeUser = async (
     console.log('[SwipeActions] Like response:', res);
     return res;
   } catch (err) {
-    console.error('Like Error:', err?.message || err);
+    console.log('[SwipeActions] Like Error (Handled):', err?.message || err);
     // Preserve the error response for limit checking
     if (err?.response) {
       err.limitReached = err.response.status === 429;

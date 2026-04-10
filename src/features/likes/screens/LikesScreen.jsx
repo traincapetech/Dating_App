@@ -167,7 +167,7 @@ const LikesScreen = ({navigation}) => {
         const user = JSON.parse(userData);
         setCurrentUserId(user.id);
         const [likesResponse, matchesResponse, previousResponse] = await Promise.all([
-          getLikesReceived(user.id, true),
+          getLikesReceived(user.id, user.isPremium || false),
           fetchMatches(user.id),
           fetchPreviousInteractions(user.id),
         ]);

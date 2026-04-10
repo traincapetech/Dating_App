@@ -232,12 +232,17 @@ const UserProfileViewScreen = ({navigation, route}) => {
         }
       }
     } catch (err) {
-      console.error('[UserProfileViewScreen] Like error:', err);
-      if (err?.limitReached) {
+      console.warn('[UserProfileViewScreen] Like Error:', err?.message);
+      
+      const isLimitError = 
+        err?.response?.status === 429 || 
+        err?.limitReached || 
+        (err?.message && err.message.toLowerCase().includes('limit'));
+
+      if (isLimitError) {
         Alert.alert(
-          'Limit Reached',
-          err.message ||
-            "You've reached your daily like limit. Come back tomorrow!",
+          'Daily Limit reached',
+          'Daily limit exceeded. Buy premium or try again tomorrow.',
         );
       } else {
         Alert.alert('Error', err?.message || 'Failed to send like. Please try again.');
