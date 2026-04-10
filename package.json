@@ -50,6 +50,7 @@
     "react-native-screenshot-prevent": "^1.2.1",
     "react-native-vector-icons": "^10.3.0",
     "react-native-video": "^6.19.1",
+    "react-native-webview": "^13.16.1",
     "react-native-worklets-core": "^1.6.3",
     "rn-emoji-keyboard": "^1.7.0",
     "socket.io-client": "^4.8.1",

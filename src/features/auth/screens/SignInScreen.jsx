@@ -22,6 +22,7 @@ import { colors, typography, spacing } from '../../../theme';
 import { signIn } from '../../../services/auth';
 import { useLoading } from '../../../context/LoadingContext';
 import { useAuth } from '../../../context/AuthContext';
+import apiConfig from '../../../config/api';
 
 const SignInScreen = () => {
   const navigation = useNavigation();
@@ -121,8 +122,20 @@ const SignInScreen = () => {
         navigation.navigate(AppRoute.Welcome);
       }
     } catch (error) {
-      const message = error?.message || 'Unable to sign you in right now.';
-      setErrors(prev => ({ ...prev, api: message }));
+      console.error('[SignIn] error:', error);
+      const { 
+        message,  
+        accountLocked, 
+        remainingMinutes 
+      } = error?.response?.data || error || {};
+
+      let finalMessage = message || 'Unable to sign you in right now.';
+      
+      if (accountLocked) {
+        finalMessage = `Account locked. Please try again in ${remainingMinutes} minutes.`;
+      }
+
+      setErrors({ api: finalMessage });
     } finally {
       setIsSubmitting(false);
       setLoading(false);
@@ -271,6 +284,7 @@ const SignInScreen = () => {
         </ScrollView>
       </KeyboardAvoidingView>
       </SafeAreaView>
+
     </ImageBackground>
   );
 };
