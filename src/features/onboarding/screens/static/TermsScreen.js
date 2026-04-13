@@ -146,22 +146,24 @@ const TermsScreen = () => {
         <Text style={styles.title}>8. Subscriptions, Payments, and Refunds</Text>
         <Text style={styles.subtitle}>8.1 Subscription Plans</Text>
         <Text style={styles.text}>
-          Pryvo offers both free and premium subscription plans. Premium subscriptions provide access to additional features such as unlimited likes, advanced filters, and priority matching. Subscription fees, features, and terms are subject to change with reasonable notice.
+          Pryvo offers both free and premium subscription plans (Daily, Weekly, Monthly, 3-Month, 6-Month). Premium subscriptions provide access to additional features such as unlimited likes, advanced filters, and priority matching. All subscription plan details and prices are clearly displayed in the Premium section of the app.
         </Text>
 
-        <Text style={styles.subtitle}>8.2 Payment Terms</Text>
+        <Text style={styles.subtitle}>8.2 Payment and Billing</Text>
         <Text style={styles.text}>
-          Subscription fees are charged in advance on a recurring basis (weekly, monthly, or as otherwise specified). By purchasing a subscription, you authorize us to charge your payment method for the subscription fee and any applicable taxes. You are responsible for providing valid payment information.
+          Subscription fees are charged in advance. When you purchase via Google Play or Stripe, you authorize us (or the platform) to charge your payment method for the specified amount.
         </Text>
 
-        <Text style={styles.subtitle}>8.3 Auto-Renewal</Text>
+        <Text style={styles.subtitle}>8.3 Auto-Renewal and Cancellation</Text>
         <Text style={styles.text}>
-          Subscriptions automatically renew unless cancelled at least 24 hours before the end of the current subscription period. You can cancel your subscription at any time through your account settings or through your device's app store settings. Cancellation will take effect at the end of the current billing period.
+          Subscriptions automatically renew at the original purchase price unless cancelled at least 24 hours before the end of the current period. You can manage or cancel your subscription at any time:
         </Text>
+        <Text style={styles.listItem}>• For Stripe payments: Go to "Manage Subscription" in Settings.</Text>
+        <Text style={styles.listItem}>• For Google Play payments: Go to your Google Play Store Account settings.</Text>
 
         <Text style={styles.subtitle}>8.4 Refunds</Text>
         <Text style={styles.text}>
-          Subscription fees are non-refundable except as required by law or at our sole discretion. Refund policies may vary by platform (iOS App Store, Google Play Store) and are subject to their respective terms. If you are eligible for a refund, please contact pryvo@traincapetech.in.
+          Subscription fees are generally non-refundable. However, we offer a goodwill 24-hour refund window for first-time purchases. No refunds are granted after 24 hours or for users banned for violating our Zero Tolerance Policy.
         </Text>
 
         <Text style={styles.subtitle}>8.5 Price Changes</Text>

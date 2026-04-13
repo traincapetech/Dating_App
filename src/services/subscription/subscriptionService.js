@@ -159,3 +159,20 @@ export const setAutoRenewal = async (subscriptionId, enabled) => {
     throw error;
   }
 };
+
+/**
+ * Request a refund (24-hour goodwill policy)
+ */
+export const requestRefund = async (subscriptionId, userId, reason = '') => {
+  try {
+    const response = await apiClient.post(
+      `/subscription/refund/${subscriptionId}`,
+      {userId, reason},
+    );
+    return response;
+  } catch (error) {
+    console.error('Refund Request Error:', error?.message || error);
+    throw error;
+  }
+};
+

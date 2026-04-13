@@ -56,7 +56,12 @@ const PrivacyScreen = () => {
           and dating preferences.
         </Text>
 
-        <Text style={styles.subtitle}>1.2 Usage Information</Text>
+        <Text style={styles.subtitle}>1.2 Billing and Payment Information</Text>
+        <Text style={styles.text}>
+          If you purchase a Premium subscription, we and our payment processors (Google Play Store, Stripe) collect billing details, including your credit/debit card number, billing address, and transaction history. We do not store full credit card numbers on our servers; all payments are processed through secure, PCI-compliant third-party gateways.
+        </Text>
+
+        <Text style={styles.subtitle}>1.3 Usage Information</Text>
         <Text style={styles.text}>
           We automatically collect information about how you interact with our
           service, including your matches, messages, likes, swipes, and other

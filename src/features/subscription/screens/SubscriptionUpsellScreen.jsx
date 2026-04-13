@@ -8,545 +8,515 @@ import {
   Alert,
   ActivityIndicator,
   StatusBar,
-  Dimensions,
   Platform,
 } from 'react-native';
+import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {StripeProvider, useStripe} from '@stripe/stripe-react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import {AppRoute} from '../../../constants/routes';
-import {colors, typography, spacing} from '../../../theme';
 import {
   getAvailablePlans,
   createPaymentOrder,
   verifyPaymentAndCreateSubscription,
   getSubscriptionStatus,
 } from '../../../services/subscription/subscriptionService';
-const {width, height} = Dimensions.get('window');
-import {Animated, Easing} from 'react-native';
 
+/* ─── Feature list ─────────────────────────────────────────────── */
 const FEATURES = [
-  {icon: '🔥', title: 'Unlimited Likes', desc: 'Swipe without restrictions'},
-  {icon: '👀', title: 'See Who Liked You', desc: 'No more guessing games'},
-  {icon: '📍', title: 'Advanced Filters', desc: 'Height, lifestyle & more'},
-  {icon: '⚡', title: '3x Priority Boost', desc: 'Be seen by more people'},
+  {
+    icon: 'heart-multiple-outline',
+    title: 'Unlimited Likes',
+    desc: 'Swipe with no daily limit',
+  },
+  {
+    icon: 'eye-outline',
+    title: 'See Who Liked You',
+    desc: 'View all your secret admirers',
+  },
+  {
+    icon: 'tune-vertical',
+    title: 'Advanced Filters',
+    desc: 'Filter by height, interests & more',
+  },
+  {
+    icon: 'lightning-bolt-outline',
+    title: '3× Priority Boost',
+    desc: 'Appear at the top of the deck',
+  },
+  {
+    icon: 'undo-variant',
+    title: 'Unlimited Rewinds',
+    desc: 'Take back any accidental swipe',
+  },
+  {
+    icon: 'message-check-outline',
+    title: 'Read Receipts',
+    desc: 'Know when messages are seen',
+  },
 ];
 
-const SubscriptionUpsellScreenContent = () => {
+/* ─── Inner content (needs Stripe context) ─────────────────────── */
+function Content() {
   const navigation = useNavigation();
   const route = useRoute();
   const fromOnboarding = route.params?.fromOnboarding;
   const stripe = useStripe();
-  const [selectedPlan, setSelectedPlan] = useState(null);
+
   const [plans, setPlans] = useState([]);
+  const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState(null);
-  const [currentSubscription, setCurrentSubscription] = useState(null);
+  const [userId, setUserId] = useState(null);
 
   useEffect(() => {
-    const init = async () => {
-      setLoading(true);
-      const userData = await AsyncStorage.getItem('@pryvo_user');
-      if (userData && userData !== 'undefined') {
-        const user = JSON.parse(userData);
-        setCurrentUserId(user.id);
-        await Promise.all([loadPlans(), loadSubscriptionStatus(user.id)]);
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem('@pryvo_user');
+        if (raw) {
+          const u = JSON.parse(raw);
+          setUserId(u.id);
+        }
+        const r = await getAvailablePlans();
+        if (r?.success && r.plans?.length) {
+          const sorted = [...r.plans].sort(
+            (a, b) => (a.rank || 0) - (b.rank || 0),
+          );
+          setPlans(sorted);
+          const pop = sorted.find(p => p.popular) || sorted[1] || sorted[0];
+          if (pop) setSelected(pop.id);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
-    };
-    init();
+    })();
   }, []);
 
-  const loadPlans = async () => {
-    try {
-      const response = await getAvailablePlans();
-      if (response?.success && response?.plans) {
-        setPlans(response.plans);
-        const popular = response.plans.find(p => p.popular);
-        if (popular) setSelectedPlan(popular.id);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
+  const handlePurchase = async () => {
+    if (!selected || !userId || processing) return;
+    const plan = plans.find(p => p.id === selected);
+    if (!plan) return;
 
-  const loadSubscriptionStatus = async userId => {
-    try {
-      const response = await getSubscriptionStatus(userId);
-      if (response?.success && response?.subscription)
-        setCurrentSubscription(response.subscription);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const calculateProRatedPrice = plan => {
-    if (!currentSubscription) return plan.price;
-    const currentPlan = plans.find(p => p.id === currentSubscription.planId);
-    if (!currentPlan || plan.rank <= currentPlan.rank) return plan.price;
-    const now = new Date();
-    const expiresAt = new Date(currentSubscription.expiresAt);
-    const remainingDays = Math.max(
-      0,
-      Math.ceil((expiresAt - now) / (1000 * 60 * 60 * 24)),
-    );
-    const credit =
-      (remainingDays / (currentPlan.duration || 30)) * currentPlan.price;
-    return Math.max(0, Math.round((plan.price - credit) * 100) / 100);
-  };
-
-  const handleCheckout = async () => {
-    if (!selectedPlan || !currentUserId || !stripe) return;
     try {
       setProcessing(true);
-      const orderResponse = await createPaymentOrder(
-        currentUserId,
-        selectedPlan,
-      );
-      if (!orderResponse?.success)
-        throw new Error(orderResponse?.message || 'Failed to create order');
-      const {paymentOrder, plan} = orderResponse;
-      const {error: initError} = await stripe.initPaymentSheet({
-        paymentIntentClientSecret: paymentOrder.clientSecret,
-        merchantDisplayName: 'Pryvo Premium',
-        appearance: {colors: {primary: colors.primary}},
+
+      const orderRes = await createPaymentOrder(userId, plan.id);
+      if (!orderRes?.success)
+        throw new Error(orderRes?.message || 'Could not create order');
+
+      const {clientSecret, orderId} = orderRes.paymentOrder;
+
+      const {error, paymentIntent} = await stripe.confirmPayment(clientSecret, {
+        paymentMethodType: 'Card',
+        billingDetails: {name: 'Pryvo User'},
       });
-      if (initError) throw new Error(initError.message);
-      const {error: presentError} = await stripe.presentPaymentSheet();
-      if (presentError) {
-        if (presentError.code === 'Canceled') return;
-        throw new Error(presentError.message);
+
+      if (error) {
+        if (error.code !== 'Canceled')
+          Alert.alert('Payment Failed', error.message);
+        return;
       }
-      const verifyResponse = await verifyPaymentAndCreateSubscription(
-        currentUserId,
-        selectedPlan,
-        paymentOrder.orderId,
-        paymentOrder.orderId,
+
+      const verifyRes = await verifyPaymentAndCreateSubscription(
+        userId,
+        plan.id,
+        orderId,
+        paymentIntent.id,
         '',
         'stripe',
-        paymentOrder.currency || 'USD',
-        true,
+        'USD',
       );
-      if (verifyResponse?.success) {
-        Alert.alert('Congratulations!', 'Your subscription is active!', [
-          {
-            text: 'Great!',
-            onPress: () => {
-              if (fromOnboarding) {
-                navigation.reset({
-                  index: 0,
-                  routes: [{name: AppRoute.HomeTabs}],
-                });
-              } else {
-                navigation.navigate(AppRoute.HomeTabs);
-              }
+
+      if (verifyRes?.success) {
+        Alert.alert(
+          '🎉 Welcome to Premium!',
+          'Your subscription is now active.',
+          [
+            {
+              text: 'Awesome!',
+              onPress: () => {
+                if (fromOnboarding) navigation.replace('HomeTabs');
+                else navigation.replace('SubscriptionManagement');
+              },
             },
-          },
-        ]);
-      } else throw new Error(verifyResponse?.message || 'Verification failed');
-    } catch (error) {
-      Alert.alert('Payment Error', error.message);
+          ],
+        );
+      } else {
+        throw new Error(verifyRes?.message || 'Verification failed');
+      }
+    } catch (e) {
+      Alert.alert(
+        'Error',
+        e.message || 'Something went wrong. Please try again.',
+      );
     } finally {
       setProcessing(false);
     }
   };
 
-  if (loading)
+  if (loading) {
     return (
-      <LinearGradient
-        colors={['#0F051C', '#281052']}
-        style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#E0AAFF" />
-      </LinearGradient>
+      <View style={s.center}>
+        <ActivityIndicator size="large" color="#9411FA" />
+      </View>
     );
+  }
 
-  const selectedPlanData = plans.find(p => p.id === selectedPlan);
+  const selectedPlan = plans.find(p => p.id === selected);
 
   return (
-    <View style={styles.mainContainer}>
-      <StatusBar
-        barStyle="light-content"
-        transparent
-        backgroundColor="transparent"
-      />
-      <LinearGradient
-        colors={['#0F051C', '#281052', '#0A0014']}
-        style={StyleSheet.absoluteFillObject}
-      />
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}>
-        <View style={styles.headerContainer}>
-          <View style={styles.headerTop}>
-            <View style={styles.pricingPill}>
-              <Text style={styles.pricingPillText}>Pricing Plan</Text>
-            </View>
-            <Pressable
-              onPress={() => {
-                if (fromOnboarding) {
-                  navigation.reset({
-                    index: 0,
-                    routes: [{name: AppRoute.HomeTabs}],
-                  });
-                } else {
-                  navigation.goBack();
-                }
-              }}
-              style={styles.backButton}>
-              <MaterialCommunityIcons name="close" size={20} color="#fff" />
-            </Pressable>
-          </View>
-          <Text style={styles.heroTitle}>
-            Access Premium{'\n'}Features on Every Plan
-          </Text>
-          <Text style={styles.pryvoUpgradeText}>
-            Upgrade to <Text style={styles.pryvoGold}>Pryvo</Text> Premium
-          </Text>
-        </View>
+    <View style={s.root}>
+      <StatusBar barStyle="light-content" backgroundColor="#0D0D14" />
 
+      {/* Main Content Area */}
+      <View style={{flex: 1}}>
         <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.featuresScrollContainer}>
-          {FEATURES.map((f, i) => (
-            <LinearGradient
-              key={i}
-              colors={['rgba(255, 255, 255, 0.08)', 'rgba(255, 255, 255, 0.02)']}
-              style={styles.featureTile}>
-              <View style={styles.featureEmojiWrapper}>
-                <Text style={styles.featureEmoji}>{f.icon}</Text>
-              </View>
-              <Text style={styles.featureTileTitle} numberOfLines={2}>
-                {f.title}
-              </Text>
-            </LinearGradient>
-          ))}
-        </ScrollView>
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={s.scroll}
+          style={{flex: 1}}>
+          {/* ── Hero Header ── */}
+          <LinearGradient
+            colors={['#1a0533', '#2d0853', '#0D0D14']}
+            style={s.hero}>
+            <Pressable
+              onPress={() => navigation.goBack()}
+              style={s.closeBtn}
+              hitSlop={12}>
+              <MaterialCommunityIcons name="close" size={22} color="#aaa" />
+            </Pressable>
+            <View style={s.crownWrap}>
+              <MaterialCommunityIcons name="crown" size={42} color="#FFD700" />
+            </View>
+            <Text style={s.heroTitle}>Pryvo Premium</Text>
+            <Text style={s.heroSub}>Unlock the full Pryvo experience</Text>
+          </LinearGradient>
 
-        <View style={styles.segmentContainerWrapper}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.segmentContainer}>
-            {plans.map(plan => (
-              <Pressable
-                key={plan.id}
-                onPress={() => setSelectedPlan(plan.id)}
-                style={[
-                  styles.segmentBtn,
-                  selectedPlan === plan.id && styles.segmentBtnActive,
-                ]}>
-                <Text
-                  style={[
-                    styles.segmentText,
-                    selectedPlan === plan.id && styles.segmentTextActive,
-                  ]}>
-                  {plan.name}
-                </Text>
-              </Pressable>
+          {/* ── Features ── */}
+          <View style={s.featuresBlock}>
+            {FEATURES.map((f, i) => (
+              <View key={i} style={s.featureRow}>
+                <View style={s.featureIcon}>
+                  <MaterialCommunityIcons
+                    name={f.icon}
+                    size={20}
+                    color="#9411FA"
+                  />
+                </View>
+                <View style={{flex: 1}}>
+                  <Text style={s.featureTitle}>{f.title}</Text>
+                  <Text style={s.featureDesc}>{f.desc}</Text>
+                </View>
+                <MaterialCommunityIcons
+                  name="check-circle"
+                  size={18}
+                  color="#22C55E"
+                />
+              </View>
             ))}
-          </ScrollView>
-        </View>
-
-        {selectedPlanData && (
-          <View style={styles.giantCardContainer}>
-            <LinearGradient
-              colors={['rgba(15, 10, 20, 0.7)', 'rgba(2, 0, 5, 0.95)']}
-              style={styles.giantCard}>
-              <View style={styles.giantCardTop}>
-                <Text style={styles.giantPlanName}>{selectedPlanData.name}</Text>
-                <View style={styles.giantPriceRow}>
-                  <Text style={styles.giantDollar}>$</Text>
-                  <Text style={styles.giantPrice}>
-                    {selectedPlanData.price.toFixed(2).replace(/\.00$/, '')}
-                  </Text>
-                  <Text style={styles.giantPeriod}>
-                    /{selectedPlanData.period}
-                  </Text>
-                </View>
-                {calculateProRatedPrice(selectedPlanData) <
-                  selectedPlanData.price && (
-                  <Text style={styles.upgradeNotice}>
-                    Upgrade today for only $
-                    {calculateProRatedPrice(selectedPlanData).toFixed(2)}!
-                  </Text>
-                )}
-              </View>
-              <View style={styles.giantActionRow}>
-                <Pressable
-                  style={[
-                    styles.giantPayButton,
-                    processing && styles.payButtonDisabled,
-                  ]}
-                  onPress={handleCheckout}
-                  disabled={processing}>
-                  <LinearGradient
-                    colors={['#6C48FB', '#8A63FF']}
-                    style={styles.giantPayGradient}>
-                    {processing ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <View style={styles.btnContentRow}>
-                        <Text style={styles.giantPayText}>Get started</Text>
-                        <MaterialCommunityIcons
-                          name="arrow-top-right"
-                          size={16}
-                          color="#fff"
-                          style={styles.btnIcon}
-                        />
-                      </View>
-                    )}
-                  </LinearGradient>
-                </Pressable>
-              </View>
-              <View style={styles.giantDivider} />
-              <View style={styles.bulletsContainer}>
-                {FEATURES.map((f, i) => (
-                  <Text key={i} style={styles.bulletItem}>
-                    • {f.label}: {f.sub}
-                  </Text>
-                ))}
-                <Text style={styles.bulletItem}>
-                  • Billed securely via Stripe. Cancel anytime.
-                </Text>
-              </View>
-
-              {/* Custom Requests Row (aesthetic match) */}
-              <View style={styles.customRequestRow}>
-                <View style={styles.customLeft}>
-                  <MaterialCommunityIcons
-                    name="arrow-top-right"
-                    size={12}
-                    color="rgba(255,255,255,0.5)"
-                  />
-                  <Text style={styles.customText}>For Custom Requests</Text>
-                </View>
-                <View style={styles.customRight}>
-                  <Text style={styles.customLink}>Get started </Text>
-                  <MaterialCommunityIcons
-                    name="arrow-top-right"
-                    size={14}
-                    color="#6C48FB"
-                  />
-                </View>
-              </View>
-            </LinearGradient>
           </View>
-        )}
-      </ScrollView>
+
+          {/* ── Plan Selector ── */}
+          <View style={s.plansBlock}>
+            <Text style={s.plansLabel}>CHOOSE YOUR PLAN</Text>
+            {plans.map(plan => {
+              const isSel = plan.id === selected;
+              return (
+                <Pressable
+                  key={plan.id}
+                  onPress={() => setSelected(plan.id)}
+                  style={[s.planRow, isSel && s.planRowSel]}>
+                  {/* Left: radio */}
+                  <View style={[s.radio, isSel && s.radioSel]}>
+                    {isSel && <View style={s.radioInner} />}
+                  </View>
+                  {/* Centre: name + tagline */}
+                  <View style={{flex: 1, marginLeft: 14}}>
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        gap: 8,
+                      }}>
+                      <Text style={[s.planName, isSel && s.planNameSel]}>
+                        {plan.name}
+                      </Text>
+                      {plan.popular && (
+                        <View style={s.badge}>
+                          <Text style={s.badgeTxt}>BEST VALUE</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text style={s.planTagline}>
+                      {plan.tagline || `Save more with the ${plan.name} plan`}
+                    </Text>
+                  </View>
+                  {/* Right: price */}
+                  <Text style={[s.planPrice, isSel && s.planPriceSel]}>
+                    ${plan.price}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* ── Disclosure ── */}
+          <View style={s.disclosureBlock}>
+            <Text style={s.disclosureTxt}>
+              Subscriptions auto-renew unless cancelled at least 24 hours before
+              the renewal date. You can manage or cancel your subscription in
+              Account → Subscription at any time.
+            </Text>
+            <View style={s.legalRow}>
+              <Pressable onPress={() => navigation.navigate('Terms')}>
+                <Text style={s.legalLink}>Terms of Service</Text>
+              </Pressable>
+              <Text style={s.legalDot}>·</Text>
+              <Pressable onPress={() => navigation.navigate('Privacy')}>
+                <Text style={s.legalLink}>Privacy Policy</Text>
+              </Pressable>
+            </View>
+          </View>
+        </ScrollView>
+      </View>
+
+      {/* ── Sticky CTA Footer ── */}
+      {/* ── Sticky CTA Footer ── */}
+<View style={s.footerContainer}>
+  <Pressable
+    onPress={handlePurchase}
+    disabled={processing || !selected}
+    style={({pressed}) => [
+      {borderRadius: 16, overflow: 'hidden'},
+      pressed && {transform: [{scale: 0.97}]},
+      (processing || !selected) && {opacity: 0.6},
+    ]}
+  >
+    <LinearGradient
+      colors={['#C084FC', '#9411FA', '#6D28D9']} // high contrast purple gradient
+      start={{x: 0, y: 0}}
+      end={{x: 1, y: 1}}
+      style={s.mainBuyBtn}
+    >
+      {processing ? (
+        <ActivityIndicator color="#fff" />
+      ) : (
+        <View style={s.ctaContent}>
+          <MaterialCommunityIcons name="crown" size={18} color="#FFD700" />
+          <Text style={s.mainBuyBtnTxt}>Unlock Premium Now</Text>
+        </View>
+      )}
+    </LinearGradient>
+  </Pressable>
+
+  {selectedPlan && (
+    <Text style={s.footerSummaryTxt}>
+      ✨ {selectedPlan.name} · ${selectedPlan.price} · starts instantly
+    </Text>
+  )}
+</View>
     </View>
   );
-};
+}
 
-const styles = StyleSheet.create({
-  mainContainer: {flex: 1, backgroundColor: '#0A0014'},
-  scrollContent: {paddingBottom: 60},
-  headerContainer: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  pricingPill: {
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  pricingPillText: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 12,
-    fontFamily: typography.fontFamilyMedium,
-  },
-  backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroTitle: {
-    fontSize: 28,
-    fontFamily: typography.fontFamilyBold,
-    color: '#fff',
-    lineHeight: 36,
-  },
-  pryvoUpgradeText: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.5)',
-    marginTop: 8,
-    fontFamily: typography.fontFamilyMedium,
-  },
-  pryvoGold: {
-    color: '#FFD700',
-    fontStyle: 'italic',
-    fontFamily: typography.fontFamilyBold,
-  },
-  featuresScrollContainer: {paddingHorizontal: 20, paddingBottom: 20, gap: 16},
-  featureTile: {
-    width: 110,
-    height: 110,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-    padding: 12,
-  },
-  featureEmojiWrapper: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
-  },
-  featureEmoji: {fontSize: 24},
-  featureTileTitle: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 12,
-    textAlign: 'center',
-    fontFamily: typography.fontFamilyMedium,
-  },
-  segmentContainerWrapper: {alignItems: 'center', marginBottom: 30, marginTop: 10},
-  segmentContainer: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 30,
-    padding: 4,
-  },
-  segmentBtn: {paddingHorizontal: 20, paddingVertical: 10, borderRadius: 26},
-  segmentBtnActive: {backgroundColor: '#6C48FB'},
-  segmentText: {
-    color: 'rgba(255, 255, 255, 0.5)',
-    fontSize: 13,
-    fontFamily: typography.fontFamilySemiBold,
-  },
-  segmentTextActive: {color: '#fff'},
-  giantCardContainer: {paddingHorizontal: 20},
-  giantCard: {
-    borderRadius: 32,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-    padding: 30,
-  },
-  giantCardTop: {marginBottom: 24},
-  giantPlanName: {
-    color: '#fff',
-    fontSize: 24,
-    fontFamily: typography.fontFamilyBold,
-    marginBottom: 4,
-  },
-  giantPriceRow: {flexDirection: 'row', alignItems: 'baseline'},
-  giantDollar: {
-    color: '#fff',
-    fontSize: 26,
-    fontFamily: typography.fontFamilyBold,
-  },
-  giantPrice: {
-    color: '#fff',
-    fontSize: 52,
-    fontFamily: typography.fontFamilyBold,
-  },
-  giantPeriod: {
-    color: 'rgba(255, 255, 255, 0.4)',
-    fontSize: 16,
-    fontFamily: typography.fontFamilyMedium,
-  },
-  upgradeNotice: {
-    color: '#10B981',
-    fontSize: 13,
-    fontFamily: typography.fontFamilyMedium,
-    marginTop: 8,
-  },
-  giantActionRow: {marginBottom: 30},
-  giantPayButton: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    height: 48,
-    width: 140,
-  },
-  giantPayGradient: {flex: 1, justifyContent: 'center', alignItems: 'center'},
-  btnContentRow: {flexDirection: 'row', alignItems: 'center', gap: 6},
-  giantPayText: {
-    color: '#fff',
-    fontSize: 14,
-    fontFamily: typography.fontFamilySemiBold,
-  },
-  btnIcon: {
-    backgroundColor: '#fff',
-    color: '#6C48FB',
-    borderRadius: 8,
-    padding: 2,
-    overflow: 'hidden',
-  },
-  giantDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    marginBottom: 20,
-  },
-  bulletsContainer: {gap: 12, marginBottom: 24},
-  bulletItem: {
-    color: 'rgba(255, 255, 255, 0.4)',
-    fontSize: 12,
-    fontFamily: typography.fontFamilyMedium,
-    lineHeight: 18,
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#0A0014',
-  },
-  payButtonDisabled: {opacity: 0.6},
-  customRequestRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderRadius: 16,
-    padding: 16,
-    marginTop: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-  },
-  customLeft: {flexDirection: 'row', alignItems: 'center', gap: 8},
-  customText: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 13,
-    fontFamily: typography.fontFamilyMedium,
-  },
-  customRight: {flexDirection: 'row', alignItems: 'center'},
-  customLink: {
-    color: '#6C48FB',
-    fontSize: 13,
-    fontFamily: typography.fontFamilySemiBold,
-  },
-});
-
-const SubscriptionUpsellScreen = () => {
-  const [publishableKey] = useState(
+/* ─── Wrapper with Stripe provider ─────────────────────────────── */
+export default function SubscriptionUpsellScreen(props) {
+  const [pk] = useState(
     'pk_test_51RNq3aQ0qRbELDrXrWQtGUARFShAyk2osAsJOFT9Cj2lvamEsGnRqqHdrwKhkMHFkqmt2OqeX91FDQfPdWK4FHSH00Xi0LTJft',
   );
   return (
-    <StripeProvider publishableKey={publishableKey}>
-      <SubscriptionUpsellScreenContent />
+    <StripeProvider publishableKey={pk}>
+      <Content {...props} />
     </StripeProvider>
   );
-};
+}
 
-export default SubscriptionUpsellScreen;
+/* ─── Styles ────────────────────────────────────────────────────── */
+const s = StyleSheet.create({
+  root: {flex: 1, backgroundColor: '#0D0D14'},
+  center: {
+    flex: 1,
+    backgroundColor: '#0D0D14',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scroll: {paddingBottom: 120},
+
+  /* Hero */
+  hero: {
+    paddingTop: Platform.OS === 'ios' ? 60 : 48,
+    paddingBottom: 40,
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  closeBtn: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 56 : 44,
+    right: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#ffffff14',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  crownWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#FFD70018',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FFD70033',
+  },
+  heroTitle: {fontSize: 26, fontWeight: '800', color: '#fff', marginBottom: 6},
+  heroSub: {fontSize: 14, color: '#888', textAlign: 'center'},
+
+  /* Features */
+  featuresBlock: {
+    marginHorizontal: 16,
+    marginBottom: 24,
+    backgroundColor: '#1a1a28',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#2a2a3a',
+    overflow: 'hidden',
+  },
+  featureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+  },
+  featureIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 9,
+    backgroundColor: '#9411FA14',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  featureTitle: {fontSize: 14, fontWeight: '600', color: '#e8e8f0'},
+  featureDesc: {fontSize: 12, color: '#666', marginTop: 1},
+
+  /* Plans */
+  plansBlock: {marginHorizontal: 16, marginBottom: 16},
+  plansLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#555',
+    letterSpacing: 1.5,
+    marginBottom: 12,
+    marginLeft: 2,
+  },
+  planRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1a1a28',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 10,
+    borderWidth: 1.5,
+    borderColor: '#2a2a3a',
+  },
+  planRowSel: {borderColor: '#9411FA', backgroundColor: '#1e0f33'},
+  radio: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: '#444',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  radioSel: {borderColor: '#9411FA'},
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#9411FA',
+  },
+  planName: {fontSize: 15, fontWeight: '700', color: '#ccc'},
+  planNameSel: {color: '#fff'},
+  planTagline: {fontSize: 12, color: '#555', marginTop: 2},
+  planPrice: {fontSize: 18, fontWeight: '800', color: '#888'},
+  planPriceSel: {color: '#9411FA'},
+  badge: {
+    backgroundColor: '#9411FA',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  badgeTxt: {fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 0.5},
+
+  /* Disclosure */
+  disclosureBlock: {marginHorizontal: 16, marginBottom: 8},
+  disclosureTxt: {
+    fontSize: 11,
+    color: '#444',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  legalRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  legalLink: {fontSize: 12, color: '#9411FA', fontWeight: '600'},
+  legalDot: {fontSize: 14, color: '#444', marginHorizontal: 8},
+
+  /* Footer CTA */
+  footerContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#111119',
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 16,
+    borderTopWidth: 1,
+    borderColor: '#222',
+    zIndex: 999,
+  },
+  mainBuyBtn: {
+  height: 58,
+  borderRadius: 16,
+  justifyContent: 'center',
+  alignItems: 'center',
+  marginBottom: 10,
+
+  // Glow effect (accessible contrast on dark bg)
+  shadowColor: '#9411FA',
+  shadowOffset: {width: 0, height: 8},
+  shadowOpacity: 0.45,
+  shadowRadius: 14,
+  elevation: 12,
+},
+
+ctaContent: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: 8,
+},
+
+mainBuyBtnTxt: {
+  fontSize: 16,
+  fontWeight: '800',
+  color: '#FFFFFF', // max contrast
+  letterSpacing: 0.6,
+},
+
+footerSummaryTxt: {
+  fontSize: 12,
+  color: '#A1A1AA', // improved readability vs #555
+  textAlign: 'center',
+  lineHeight: 16,
+},
+});
