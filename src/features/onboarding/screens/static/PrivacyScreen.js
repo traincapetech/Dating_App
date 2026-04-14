@@ -51,7 +51,7 @@ const PrivacyScreen = () => {
         <Text style={styles.subtitle}>1.1 Personal Information</Text>
         <Text style={styles.text}>
           When you create an account, we collect information such as your name,
-          email address, phone number, date of birth, gender, location, photos,
+          email address, phone number, date of birth, gender, accurate location, photos,
           and profile information including interests, lifestyle preferences,
           and dating preferences.
         </Text>
@@ -69,16 +69,16 @@ const PrivacyScreen = () => {
           address, device type, operating system, and unique device identifiers.
         </Text>
 
-        <Text style={styles.subtitle}>1.3 Location Information</Text>
+        <Text style={styles.subtitle}>1.4 Location Information</Text>
         <Text style={styles.text}>
-          With your permission, we collect precise location data (GPS
+          With your explicit permission, we collect precise location data (GPS
           coordinates) to show you profiles of people nearby and calculate
           distances. You can control location sharing through your device
-          settings.
+          settings at any time.
         </Text>
 
         <Text style={styles.title}>2. How We Use Your Information</Text>
-        <Text style={styles.text}>We use the information we collect to:</Text>
+        <Text style={styles.text}>We use the information we collect strictly to operate and improve our service. We do NOT sell your personal data to third parties. We use your data to:</Text>
         <Text style={styles.listItem}>
           • Provide, maintain, and improve our dating service
         </Text>
@@ -104,7 +104,7 @@ const PrivacyScreen = () => {
           • Comply with legal obligations and enforce our Terms of Service
         </Text>
         <Text style={styles.listItem}>
-          • Analyze usage patterns to improve our service
+          • Analyze usage patterns to securely improve our service
         </Text>
 
         <Text style={styles.title}>3. Information Sharing and Disclosure</Text>
@@ -118,10 +118,10 @@ const PrivacyScreen = () => {
 
         <Text style={styles.subtitle}>3.2 Service Providers</Text>
         <Text style={styles.text}>
-          We may share your information with third-party service providers who
+          We may share your information with trusted third-party service providers who
           perform services on our behalf, such as cloud storage, analytics,
           payment processing, and customer support. These providers are
-          contractually obligated to protect your information.
+          contractually obligated to protect your information and cannot use it for their own purposes.
         </Text>
 
         <Text style={styles.subtitle}>3.3 Legal Requirements</Text>
@@ -140,7 +140,7 @@ const PrivacyScreen = () => {
         <Text style={styles.title}>4. Data Security</Text>
         <Text style={styles.text}>
           We implement industry-standard security measures to protect your
-          personal information, including encryption, secure servers, and access
+          personal information, including encryption, secure servers, and strict access
           controls. However, no method of transmission over the internet or
           electronic storage is 100% secure. While we strive to protect your
           information, we cannot guarantee absolute security.
@@ -158,9 +158,8 @@ const PrivacyScreen = () => {
         <Text style={styles.subtitle}>5.2 Account Deletion</Text>
         <Text style={styles.text}>
           You can delete your account at any time through the app settings. When
-          you delete your account, we will delete or anonymize your personal
-          information, except where we are required to retain it by law or for
-          legitimate business purposes.
+          you delete your account, your profile, photos, matches, and messages are immediately hidden from other users. We will permanently delete your personal
+          information from our active systems within 30 days, except where we are required to retain minimal data by law or for legitimate safety purposes (such as preventing banned users from returning).
         </Text>
 
         <Text style={styles.subtitle}>5.3 Location Controls</Text>
@@ -201,26 +200,26 @@ const PrivacyScreen = () => {
         <Text style={styles.title}>6. Data Retention and Account Bans</Text>
         <Text style={styles.text}>
           We retain your personal information for as long as your account is
-          active or as needed to provide our services. We may retain certain
+          active or as needed to provide our services. Upon account deletion, standard user data is permanently deleted within 30 days. We may retain certain
           information after account deletion to comply with legal obligations,
           resolve disputes, and enforce our agreements.
         </Text>
         <Text style={styles.text}>
-          If your account is banned for violating our Terms of Service (such as posting Objectionable UGC), we will retain minimal necessary data (such as email or device identifiers) indefinitely to prevent you from creating a new account and to maintain the safety of other users.
+          If your account is banned for violating our Terms of Service (such as posting Objectionable UGC or engaging in harassing behavior), we will retain minimal necessary data (such as email or device identifiers) indefinitely to prevent you from creating a new account and to maintain the safety of other users.
         </Text>
 
         <Text style={styles.title}>7. Children's Privacy</Text>
         <Text style={styles.text}>
-          Pryvo is intended for users who are 18 years of age or older. We do
+          Pryvo is intended strictly for users who are 18 years of age or older. We do
           not knowingly collect personal information from children under 18. If
           we become aware that we have collected information from a child under
-          18, we will delete that information immediately.
+          18, we will delete their account and data immediately.
         </Text>
 
         <Text style={styles.title}>8. International Data Transfers</Text>
         <Text style={styles.text}>
           Your information may be transferred to and processed in countries
-          other than your country of residence. These countries may have data
+          other than your country of residence (such as India where we operate). These countries may have data
           protection laws that differ from those in your country. By using our
           service, you consent to the transfer of your information to these
           countries.
@@ -248,6 +247,8 @@ const PrivacyScreen = () => {
           Policy or our data practices, please contact us at:
         </Text>
         <Text style={styles.contactInfo}>
+          Developer: Traincape Technologies Pvt Ltd{'\n'}
+          Country: India{'\n'}
           Email: pryvo@traincapetech.in{'\n'}
           Help Centre: Available in-app
         </Text>

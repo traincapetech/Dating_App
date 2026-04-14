@@ -14,13 +14,14 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {StripeProvider, useStripe} from '@stripe/stripe-react-native';
+import * as IAP from 'react-native-iap';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import Config from '../../../config/api';
 import {
   getAvailablePlans,
   createPaymentOrder,
   verifyPaymentAndCreateSubscription,
-  getSubscriptionStatus,
 } from '../../../services/subscription/subscriptionService';
 import {useAuth} from '../../../context/AuthContext';
 import {AppRoute} from '../../../constants/routes';
@@ -59,19 +60,85 @@ const FEATURES = [
   },
 ];
 
-/* ─── Inner content (needs Stripe context) ─────────────────────── */
+const SKUS = ['daily', '1week', '1month', '3months', '6months'];
+
+/* ─── Inner content (needs Stripe/IAP context) ─────────────────── */
 function Content() {
   const navigation = useNavigation();
   const route = useRoute();
   const fromOnboarding = route.params?.fromOnboarding;
-  const stripe = useStripe();
-  const {completeOnboarding} = useAuth();
+  const {initPaymentSheet, presentPaymentSheet} = useStripe();
 
   const [plans, setPlans] = useState([]);
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [userId, setUserId] = useState(null);
+  const [iapSubscriptions, setIapSubscriptions] = useState([]);
+
+  // IAP State
+  useEffect(() => {
+    let purchaseUpdateSubscription;
+    let purchaseErrorSubscription;
+
+    const initIAP = async () => {
+      if (Platform.OS !== 'android') return;
+
+      try {
+        await IAP.initConnection();
+        const subs = await IAP.getSubscriptions({skus: SKUS});
+        setIapSubscriptions(subs);
+        
+        purchaseUpdateSubscription = IAP.purchaseUpdatedListener(async (purchase) => {
+          const receipt = purchase.transactionReceipt;
+          if (receipt && userId) {
+            try {
+              // Verify with backend
+              const verifyRes = await verifyPaymentAndCreateSubscription(
+                userId,
+                purchase.productId,
+                purchase.transactionId,
+                purchase.purchaseToken,
+                purchase.transactionReceipt,
+                'in_app',
+                'USD',
+                true,
+                {
+                   platform: 'android',
+                   productId: purchase.productId,
+                   purchaseToken: purchase.purchaseToken,
+                }
+              );
+
+              if (verifyRes.success) {
+                await IAP.finishTransaction({purchase, isConsumable: false});
+                showSuccessAlert();
+              }
+            } catch (err) {
+              console.error('[IAP] Verification failed:', err);
+            }
+          }
+        });
+
+        purchaseErrorSubscription = IAP.purchaseErrorListener((error) => {
+          console.warn('IAP error', error);
+          if (error.code !== 'E_USER_CANCELLED') {
+            Alert.alert('Payment Error', error.message);
+          }
+        });
+      } catch (err) {
+        console.warn('IAP init connection error', err);
+      }
+    };
+
+    initIAP();
+
+    return () => {
+      if (purchaseUpdateSubscription) purchaseUpdateSubscription.remove();
+      if (purchaseErrorSubscription) purchaseErrorSubscription.remove();
+      IAP.endConnection();
+    };
+  }, [userId]);
 
   useEffect(() => {
     (async () => {
@@ -98,11 +165,68 @@ function Content() {
     })();
   }, []);
 
+  const showSuccessAlert = () => {
+    Alert.alert(
+      '🎉 Welcome to Premium!',
+      'Your subscription is now active.',
+      [
+        {
+          text: 'Awesome!',
+          onPress: () => {
+            if (fromOnboarding) navigation.replace('HomeTabs');
+            else navigation.replace('SubscriptionManagement');
+          },
+        },
+      ],
+    );
+  };
+
   const handlePurchase = async () => {
     if (!selected || !userId || processing) return;
     const plan = plans.find(p => p.id === selected);
     if (!plan) return;
 
+    if (Platform.OS === 'android') {
+       return handleGooglePlayPurchase(plan);
+    } else {
+       return handleStripePurchase(plan);
+    }
+  };
+
+  const handleGooglePlayPurchase = async (plan) => {
+    try {
+      setProcessing(true);
+      
+      // Find the specific IAP product for this plan
+      const iapSub = iapSubscriptions.find(s => s.productId === plan.id);
+      
+      // Extract offerToken (required for Google Play Billing 5+)
+      const offerToken = iapSub?.subscriptionOfferDetails?.[0]?.offerToken;
+
+      if (!iapSub) {
+        throw new Error('Plan not found in Google Play Store. Please try again.');
+      }
+
+      await IAP.requestSubscription({
+        sku: plan.id,
+        ...(offerToken && {
+          subscriptionOffers: [{
+            sku: plan.id,
+            offerToken: offerToken,
+          }]
+        })
+      });
+    } catch (err) {
+      console.warn('[IAP] Purchase error:', err);
+      if (err.code !== 'E_USER_CANCELLED') {
+        Alert.alert('Purchase Error', err.message);
+      }
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleStripePurchase = async (plan) => {
     try {
       setProcessing(true);
 
@@ -112,14 +236,29 @@ function Content() {
 
       const {clientSecret, orderId} = orderRes.paymentOrder;
 
-      const {error, paymentIntent} = await stripe.confirmPayment(clientSecret, {
-        paymentMethodType: 'Card',
-        billingDetails: {name: 'Pryvo User'},
+      const {error: initError} = await initPaymentSheet({
+        merchantDisplayName: 'Pryvo Dating',
+        paymentIntentClientSecret: clientSecret,
+        defaultBillingDetails: {
+          name: 'Pryvo User',
+        },
+        appearance: {
+          colors: {
+            primary: '#9411FA',
+            background: '#ffffff',
+            componentBackground: '#f8f8f8',
+          },
+        },
       });
 
-      if (error) {
-        if (error.code !== 'Canceled')
-          Alert.alert('Payment Failed', error.message);
+      if (initError) throw new Error(initError.message);
+
+      const {error: presentError} = await presentPaymentSheet();
+
+      if (presentError) {
+        if (presentError.code !== 'Canceled') {
+           Alert.alert('Payment Failed', presentError.message);
+        }
         return;
       }
 
@@ -127,30 +266,14 @@ function Content() {
         userId,
         plan.id,
         orderId,
-        paymentIntent.id,
+        orderId,
         '',
         'stripe',
         'USD',
       );
 
       if (verifyRes?.success) {
-        Alert.alert(
-          '🎉 Welcome to Premium!',
-          'Your subscription is now active.',
-          [
-            {
-              text: 'Awesome!',
-              onPress: () => {
-                if (fromOnboarding) {
-                  completeOnboarding();
-                  navigation.replace(AppRoute.HomeTabs);
-                } else {
-                  navigation.replace('SubscriptionManagement');
-                }
-              },
-            },
-          ],
-        );
+        showSuccessAlert();
       } else {
         throw new Error(verifyRes?.message || 'Verification failed');
       }
@@ -178,13 +301,11 @@ function Content() {
     <View style={s.root}>
       <StatusBar barStyle="light-content" backgroundColor="#0D0D14" />
 
-      {/* Main Content Area */}
       <View style={{flex: 1}}>
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={s.scroll}
           style={{flex: 1}}>
-          {/* ── Hero Header ── */}
           <LinearGradient
             colors={['#1a0533', '#2d0853', '#0D0D14']}
             style={s.hero}>
@@ -208,7 +329,6 @@ function Content() {
             <Text style={s.heroSub}>Unlock the full Pryvo experience</Text>
           </LinearGradient>
 
-          {/* ── Features ── */}
           <View style={s.featuresBlock}>
             {FEATURES.map((f, i) => (
               <View key={i} style={s.featureRow}>
@@ -232,7 +352,6 @@ function Content() {
             ))}
           </View>
 
-          {/* ── Plan Selector ── */}
           <View style={s.plansBlock}>
             <Text style={s.plansLabel}>CHOOSE YOUR PLAN</Text>
             {plans.map(plan => {
@@ -242,11 +361,9 @@ function Content() {
                   key={plan.id}
                   onPress={() => setSelected(plan.id)}
                   style={[s.planRow, isSel && s.planRowSel]}>
-                  {/* Left: radio */}
                   <View style={[s.radio, isSel && s.radioSel]}>
                     {isSel && <View style={s.radioInner} />}
                   </View>
-                  {/* Centre: name + tagline */}
                   <View style={{flex: 1, marginLeft: 14}}>
                     <View
                       style={{
@@ -267,7 +384,6 @@ function Content() {
                       {plan.tagline || `Save more with the ${plan.name} plan`}
                     </Text>
                   </View>
-                  {/* Right: price */}
                   <Text style={[s.planPrice, isSel && s.planPriceSel]}>
                     ${plan.price}
                   </Text>
@@ -276,7 +392,6 @@ function Content() {
             })}
           </View>
 
-          {/* ── Disclosure ── */}
           <View style={s.disclosureBlock}>
             <Text style={s.disclosureTxt}>
               Subscriptions auto-renew unless cancelled at least 24 hours before
@@ -296,52 +411,47 @@ function Content() {
         </ScrollView>
       </View>
 
-      {/* ── Sticky CTA Footer ── */}
-      {/* ── Sticky CTA Footer ── */}
-<View style={s.footerContainer}>
-  <Pressable
-    onPress={handlePurchase}
-    disabled={processing || !selected}
-    style={({pressed}) => [
-      {borderRadius: 16, overflow: 'hidden'},
-      pressed && {transform: [{scale: 0.97}]},
-      (processing || !selected) && {opacity: 0.6},
-    ]}
-  >
-    <LinearGradient
-      colors={['#C084FC', '#9411FA', '#6D28D9']} // high contrast purple gradient
-      start={{x: 0, y: 0}}
-      end={{x: 1, y: 1}}
-      style={s.mainBuyBtn}
-    >
-      {processing ? (
-        <ActivityIndicator color="#fff" />
-      ) : (
-        <View style={s.ctaContent}>
-          <MaterialCommunityIcons name="crown" size={18} color="#FFD700" />
-          <Text style={s.mainBuyBtnTxt}>Unlock Premium Now</Text>
-        </View>
-      )}
-    </LinearGradient>
-  </Pressable>
+      <View style={s.footerContainer}>
+        <Pressable
+          onPress={handlePurchase}
+          disabled={processing || !selected}
+          style={({pressed}) => [
+            {borderRadius: 16, overflow: 'hidden'},
+            pressed && {transform: [{scale: 0.97}]},
+            (processing || !selected) && {opacity: 0.6},
+          ]}
+        >
+          <LinearGradient
+            colors={['#C084FC', '#9411FA', '#6D28D9']}
+            start={{x: 0, y: 0}}
+            end={{x: 1, y: 1}}
+            style={s.mainBuyBtn}
+          >
+            {processing ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <View style={s.ctaContent}>
+                <MaterialCommunityIcons name="crown" size={18} color="#FFD700" />
+                <Text style={s.mainBuyBtnTxt}>Unlock Premium Now</Text>
+              </View>
+            )}
+          </LinearGradient>
+        </Pressable>
 
-  {selectedPlan && (
-    <Text style={s.footerSummaryTxt}>
-      ✨ {selectedPlan.name} · ${selectedPlan.price} · starts instantly
-    </Text>
-  )}
-</View>
+        {selectedPlan && (
+          <Text style={s.footerSummaryTxt}>
+            ✨ {selectedPlan.name} · ${selectedPlan.price} · starts instantly
+          </Text>
+        )}
+      </View>
     </View>
   );
 }
 
 /* ─── Wrapper with Stripe provider ─────────────────────────────── */
 export default function SubscriptionUpsellScreen(props) {
-  const [pk] = useState(
-    'pk_test_51RNq3aQ0qRbELDrXrWQtGUARFShAyk2osAsJOFT9Cj2lvamEsGnRqqHdrwKhkMHFkqmt2OqeX91FDQfPdWK4FHSH00Xi0LTJft',
-  );
   return (
-    <StripeProvider publishableKey={pk}>
+    <StripeProvider publishableKey={Config.STRIPE_PUBLISHABLE_KEY}>
       <Content {...props} />
     </StripeProvider>
   );
@@ -357,8 +467,6 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   scroll: {paddingBottom: 120},
-
-  /* Hero */
   hero: {
     paddingTop: Platform.OS === 'ios' ? 60 : 48,
     paddingBottom: 40,
@@ -389,8 +497,6 @@ const s = StyleSheet.create({
   },
   heroTitle: {fontSize: 26, fontWeight: '800', color: '#fff', marginBottom: 6},
   heroSub: {fontSize: 14, color: '#888', textAlign: 'center'},
-
-  /* Features */
   featuresBlock: {
     marginHorizontal: 16,
     marginBottom: 24,
@@ -417,8 +523,6 @@ const s = StyleSheet.create({
   },
   featureTitle: {fontSize: 14, fontWeight: '600', color: '#e8e8f0'},
   featureDesc: {fontSize: 12, color: '#666', marginTop: 1},
-
-  /* Plans */
   plansBlock: {marginHorizontal: 16, marginBottom: 16},
   plansLabel: {
     fontSize: 11,
@@ -467,8 +571,6 @@ const s = StyleSheet.create({
     borderRadius: 4,
   },
   badgeTxt: {fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 0.5},
-
-  /* Disclosure */
   disclosureBlock: {marginHorizontal: 16, marginBottom: 8},
   disclosureTxt: {
     fontSize: 11,
@@ -484,8 +586,6 @@ const s = StyleSheet.create({
   },
   legalLink: {fontSize: 12, color: '#9411FA', fontWeight: '600'},
   legalDot: {fontSize: 14, color: '#444', marginHorizontal: 8},
-
-  /* Footer CTA */
   footerContainer: {
     position: 'absolute',
     bottom: 0,
@@ -500,37 +600,32 @@ const s = StyleSheet.create({
     zIndex: 999,
   },
   mainBuyBtn: {
-  height: 58,
-  borderRadius: 16,
-  justifyContent: 'center',
-  alignItems: 'center',
-  marginBottom: 10,
-
-  // Glow effect (accessible contrast on dark bg)
-  shadowColor: '#9411FA',
-  shadowOffset: {width: 0, height: 8},
-  shadowOpacity: 0.45,
-  shadowRadius: 14,
-  elevation: 12,
-},
-
-ctaContent: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  gap: 8,
-},
-
-mainBuyBtnTxt: {
-  fontSize: 16,
-  fontWeight: '800',
-  color: '#FFFFFF', // max contrast
-  letterSpacing: 0.6,
-},
-
-footerSummaryTxt: {
-  fontSize: 12,
-  color: '#A1A1AA', // improved readability vs #555
-  textAlign: 'center',
-  lineHeight: 16,
-},
+    height: 58,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+    shadowColor: '#9411FA',
+    shadowOffset: {width: 0, height: 8},
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
+    elevation: 12,
+  },
+  ctaContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  mainBuyBtnTxt: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.6,
+  },
+  footerSummaryTxt: {
+    fontSize: 12,
+    color: '#A1A1AA',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
 });

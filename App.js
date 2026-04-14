@@ -5,6 +5,7 @@ import {SafeAreaProvider} from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
 import {LoadingProvider} from './src/context/LoadingContext';
 import {AuthProvider} from './src/context/AuthContext';
+import Config from './src/config/api';
 
 import {InitialLoadProvider} from './src/context/InitialLoadContext';
 import {StripeProvider} from '@stripe/stripe-react-native';
@@ -26,14 +27,12 @@ class ErrorBoundary extends React.Component {
   componentDidCatch(error, errorInfo) {
     console.error('[ERROR_BOUNDARY] Caught error:', error);
     console.error('[ERROR_BOUNDARY] Error info:', errorInfo);
-    // Safely access stack property to avoid Hermes "invalid receiver" errors
     try {
       const stack = error?.stack;
       if (stack) {
         console.error('[ERROR_BOUNDARY] Error stack:', stack);
       }
     } catch (e) {
-      // Ignore stack access errors
     }
     if (errorInfo?.componentStack) {
       console.error(
@@ -69,8 +68,6 @@ const App = () => {
     console.log('[APP] App mounted successfully - useEffect fired');
   }, []);
 
-  console.log('[APP] About to render ErrorBoundary');
-
   return (
     <ErrorBoundary>
       <InitialLoadProvider>
@@ -84,7 +81,7 @@ const App = () => {
                   translucent={true}
                 />
                 <StripeProvider
-                  publishableKey={process.env.STRIPE_PUBLISHABLE_KEY || ""} // Ideally from .env
+                  publishableKey={Config.STRIPE_PUBLISHABLE_KEY}
                 >
                   <AppNavigator />
                   <CustomAlertComponent ref={ref => setCustomAlertRef(ref)} />

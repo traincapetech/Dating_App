@@ -43,7 +43,7 @@ const TermsScreen = () => {
       {/* CONTENT */}
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.introText}>
-          Please read these Terms of Service ("Terms", "Terms of Service") carefully before using the Pryvo mobile application and website (the "Service") operated by Pryvo ("us", "we", or "our").
+          Please read these Terms of Service ("Terms", "Terms of Service") carefully before using the Pryvo mobile application and website (the "Service") operated by Pryvo, India ("us", "we", or "our").
         </Text>
 
         <Text style={styles.title}>1. Acceptance of Terms</Text>
@@ -93,6 +93,7 @@ const TermsScreen = () => {
         <Text style={styles.listItem}>• Harassment, bullying, intimidation, or threatening behavior</Text>
         <Text style={styles.listItem}>• Hate speech, discrimination, or promotion of violence against any group</Text>
         <Text style={styles.listItem}>• Posting sexually explicit, pornographic, violent, illegal, or highly offensive content (Objectionable UGC)</Text>
+        <Text style={styles.listItem}>• Nudity or sexually suggestive imagery</Text>
         <Text style={styles.listItem}>• Impersonation, fraud, or misrepresentation of identity</Text>
         <Text style={styles.listItem}>• Spamming, soliciting money, or engaging in commercial activities</Text>
         <Text style={styles.listItem}>• Collecting or harvesting user information without consent</Text>
@@ -138,63 +139,71 @@ const TermsScreen = () => {
           Pryvo takes all user reports seriously. We aim to review reported users and content within 24 hours. Given our zero-tolerance policy, verified reports of objectionable content or abusive behavior will result in the immediate removal of the content and permanent ejection of the offending user from the Service.
         </Text>
 
-        <Text style={styles.title}>7. Privacy and Data Protection</Text>
+        <Text style={styles.title}>7. User Risk Disclaimer and Background Checks</Text>
+        <Text style={styles.text}>
+          You interact with other users at your own risk. Pryvo provides a platform for meetings but does not conduct criminal background checks or identity verification checks on its users. We make no representations or warranties as to the conduct, identity, intentions, legitimacy, or veracity of users.
+        </Text>
+        <Text style={styles.text}>
+          Pryvo is not responsible for the conduct of any user on or off the Service. You agree to use caution in all interactions with other users, particularly if you decide to communicate off the Service or meet in person.
+        </Text>
+
+        <Text style={styles.title}>8. Privacy and Data Protection</Text>
         <Text style={styles.text}>
           Your use of the Service is also governed by our Privacy Policy, which is incorporated into these Terms by reference. Please review our Privacy Policy to understand how we collect, use, disclose, and protect your information. By using the Service, you consent to the collection and use of your information as described in the Privacy Policy.
         </Text>
 
-        <Text style={styles.title}>8. Subscriptions, Payments, and Refunds</Text>
-        <Text style={styles.subtitle}>8.1 Subscription Plans</Text>
+        <Text style={styles.title}>9. Subscriptions, Payments, and Refunds</Text>
+        <Text style={styles.subtitle}>9.1 Subscription Plans</Text>
         <Text style={styles.text}>
-          Pryvo offers both free and premium subscription plans (Daily, Weekly, Monthly, 3-Month, 6-Month). Premium subscriptions provide access to additional features such as unlimited likes, advanced filters, and priority matching. All subscription plan details and prices are clearly displayed in the Premium section of the app.
+          Pryvo offers both free and premium subscription plans (Daily, Weekly, Monthly, 3-Month, 6-Month). Premium subscriptions provide access to additional features. All subscription plan details and prices are clearly displayed in the Premium section of the app.
         </Text>
 
-        <Text style={styles.subtitle}>8.2 Payment and Billing</Text>
+        <Text style={styles.subtitle}>9.2 Payment and Billing</Text>
         <Text style={styles.text}>
           Subscription fees are charged in advance. When you purchase via Google Play or Stripe, you authorize us (or the platform) to charge your payment method for the specified amount.
         </Text>
 
-        <Text style={styles.subtitle}>8.3 Auto-Renewal and Cancellation</Text>
+        <Text style={styles.subtitle}>9.3 Auto-Renewal and Cancellation</Text>
         <Text style={styles.text}>
           Subscriptions automatically renew at the original purchase price unless cancelled at least 24 hours before the end of the current period. You can manage or cancel your subscription at any time:
         </Text>
         <Text style={styles.listItem}>• For Stripe payments: Go to "Manage Subscription" in Settings.</Text>
         <Text style={styles.listItem}>• For Google Play payments: Go to your Google Play Store Account settings.</Text>
 
-        <Text style={styles.subtitle}>8.4 Refunds</Text>
+        <Text style={styles.subtitle}>9.4 Refunds</Text>
         <Text style={styles.text}>
           Subscription fees are generally non-refundable. However, we offer a goodwill 24-hour refund window for first-time purchases. No refunds are granted after 24 hours or for users banned for violating our Zero Tolerance Policy.
         </Text>
 
-        <Text style={styles.subtitle}>8.5 Price Changes</Text>
+        <Text style={styles.subtitle}>9.5 Price Changes</Text>
         <Text style={styles.text}>
-          We reserve the right to change subscription prices at any time. Price changes will not affect your current subscription period but will apply to subsequent renewals. We will notify you of price changes via email or through the Service.
+          We reserve the right to change subscription prices at any time. Price changes will not affect your current subscription period but will apply to subsequent renewals.
         </Text>
 
-        <Text style={styles.title}>9. Disclaimers and Limitation of Liability</Text>
-        <Text style={styles.subtitle}>9.1 Service Availability</Text>
+        <Text style={styles.title}>10. Disclaimers and Limitation of Liability</Text>
+        <Text style={styles.subtitle}>10.1 Service Availability</Text>
         <Text style={styles.text}>
           The Service is provided "as is" and "as available" without warranties of any kind, either express or implied. We do not guarantee that the Service will be uninterrupted, secure, or error-free. We reserve the right to modify, suspend, or discontinue the Service at any time without notice.
         </Text>
 
-        <Text style={styles.subtitle}>9.2 No Guarantee of Matches</Text>
+        <Text style={styles.subtitle}>10.2 No Guarantee of Matches</Text>
         <Text style={styles.text}>
           We do not guarantee that you will find matches, receive responses, or meet compatible people through the Service. The Service is a platform for connecting users, and we are not responsible for the success or failure of any relationships or interactions.
         </Text>
 
-        <Text style={styles.subtitle}>9.3 Limitation of Liability</Text>
+        <Text style={styles.subtitle}>10.3 Limitation of Liability</Text>
         <Text style={styles.text}>
           To the maximum extent permitted by applicable law, Pryvo, its affiliates, officers, directors, employees, and agents shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to:
         </Text>
         <Text style={styles.listItem}>• Loss of profits, revenue, data, or use</Text>
         <Text style={styles.listItem}>• Personal injury or property damage</Text>
-        <Text style={styles.listItem}>•• Damages arising from your use or inability to use the Service</Text>
+        <Text style={styles.listItem}>• Damages arising from your use or inability to use the Service</Text>
         <Text style={styles.listItem}>• Damages arising from interactions with other users</Text>
         <Text style={styles.text}>
           Our total liability to you for all claims arising from or related to the Service shall not exceed the amount you paid us in the 12 months preceding the claim, or $100, whichever is greater.
         </Text>
 
-        <Text style={styles.title}>10. Indemnification</Text>
+        <Text style={styles.title}>11. Indemnification</Text>
         <Text style={styles.text}>
           You agree to indemnify, defend, and hold harmless Pryvo, its affiliates, officers, directors, employees, and agents from and against any and all claims, damages, obligations, losses, liabilities, costs, or debt, and expenses (including attorney's fees) arising from:
         </Text>
@@ -203,13 +212,13 @@ const TermsScreen = () => {
         <Text style={styles.listItem}>• Your violation of any third-party rights</Text>
         <Text style={styles.listItem}>• Your Content or any content you submit</Text>
 
-        <Text style={styles.title}>11. Termination</Text>
-        <Text style={styles.subtitle}>11.1 Termination by You</Text>
+        <Text style={styles.title}>12. Termination</Text>
+        <Text style={styles.subtitle}>12.1 Termination by You</Text>
         <Text style={styles.text}>
           You may delete your account and terminate your use of the Service at any time through the app settings or by contacting pryvo@traincapetech.in. Upon termination, your right to use the Service will immediately cease.
         </Text>
 
-        <Text style={styles.subtitle}>11.2 Termination by Us</Text>
+        <Text style={styles.subtitle}>12.2 Termination by Us</Text>
         <Text style={styles.text}>
           We may terminate or suspend your account immediately, without prior notice or liability, for any reason, including but not limited to:
         </Text>
@@ -217,32 +226,29 @@ const TermsScreen = () => {
         <Text style={styles.listItem}>• Conduct that we believe is harmful to other users, us, or third parties</Text>
         <Text style={styles.listItem}>• Fraudulent, abusive, or illegal activity</Text>
         <Text style={styles.listItem}>• Extended periods of inactivity</Text>
-        <Text style={styles.text}>
-          Upon termination, your right to use the Service will immediately cease, and we may delete your account and all associated data.
-        </Text>
 
-        <Text style={styles.subtitle}>11.3 Effect of Termination</Text>
+        <Text style={styles.subtitle}>12.3 Effect of Termination</Text>
         <Text style={styles.text}>
           Upon termination, all provisions of these Terms that by their nature should survive termination shall survive, including ownership provisions, warranty disclaimers, indemnity, and limitations of liability.
         </Text>
 
-        <Text style={styles.title}>12. Dispute Resolution</Text>
-        <Text style={styles.subtitle}>12.1 Governing Law</Text>
+        <Text style={styles.title}>13. Dispute Resolution</Text>
+        <Text style={styles.subtitle}>13.1 Governing Law</Text>
         <Text style={styles.text}>
-          These Terms shall be governed by and construed in accordance with the laws of [Your Jurisdiction], without regard to its conflict of law provisions.
+          These Terms shall be governed by and construed in accordance with the laws of India, without regard to its conflict of law provisions.
         </Text>
 
-        <Text style={styles.subtitle}>12.2 Dispute Resolution Process</Text>
+        <Text style={styles.subtitle}>13.2 Dispute Resolution Process</Text>
         <Text style={styles.text}>
-          If you have any dispute with us, you agree to first contact us at pryvo@traincapetech.in to attempt to resolve the dispute informally. If we cannot resolve the dispute within 60 days, you agree to resolve the dispute through binding arbitration in accordance with the rules of [Arbitration Organization], except where prohibited by law.
+          If you have any dispute with us, you agree to first contact us at pryvo@traincapetech.in to attempt to resolve the dispute informally. If we cannot resolve the dispute within 60 days, you agree to resolve the dispute through binding arbitration in accordance with the Arbitration and Conciliation Act, 1996 of India, except where prohibited by law.
         </Text>
 
-        <Text style={styles.subtitle}>12.3 Class Action Waiver</Text>
+        <Text style={styles.subtitle}>13.3 Class Action Waiver</Text>
         <Text style={styles.text}>
           You agree that any dispute resolution proceedings will be conducted only on an individual basis and not in a class, consolidated, or representative action. If this provision is found to be unenforceable, then the entirety of this dispute resolution section shall be null and void.
         </Text>
 
-        <Text style={styles.title}>13. Changes to Terms</Text>
+        <Text style={styles.title}>14. Changes to Terms</Text>
         <Text style={styles.text}>
           We reserve the right to modify or replace these Terms at any time. If a revision is material, we will provide at least 30 days' notice prior to any new terms taking effect. What constitutes a material change will be determined at our sole discretion.
         </Text>
@@ -250,27 +256,27 @@ const TermsScreen = () => {
           By continuing to access or use the Service after those revisions become effective, you agree to be bound by the revised Terms. If you do not agree to the new Terms, please stop using the Service and delete your account.
         </Text>
 
-        <Text style={styles.title}>14. Severability</Text>
+        <Text style={styles.title}>15. Severability</Text>
         <Text style={styles.text}>
           If any provision of these Terms is held to be invalid or unenforceable by a court, the remaining provisions of these Terms will remain in effect. The invalid or unenforceable provision will be replaced with a valid provision that comes closest to the intent of the original provision.
         </Text>
 
-        <Text style={styles.title}>15. Entire Agreement</Text>
+        <Text style={styles.title}>16. Entire Agreement</Text>
         <Text style={styles.text}>
           These Terms, together with our Privacy Policy, constitute the entire agreement between you and Pryvo regarding the Service and supersede all prior agreements and understandings, whether written or oral.
         </Text>
 
-        <Text style={styles.title}>16. Waiver</Text>
+        <Text style={styles.title}>17. Waiver</Text>
         <Text style={styles.text}>
           No waiver of any term of these Terms shall be deemed a further or continuing waiver of such term or any other term. Our failure to assert any right or provision under these Terms shall not constitute a waiver of such right or provision.
         </Text>
 
-        <Text style={styles.title}>17. Assignment</Text>
+        <Text style={styles.title}>18. Assignment</Text>
         <Text style={styles.text}>
           You may not assign or transfer these Terms or your rights hereunder, in whole or in part, by operation of law or otherwise, without our prior written consent. We may assign these Terms or any rights hereunder without your consent.
         </Text>
 
-        <Text style={styles.title}>18. Contact Information</Text>
+        <Text style={styles.title}>19. Contact Information</Text>
         <Text style={styles.text}>
           If you have any questions about these Terms of Service, please contact us at:
         </Text>

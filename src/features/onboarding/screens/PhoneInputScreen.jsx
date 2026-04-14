@@ -80,10 +80,9 @@ const PhoneInputScreen = () => {
           <View style={styles.header}>
             <View style={styles.headerTop}>
               <Text style={styles.title}>What's your phone number?</Text>
-              <Pressable 
+              <Pressable
                 onPress={() => navigation.navigate(AppRoute.Welcome)}
-                style={styles.skipButton}
-              >
+                style={styles.skipButton}>
                 <Text style={styles.skipText}>Skip</Text>
               </Pressable>
             </View>
@@ -158,7 +157,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.15,
     shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: {width: 0, height: 2},
     elevation: 3,
   },
   skipText: {

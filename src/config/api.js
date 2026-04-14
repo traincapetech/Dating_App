@@ -22,7 +22,12 @@ const LOCAL_SOCKET_URL = 'http://192.168.1.159:3000';
 // Set to true for production, false for local development
 const IS_PRODUCTION = false;
 
-// Logging moved below after variables are defined
+// Stripe Configuration
+export const STRIPE_PUBLISHABLE_KEY = IS_PRODUCTION 
+  ? 'pk_live_your_live_key_here' // REPLACE WITH LIVE KEY IN PRODUCTION
+  : 'pk_test_51RNq3aQ0qRbELDrXrWQtGUARFShAyk2osAsJOFT9Cj2lvamEsGnRqqHdrwKhkMHFkqmt2OqeX91FDQfPdWK4FHSH00Xi0LTJft';
+
+export const STRIPE_MERCHANT_ID = 'merchant.com.pryvo';
 
 // Auto-detect for Android (Emulator or Physical Device)
 const getApiBaseUrl = () => {
@@ -36,12 +41,14 @@ const getApiBaseUrl = () => {
     return LOCAL_API_URL;
   }
 
-  // For iOS simulator, use localhost
   if (Platform.OS === 'ios') {
     return 'http://localhost:3000/api';
   }
 
+<<<<<<< HEAD
   // Fallback
+=======
+>>>>>>> c8c7e17 (Update gradle for google play store billing)
   return LOCAL_API_URL;
 };
 
@@ -50,11 +57,14 @@ const getSocketUrl = () => {
     return PRODUCTION_SOCKET_URL;
   }
 
+<<<<<<< HEAD
   if (Platform.OS === 'android') {
     return LOCAL_SOCKET_URL;
   }
+=======
+  if (Platform.OS === 'android') return 'http://10.0.2.2:3000';
+>>>>>>> c8c7e17 (Update gradle for google play store billing)
 
-  // For iOS simulator, use localhost
   if (Platform.OS === 'ios') {
     return 'http://localhost:3000';
   }
@@ -65,11 +75,10 @@ const getSocketUrl = () => {
 export const API_BASE_URL = getApiBaseUrl();
 export const SOCKET_URL = getSocketUrl();
 
-console.log(`[Config] API_BASE_URL: ${API_BASE_URL}`);
-console.log(`[Config] SOCKET_URL: ${SOCKET_URL}`);
-
 export default {
   API_BASE_URL,
   SOCKET_URL,
   IS_PRODUCTION,
+  STRIPE_PUBLISHABLE_KEY,
+  STRIPE_MERCHANT_ID,
 };

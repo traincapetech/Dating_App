@@ -25,6 +25,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "Pryvo"
 
+// Robust Autolinking Configuration
 extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
     ex.autolinkLibrariesFromCommand()
 }
