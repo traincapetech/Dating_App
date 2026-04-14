@@ -14,7 +14,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import {useNavigation} from '@react-navigation/native';
 import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
-import {saveProfilePrompts} from '../../../services/profile/profileService';
+import {updateProfile} from '../../../services/profile/profileService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {useAuth} from '../../../context/AuthContext';
@@ -144,51 +144,19 @@ const ProfilePromptsScreen = () => {
   const handleContinue = async () => {
     setIsSubmitting(true);
     try {
-      // Get user ID from storage
-      const userData = await AsyncStorage.getItem('@pryvo_user');
-      let userId = null;
-
-      if (userData && userData !== 'undefined') {
-        const user = JSON.parse(userData);
-        userId = user.id;
-      } else {
-        // Try to get from token (decode JWT)
-        const token = await AsyncStorage.getItem('@pryvo/token');
-        if (token && token !== 'undefined') {
-          try {
-            const payload = decodeJWT(token);
-            userId = payload?.userId || payload?.id;
-          } catch (e) {
-            console.error('Failed to decode token:', e);
-          }
-        }
-      }
-
-      if (!userId) {
-        Alert.alert('Error', 'User ID not found. Please sign in again.');
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Format prompts data for backend
-      // Backend expects the same structure: aboutMe, selfCare, gettingPersonal
-      const promptsData = {
-        userId: userId, // Include userId for server authentication
-        aboutMe: selectedPrompts.aboutMe,
-        selfCare: selectedPrompts.selfCare,
-        gettingPersonal: selectedPrompts.gettingPersonal,
-      };
-
-      // Save profile prompts to backend
-      await saveProfilePrompts(promptsData);
-
+      await updateProfile({
+        profilePrompts: {
+          aboutMe: selectedPrompts.aboutMe,
+          selfCare: selectedPrompts.selfCare,
+          gettingPersonal: selectedPrompts.gettingPersonal,
+        },
+      });
       console.log('Profile prompts saved successfully');
-
-      // Reload profile in context to ensure next screen logic is correct
-      if (userId) {
-        await loadProfile(userId);
+      const userData = await AsyncStorage.getItem('@pryvo_user');
+      if (userData) {
+        const user = JSON.parse(userData);
+        await loadProfile(user.id);
       }
-
       navigation.navigate(AppRoute.MediaUpload);
     } catch (error) {
       console.error('Error saving profile prompts:', error);

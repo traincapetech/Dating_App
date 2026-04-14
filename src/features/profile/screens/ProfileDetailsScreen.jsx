@@ -30,6 +30,13 @@ import {useAuth} from '../../../context/AuthContext';
 import {usePhotoSocial} from '../../../hooks/usePhotoSocial';
 import {photoSocialService} from '../../../services/photoSocialService';
 import PhotoInteractionViewer from '../../../components/profile/PhotoInteractionViewer';
+import {
+  GENDER_OPTIONS,
+  LIFESTYLE_OPTIONS,
+  PERSONAL_DETAILS_OPTIONS,
+  DATING_PREFERENCES_OPTIONS,
+  PROMPT_CATEGORIES,
+} from '../../../constants/profileConstants';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
 import ThemeBackground from '../../../components/layout/ThemeBackground';
@@ -157,7 +164,8 @@ const ProfileDetailsScreen = () => {
       if (userData && userData !== 'undefined') {
         const user = JSON.parse(userData);
         const meId = user.id || user._id;
-        setIsOwnProfile(meId === targetId);
+        const target = targetId || profileData?.userId || profileData?._id;
+        setIsOwnProfile(String(meId) === String(target));
         setCurrentUserId(meId);
       }
 
@@ -182,6 +190,30 @@ const ProfileDetailsScreen = () => {
           profileData?.datingPreferences?.showIntentionOnProfile ?? true,
         showRelationshipTypeOnProfile:
           profileData?.datingPreferences?.showRelationshipTypeOnProfile ?? true,
+        
+        // Lifestyle fields
+        drink: profileData?.lifestyle?.drink || '',
+        smokeTobacco: profileData?.lifestyle?.smokeTobacco || '',
+        smokeWeed: profileData?.lifestyle?.smokeWeed || '',
+        drugs: profileData?.lifestyle?.drugs || '',
+        politicalBeliefs: profileData?.lifestyle?.politicalBeliefs || '',
+        religiousBeliefs: profileData?.lifestyle?.religiousBeliefs || '',
+        
+        // Personal Details fields
+        familyPlans: profileData?.personalDetails?.familyPlans || '',
+        hasChildren: profileData?.personalDetails?.hasChildren || '',
+        ethnicity: profileData?.personalDetails?.ethnicity || '',
+        height: profileData?.personalDetails?.height || '',
+        hometown: profileData?.personalDetails?.hometown || '',
+        workplace: profileData?.personalDetails?.workplace || '',
+        educationLevel: profileData?.personalDetails?.educationLevel || '',
+
+        // Prompts fields
+        profilePrompts: profileData?.profilePrompts || {
+          aboutMe: { question: '', answer: '' },
+          selfCare: { question: '', answer: '' },
+          gettingPersonal: { question: '', answer: '' },
+        },
         // Initialize photos for draggable grid
         photos: (
           profileData?.photos ||
@@ -334,19 +366,31 @@ const ProfileDetailsScreen = () => {
       }
 
       // Profile Prompts
-      if (editedProfile.bio !== undefined) {
+      if (editedProfile.profilePrompts) {
+        payload.profilePrompts = {
+          aboutMe: {
+            question: editedProfile.profilePrompts.aboutMe?.question || '',
+            answer: (editedProfile.bio || editedProfile.profilePrompts.aboutMe?.answer || '').trim(),
+          },
+          selfCare: editedProfile.profilePrompts.selfCare,
+          gettingPersonal: editedProfile.profilePrompts.gettingPersonal,
+        };
+      } else if (editedProfile.bio !== undefined) {
         payload.profilePrompts.aboutMe = {
           answer: editedProfile.bio.trim(),
         };
       }
 
       // Personal Details
-      if (editedProfile.occupation !== undefined) {
-        payload.personalDetails.jobTitle = editedProfile.occupation.trim();
-      }
-      if (editedProfile.education !== undefined) {
-        payload.personalDetails.school = editedProfile.education.trim();
-      }
+      if (editedProfile.occupation !== undefined) payload.personalDetails.jobTitle = editedProfile.occupation.trim();
+      if (editedProfile.education !== undefined) payload.personalDetails.school = editedProfile.education.trim();
+      if (editedProfile.familyPlans) payload.personalDetails.familyPlans = editedProfile.familyPlans;
+      if (editedProfile.hasChildren) payload.personalDetails.hasChildren = editedProfile.hasChildren;
+      if (editedProfile.ethnicity) payload.personalDetails.ethnicity = editedProfile.ethnicity;
+      if (editedProfile.height) payload.personalDetails.height = editedProfile.height;
+      if (editedProfile.hometown) payload.personalDetails.hometown = editedProfile.hometown.trim();
+      if (editedProfile.workplace) payload.personalDetails.workplace = editedProfile.workplace.trim();
+      if (editedProfile.educationLevel) payload.personalDetails.educationLevel = editedProfile.educationLevel;
 
       // Lifestyle
       if (editedProfile.interests?.trim()) {
@@ -355,6 +399,12 @@ const ProfileDetailsScreen = () => {
           .map(i => i.trim())
           .filter(Boolean);
       }
+      if (editedProfile.drink) payload.lifestyle.drink = editedProfile.drink;
+      if (editedProfile.smokeTobacco) payload.lifestyle.smokeTobacco = editedProfile.smokeTobacco;
+      if (editedProfile.smokeWeed) payload.lifestyle.smokeWeed = editedProfile.smokeWeed;
+      if (editedProfile.drugs) payload.lifestyle.drugs = editedProfile.drugs;
+      if (editedProfile.politicalBeliefs) payload.lifestyle.politicalBeliefs = editedProfile.politicalBeliefs;
+      if (editedProfile.religiousBeliefs) payload.lifestyle.religiousBeliefs = editedProfile.religiousBeliefs;
 
       // Dating Preferences
       if (editedProfile.whoToDate && editedProfile.whoToDate.length > 0) {
@@ -718,6 +768,21 @@ const ProfileDetailsScreen = () => {
         )}
 
         <View style={styles.bodyContent}>
+          {isOwnProfile && !isEditing && (
+            <Pressable
+              style={styles.fallbackEditBtn}
+              onPress={() => setIsEditing(true)}>
+              <LinearGradient
+                colors={['#C084FC', '#E040C8']}
+                start={{x: 0, y: 0}}
+                end={{x: 1, y: 0}}
+                style={styles.fallbackEditGradient}>
+                <MaterialCommunityIcons name="account-edit" size={20} color="#FFF" />
+                <Text style={styles.fallbackEditTxt}>Complete Your Profile</Text>
+              </LinearGradient>
+            </Pressable>
+          )}
+
           {isEditing && (
             <View style={styles.editModule}>
               {renderSectionHeader('Basic Info', 'account-edit')}
@@ -837,78 +902,113 @@ const ProfileDetailsScreen = () => {
             )}
           </View>
 
-          {/* Work & Education Section */}
-          {renderSectionHeader('Work & Education', 'briefcase')}
+          {/* Lifestyle Section */}
+          {renderSectionHeader('Lifestyle & Beliefs', 'leaf')}
           <View style={styles.structuredCard}>
-            <View style={styles.horizontalSplit}>
-              <View style={styles.splitCol}>
-                {isEditing ? (
-                  <View style={styles.stackedInput}>
-                    <Text style={styles.miniLabel}>Job Title</Text>
-                    <TextInput
-                      style={styles.cleanBottomInput}
-                      value={editedProfile.occupation}
-                      onChangeText={text =>
-                        setEditedProfile(prev => ({...prev, occupation: text}))
-                      }
-                      placeholder="Title"
-                      placeholderTextColor="rgba(255,255,255,0.3)"
-                      underlineColorAndroid="transparent"
-                    />
-                  </View>
-                ) : (
-                  renderInfoItem('Job Title', occupation, 'briefcase-outline')
-                )}
-              </View>
-              <View style={styles.splitCol}>
-                {isEditing ? (
-                  <View style={styles.stackedInput}>
-                    <Text style={styles.miniLabel}>School</Text>
-                    <TextInput
-                      style={styles.cleanBottomInput}
-                      value={editedProfile.education}
-                      onChangeText={text =>
-                        setEditedProfile(prev => ({...prev, education: text}))
-                      }
-                      placeholder="School"
-                      placeholderTextColor="rgba(255,255,255,0.3)"
-                      underlineColorAndroid="transparent"
-                    />
-                  </View>
-                ) : (
-                  renderInfoItem('School', education, 'school-outline')
-                )}
-              </View>
+            <View style={styles.fieldUnit}>
+              <Text style={styles.miniLabel}>Drinking</Text>
+              {isEditing ? (
+                <View style={styles.pillContainer}>
+                  {LIFESTYLE_OPTIONS.YES_NO.map(opt => (
+                    <Pressable
+                      key={opt}
+                      onPress={() => setEditedProfile(prev => ({...prev, drink: opt}))}>
+                      <LinearGradient
+                        colors={editedProfile.drink === opt ? ['#C084FC', '#E040C8'] : ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.08)']}
+                        style={styles.microChoicePillGradient}>
+                        <Text style={[styles.microChoiceLabel, editedProfile.drink === opt && styles.chosenLabel]}>{opt}</Text>
+                      </LinearGradient>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.staticValueTxt}>{profile?.lifestyle?.drink || 'Not set'}</Text>
+              )}
             </View>
-          </View>
 
-          {/* Interests Section */}
-          {renderSectionHeader('Interests', 'star')}
-          <View style={styles.structuredCard}>
-            {isEditing ? (
-              <TextInput
-                style={styles.cleanBottomInput}
-                value={editedProfile.interests}
-                onChangeText={text =>
-                  setEditedProfile(prev => ({...prev, interests: text}))
-                }
-                placeholder="Comma separated interests"
-                placeholderTextColor="rgba(255,255,255,0.3)"
-                underlineColorAndroid="transparent"
-              />
-            ) : (
-              <View style={styles.pillContainer}>
-                {interests.length > 0 ? (
-                  interests.map((interest, idx) => (
-                    <View key={idx} style={styles.staticPill}>
-                      <Text style={styles.staticPillTxt}>{interest}</Text>
-                    </View>
-                  ))
-                ) : (
-                  <Text style={styles.mutedEmptyTxt}>No interests added</Text>
-                )}
-              </View>
-            )}
+            <View style={styles.fieldUnit}>
+              <Text style={styles.miniLabel}>Smoking Tobacco</Text>
+              {isEditing ? (
+                <View style={styles.pillContainer}>
+                  {LIFESTYLE_OPTIONS.YES_NO.map(opt => (
+                    <Pressable
+                      key={opt}
+                      onPress={() => setEditedProfile(prev => ({...prev, smokeTobacco: opt}))}>
+                      <LinearGradient
+                        colors={editedProfile.smokeTobacco === opt ? ['#C084FC', '#E040C8'] : ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.08)']}
+                        style={styles.microChoicePillGradient}>
+                        <Text style={[styles.microChoiceLabel, editedProfile.smokeTobacco === opt && styles.chosenLabel]}>{opt}</Text>
+                      </LinearGradient>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.staticValueTxt}>{profile?.lifestyle?.smokeTobacco || 'Not set'}</Text>
+              )}
+            </View>
+
+            <View style={styles.fieldUnit}>
+              <Text style={styles.miniLabel}>Smoking Weed</Text>
+              {isEditing ? (
+                <View style={styles.pillContainer}>
+                  {LIFESTYLE_OPTIONS.YES_NO.map(opt => (
+                    <Pressable
+                      key={opt}
+                      onPress={() => setEditedProfile(prev => ({...prev, smokeWeed: opt}))}>
+                      <LinearGradient
+                        colors={editedProfile.smokeWeed === opt ? ['#C084FC', '#E040C8'] : ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.08)']}
+                        style={styles.microChoicePillGradient}>
+                        <Text style={[styles.microChoiceLabel, editedProfile.smokeWeed === opt && styles.chosenLabel]}>{opt}</Text>
+                      </LinearGradient>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.staticValueTxt}>{profile?.lifestyle?.smokeWeed || 'Not set'}</Text>
+              )}
+            </View>
+
+            <View style={styles.fieldUnit}>
+              <Text style={styles.miniLabel}>Political Beliefs</Text>
+              {isEditing ? (
+                <View style={styles.pillContainer}>
+                  {LIFESTYLE_OPTIONS.POLITICAL.map(opt => (
+                    <Pressable
+                      key={opt}
+                      onPress={() => setEditedProfile(prev => ({...prev, politicalBeliefs: opt}))}>
+                      <LinearGradient
+                        colors={editedProfile.politicalBeliefs === opt ? ['#C084FC', '#E040C8'] : ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.08)']}
+                        style={styles.microChoicePillGradient}>
+                        <Text style={[styles.microChoiceLabel, editedProfile.politicalBeliefs === opt && styles.chosenLabel]}>{opt}</Text>
+                      </LinearGradient>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.staticValueTxt}>{profile?.lifestyle?.politicalBeliefs || 'Not set'}</Text>
+              )}
+            </View>
+
+            <View style={styles.fieldUnit}>
+              <Text style={styles.miniLabel}>Religious Beliefs</Text>
+              {isEditing ? (
+                <View style={styles.pillContainer}>
+                  {LIFESTYLE_OPTIONS.RELIGIOUS.map(opt => (
+                    <Pressable
+                      key={opt}
+                      onPress={() => setEditedProfile(prev => ({...prev, religiousBeliefs: opt}))}>
+                      <LinearGradient
+                        colors={editedProfile.religiousBeliefs === opt ? ['#C084FC', '#E040C8'] : ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.08)']}
+                        style={styles.microChoicePillGradient}>
+                        <Text style={[styles.microChoiceLabel, editedProfile.religiousBeliefs === opt && styles.chosenLabel]}>{opt}</Text>
+                      </LinearGradient>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.staticValueTxt}>{profile?.lifestyle?.religiousBeliefs || 'Not set'}</Text>
+              )}
+            </View>
           </View>
 
           {/* Location Section */}
@@ -948,84 +1048,229 @@ const ProfileDetailsScreen = () => {
             )}
           </View>
 
-          {/* Preferences Section */}
-          {renderSectionHeader('Preferences', 'heart')}
+          {/* Personal Details Section */}
+          {renderSectionHeader('Personal Details', 'account-details')}
           <View style={styles.structuredCard}>
+            <View style={styles.horizontalSplit}>
+              <View style={styles.splitCol}>
+                <Text style={styles.miniLabel}>Ethnicity</Text>
+                {isEditing ? (
+                  <View style={styles.pillContainer}>
+                    {PERSONAL_DETAILS_OPTIONS.ETHNICITY.map(opt => (
+                      <Pressable
+                        key={opt}
+                        onPress={() => setEditedProfile(prev => ({...prev, ethnicity: opt}))}>
+                        <LinearGradient
+                          colors={editedProfile.ethnicity === opt ? ['#C084FC', '#E040C8'] : ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.08)']}
+                          style={styles.microChoicePillGradient}>
+                          <Text style={[styles.microChoiceLabel, editedProfile.ethnicity === opt && styles.chosenLabel]}>{opt}</Text>
+                        </LinearGradient>
+                      </Pressable>
+                    ))}
+                  </View>
+                ) : (
+                  <Text style={styles.staticValueTxt}>{profile?.personalDetails?.ethnicity || 'Not set'}</Text>
+                )}
+              </View>
+            </View>
+
             <View style={styles.fieldUnit}>
-              <Text style={styles.miniLabel}>Gender</Text>
+              <Text style={styles.miniLabel}>Height</Text>
               {isEditing ? (
-                <View style={styles.pillContainer}>
-                  {['Man', 'Woman', 'Non Binary'].map(opt => (
-                    <Pressable
-                      key={opt}
-                      onPress={() =>
-                        setEditedProfile(prev => ({...prev, gender: opt}))
-                      }>
-                      <LinearGradient
-                        colors={
-                          editedProfile.gender === opt
-                            ? ['#C084FC', '#E040C8']
-                            : [
-                                'rgba(255,255,255,0.08)',
-                                'rgba(255,255,255,0.08)',
-                              ]
-                        }
-                        style={styles.choicePillGradient}>
-                        <Text
-                          style={[
-                            styles.choiceLabel,
-                            editedProfile.gender === opt && styles.chosenLabel,
-                          ]}>
-                          {opt}
-                        </Text>
-                      </LinearGradient>
-                    </Pressable>
-                  ))}
-                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <View style={styles.pillContainer}>
+                    {PERSONAL_DETAILS_OPTIONS.HEIGHT.map(opt => (
+                      <Pressable
+                        key={opt}
+                        onPress={() => setEditedProfile(prev => ({...prev, height: opt}))}>
+                        <LinearGradient
+                          colors={editedProfile.height === opt ? ['#C084FC', '#E040C8'] : ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.08)']}
+                          style={styles.microChoicePillGradient}>
+                          <Text style={[styles.microChoiceLabel, editedProfile.height === opt && styles.chosenLabel]}>{opt}</Text>
+                        </LinearGradient>
+                      </Pressable>
+                    ))}
+                  </View>
+                </ScrollView>
               ) : (
-                <Text style={styles.staticValueTxt}>{gender || 'Not set'}</Text>
+                <Text style={styles.staticValueTxt}>{profile?.personalDetails?.height || 'Not set'}</Text>
               )}
             </View>
 
             <View style={styles.fieldUnit}>
+              <Text style={styles.miniLabel}>Family Plans</Text>
+              {isEditing ? (
+                <View style={styles.pillContainer}>
+                  {PERSONAL_DETAILS_OPTIONS.FAMILY_PLANS.map(opt => (
+                    <Pressable
+                      key={opt}
+                      onPress={() => setEditedProfile(prev => ({...prev, familyPlans: opt}))}>
+                      <LinearGradient
+                        colors={editedProfile.familyPlans === opt ? ['#C084FC', '#E040C8'] : ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.08)']}
+                        style={styles.microChoicePillGradient}>
+                        <Text style={[styles.microChoiceLabel, editedProfile.familyPlans === opt && styles.chosenLabel]}>{opt}</Text>
+                      </LinearGradient>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.staticValueTxt}>{profile?.personalDetails?.familyPlans || 'Not set'}</Text>
+              )}
+            </View>
+
+            <View style={styles.fieldUnit}>
+              <Text style={styles.miniLabel}>Kids</Text>
+              {isEditing ? (
+                <View style={styles.pillContainer}>
+                  {PERSONAL_DETAILS_OPTIONS.HAS_CHILDREN.map(opt => (
+                    <Pressable
+                      key={opt}
+                      onPress={() => setEditedProfile(prev => ({...prev, hasChildren: opt}))}>
+                      <LinearGradient
+                        colors={editedProfile.hasChildren === opt ? ['#C084FC', '#E040C8'] : ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.08)']}
+                        style={styles.microChoicePillGradient}>
+                        <Text style={[styles.microChoiceLabel, editedProfile.hasChildren === opt && styles.chosenLabel]}>{opt}</Text>
+                      </LinearGradient>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.staticValueTxt}>{profile?.personalDetails?.hasChildren || 'Not set'}</Text>
+              )}
+            </View>
+
+            <View style={styles.horizontalSplit}>
+              <View style={styles.splitCol}>
+                <Text style={styles.miniLabel}>Hometown</Text>
+                {isEditing ? (
+                  <TextInput
+                    style={styles.cleanBottomInput}
+                    value={editedProfile.hometown}
+                    onChangeText={text => setEditedProfile(prev => ({...prev, hometown: text}))}
+                    placeholder="Enter hometown"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                  />
+                ) : (
+                  <Text style={styles.staticValueTxt}>{profile?.personalDetails?.hometown || 'Not set'}</Text>
+                )}
+              </View>
+              <View style={styles.splitCol}>
+                <Text style={styles.miniLabel}>Workplace</Text>
+                {isEditing ? (
+                  <TextInput
+                    style={styles.cleanBottomInput}
+                    value={editedProfile.workplace}
+                    onChangeText={text => setEditedProfile(prev => ({...prev, workplace: text}))}
+                    placeholder="Enter workplace"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                  />
+                ) : (
+                  <Text style={styles.staticValueTxt}>{profile?.personalDetails?.workplace || 'Not set'}</Text>
+                )}
+              </View>
+            </View>
+
+            <View style={styles.horizontalSplitSpacing}>
+              <View style={styles.splitCol}>
+                <Text style={styles.miniLabel}>Job Title</Text>
+                {isEditing ? (
+                  <TextInput
+                    style={styles.cleanBottomInput}
+                    value={editedProfile.occupation}
+                    onChangeText={text => setEditedProfile(prev => ({...prev, occupation: text}))}
+                    placeholder="Enter job title"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                  />
+                ) : (
+                  <Text style={styles.staticValueTxt}>{profile?.personalDetails?.jobTitle || 'Not set'}</Text>
+                )}
+              </View>
+              <View style={styles.splitCol}>
+                <Text style={styles.miniLabel}>School</Text>
+                {isEditing ? (
+                  <TextInput
+                    style={styles.cleanBottomInput}
+                    value={editedProfile.education}
+                    onChangeText={text => setEditedProfile(prev => ({...prev, education: text}))}
+                    placeholder="Enter school"
+                    placeholderTextColor="rgba(255,255,255,0.3)"
+                  />
+                ) : (
+                  <Text style={styles.staticValueTxt}>{profile?.personalDetails?.school || 'Not set'}</Text>
+                )}
+              </View>
+            </View>
+
+            <View style={styles.fieldUnit}>
+              <Text style={styles.miniLabel}>Education Level</Text>
+              {isEditing ? (
+                <View style={styles.pillContainer}>
+                  {PERSONAL_DETAILS_OPTIONS.EDUCATION_LEVEL.map(opt => (
+                    <Pressable
+                      key={opt}
+                      onPress={() => setEditedProfile(prev => ({...prev, educationLevel: opt}))}>
+                      <LinearGradient
+                        colors={editedProfile.educationLevel === opt ? ['#C084FC', '#E040C8'] : ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.08)']}
+                        style={styles.microChoicePillGradient}>
+                        <Text style={[styles.microChoiceLabel, editedProfile.educationLevel === opt && styles.chosenLabel]}>{opt}</Text>
+                      </LinearGradient>
+                    </Pressable>
+                  ))}
+                </View>
+              ) : (
+                <Text style={styles.staticValueTxt}>{profile?.personalDetails?.educationLevel || 'Not set'}</Text>
+              )}
+            </View>
+
+            <View style={styles.fieldUnit}>
+              <Text style={styles.miniLabel}>Interests</Text>
+              {isEditing ? (
+                <TextInput
+                  style={styles.cleanBottomInput}
+                  value={editedProfile.interests}
+                  onChangeText={text => setEditedProfile(prev => ({...prev, interests: text}))}
+                  placeholder="Comma separated interests"
+                  placeholderTextColor="rgba(255,255,255,0.3)"
+                />
+              ) : (
+                <View style={styles.pillContainer}>
+                  {(profile?.interests || []).map((interest, idx) => (
+                    <View key={idx} style={styles.staticPill}>
+                      <Text style={styles.staticPillTxt}>{interest}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* Dating Preferences Section */}
+          {renderSectionHeader('Dating Preferences', 'heart')}
+          <View style={styles.structuredCard}>
+            <View style={styles.fieldUnit}>
               <Text style={styles.miniLabel}>Looking for</Text>
               {isEditing ? (
                 <View style={styles.pillContainer}>
-                  {['Men', 'Women', 'Everyone'].map(opt => (
+                  {DATING_PREFERENCES_OPTIONS.WHO_TO_DATE.map(opt => (
                     <Pressable
                       key={opt}
                       onPress={() => {
                         let next = editedProfile.whoToDate || [];
-                        if (next.includes(opt))
-                          next = next.filter(i => i !== opt);
+                        if (next.includes(opt)) next = next.filter(i => i !== opt);
                         else next = [...next, opt];
                         setEditedProfile(prev => ({...prev, whoToDate: next}));
                       }}>
                       <LinearGradient
-                        colors={
-                          editedProfile.whoToDate?.includes(opt)
-                            ? ['#C084FC', '#E040C8']
-                            : [
-                                'rgba(255,255,255,0.08)',
-                                'rgba(255,255,255,0.1)',
-                              ]
-                        }
-                        style={styles.choicePillGradient}>
-                        <Text
-                          style={[
-                            styles.choiceLabel,
-                            editedProfile.whoToDate?.includes(opt) &&
-                              styles.chosenLabel,
-                          ]}>
-                          {opt}
-                        </Text>
+                        colors={editedProfile.whoToDate?.includes(opt) ? ['#C084FC', '#E040C8'] : ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.1)']}
+                        style={styles.microChoicePillGradient}>
+                        <Text style={[styles.microChoiceLabel, editedProfile.whoToDate?.includes(opt) && styles.chosenLabel]}>{opt}</Text>
                       </LinearGradient>
                     </Pressable>
                   ))}
                 </View>
               ) : (
                 <View style={styles.pillContainer}>
-                  {whoToDate.map((item, idx) => (
+                  {(profile?.datingPreferences?.whoToDate || []).map((item, idx) => (
                     <View key={idx} style={styles.accentBadge}>
                       <Text style={styles.accentBadgeTxt}>{item}</Text>
                     </View>
@@ -1038,68 +1283,104 @@ const ProfileDetailsScreen = () => {
               <View style={styles.splitCol}>
                 <Text style={styles.miniLabel}>Intention</Text>
                 {isEditing ? (
-                  <TextInput
-                    style={styles.cleanBottomInput}
-                    value={editedProfile.datingIntention}
-                    onChangeText={text =>
-                      setEditedProfile(prev => ({
-                        ...prev,
-                        datingIntention: text,
-                      }))
-                    }
-                    placeholder="e.g. Long-term"
-                    placeholderTextColor="rgba(255,255,255,0.3)"
-                    underlineColorAndroid="transparent"
-                  />
+                  <View style={styles.pillContainer}>
+                    {DATING_PREFERENCES_OPTIONS.INTENTION.map(opt => (
+                      <Pressable
+                        key={opt}
+                        onPress={() => setEditedProfile(prev => ({...prev, datingIntention: opt}))}>
+                        <LinearGradient
+                          colors={editedProfile.datingIntention === opt ? ['#C084FC', '#E040C8'] : ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.1)']}
+                          style={styles.microChoicePillGradient}>
+                          <Text style={[styles.microChoiceLabel, editedProfile.datingIntention === opt && styles.chosenLabel]}>{opt}</Text>
+                        </LinearGradient>
+                      </Pressable>
+                    ))}
+                  </View>
                 ) : (
-                  <Text style={styles.staticValueTxt}>
-                    {datingIntention || 'Not set'}
-                  </Text>
+                  <Text style={styles.staticValueTxt}>{profile?.datingPreferences?.datingIntention || 'Not set'}</Text>
                 )}
               </View>
               <View style={styles.splitCol}>
                 <Text style={styles.miniLabel}>Type</Text>
                 {isEditing ? (
                   <View style={styles.pillContainer}>
-                    {['Monogamy', 'Non-Monogamy'].map(opt => (
+                    {DATING_PREFERENCES_OPTIONS.RELATIONSHIP_TYPE.map(opt => (
                       <Pressable
                         key={opt}
-                        onPress={() =>
-                          setEditedProfile(prev => ({
-                            ...prev,
-                            relationshipType: opt,
-                          }))
-                        }>
+                        onPress={() => setEditedProfile(prev => ({...prev, relationshipType: opt}))}>
                         <LinearGradient
-                          colors={
-                            editedProfile.relationshipType === opt
-                              ? ['#C084FC', '#E040C8']
-                              : [
-                                  'rgba(255,255,255,0.08)',
-                                  'rgba(255,255,255,0.1)',
-                                ]
-                          }
+                          colors={editedProfile.relationshipType === opt ? ['#C084FC', '#E040C8'] : ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.1)']}
                           style={styles.microChoicePillGradient}>
-                          <Text
-                            style={[
-                              styles.microChoiceLabel,
-                              editedProfile.relationshipType === opt &&
-                                styles.chosenLabel,
-                            ]}>
-                            {opt === 'Non-Monogamy' ? 'Non-Mono' : opt}
-                          </Text>
+                          <Text style={[styles.microChoiceLabel, editedProfile.relationshipType === opt && styles.chosenLabel]}>{opt}</Text>
                         </LinearGradient>
                       </Pressable>
                     ))}
                   </View>
                 ) : (
-                  <Text style={styles.staticValueTxt}>
-                    {relationshipType || 'Not set'}
-                  </Text>
+                  <Text style={styles.staticValueTxt}>{profile?.datingPreferences?.relationshipType || 'Not set'}</Text>
                 )}
               </View>
             </View>
           </View>
+
+          {/* Profile Prompts Section */}
+          {renderSectionHeader('Profile Prompts', 'message-text')}
+          {Object.keys(PROMPT_CATEGORIES).map(categoryId => {
+            const category = PROMPT_CATEGORIES[categoryId];
+            const savedPrompt = profile?.profilePrompts?.[categoryId] || {question: '', answer: ''};
+            const editedPrompt = editedProfile.profilePrompts?.[categoryId] || {question: '', answer: ''};
+
+            return (
+              <View key={categoryId} style={styles.structuredCard}>
+                <Text style={styles.miniLabel}>{category.title}</Text>
+                {isEditing ? (
+                  <>
+                    <View style={styles.pillContainer}>
+                      {category.prompts.map(prompt => (
+                        <Pressable
+                          key={prompt}
+                          onPress={() => setEditedProfile(prev => ({
+                            ...prev,
+                            profilePrompts: {
+                              ...prev.profilePrompts,
+                              [categoryId]: { ...prev.profilePrompts?.[categoryId], question: prompt }
+                            }
+                          }))}>
+                          <LinearGradient
+                            colors={editedPrompt.question === prompt ? ['#C084FC', '#E040C8'] : ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.08)']}
+                            style={styles.microChoicePillGradient}>
+                            <Text style={[styles.microChoiceLabel, editedPrompt.question === prompt && styles.chosenLabel]}>{prompt}</Text>
+                          </LinearGradient>
+                        </Pressable>
+                      ))}
+                    </View>
+                    {editedPrompt.question ? (
+                      <TextInput
+                        style={[styles.cleanBottomInput, {marginTop: 10, fontSize: 16}]}
+                        value={editedPrompt.answer}
+                        onChangeText={text => setEditedProfile(prev => ({
+                          ...prev,
+                          profilePrompts: {
+                            ...prev.profilePrompts,
+                            [categoryId]: { ...prev.profilePrompts?.[categoryId], answer: text }
+                          }
+                        }))}
+                        placeholder="Write your answer..."
+                        multiline
+                      />
+                    ) : null}
+                  </>
+                ) : (
+                  <View>
+                    <Text style={styles.promptQuestionTxt}>{savedPrompt.question || `Select a ${category.title} prompt`}</Text>
+                    <Text style={savedPrompt.answer ? styles.promptAnswerTxt : styles.mutedEmptyTxt}>
+                      {savedPrompt.answer || 'No answer provided yet'}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            );
+          })}
         </View>
 
         <View style={{height: 120}} />
@@ -1572,6 +1853,42 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 12,
     fontFamily: typography.fontFamilyBold,
+  },
+  fallbackEditBtn: {
+    marginBottom: 20,
+    borderRadius: 15,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  fallbackEditGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    gap: 10,
+  },
+  fallbackEditTxt: {
+    color: '#FFF',
+    fontSize: 16,
+    fontFamily: typography.fontFamilyBold,
+  },
+  promptQuestionTxt: {
+    fontSize: 14,
+    fontFamily: typography.fontFamilyBold,
+    color: 'rgba(30, 27, 75, 0.6)',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  promptAnswerTxt: {
+    fontSize: 18,
+    fontFamily: typography.fontFamilyMedium,
+    color: '#000000',
+    lineHeight: 24,
   },
 });
 

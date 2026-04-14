@@ -182,7 +182,7 @@ const WelcomeScreen = () => {
               onPressOut={handleBlur}
               onFocus={handleFocus}
               onBlur={handleBlur}
-              onPress={() => navigation.navigate(getNextOnboardingScreen())}>
+              onPress={() => navigation.navigate(AppRoute.BasicInfo)}>
               <Text style={styles.primaryButtonText}>Enter basic info</Text>
             </Pressable>
           </Animated.View>

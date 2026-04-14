@@ -14,7 +14,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import {useNavigation} from '@react-navigation/native';
 import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
-import {savePersonalDetails} from '../../../services/profile/profileService';
+import {updateProfile} from '../../../services/profile/profileService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {useAuth} from '../../../context/AuthContext';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -81,42 +81,13 @@ const PersonalDetailsScreen = () => {
   const handleContinue = async () => {
     setIsSubmitting(true);
     try {
-      // Get user ID from storage
-      const userData = await AsyncStorage.getItem('@pryvo_user');
-      let userId = null;
-
-      if (userData && userData !== 'undefined') {
-        const user = JSON.parse(userData);
-        userId = user.id;
-      } else {
-        // Try to get from token (decode JWT)
-        const token = await AsyncStorage.getItem('@pryvo/token');
-        if (token && token !== 'undefined') {
-          try {
-            const payload = decodeJWT(token);
-            userId = payload?.userId || payload?.id;
-          } catch (e) {
-            console.error('Failed to decode token:', e);
-          }
-        }
-      }
-
-      if (!userId) {
-        Alert.alert('Error', 'User ID not found. Please sign in again.');
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Save personal details to backend
-      await savePersonalDetails({...details, userId});
-
+      await updateProfile({personalDetails: details});
       console.log('Personal details saved successfully');
-
-      // Reload profile in context
-      if (userId) {
-        await loadProfile(userId);
+      const userData = await AsyncStorage.getItem('@pryvo_user');
+      if (userData) {
+        const user = JSON.parse(userData);
+        await loadProfile(user.id);
       }
-
       navigation.navigate(AppRoute.Lifestyle);
     } catch (error) {
       console.error('Error saving personal details:', error);

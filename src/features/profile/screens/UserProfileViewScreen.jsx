@@ -453,43 +453,42 @@ const UserProfileViewScreen = ({navigation, route}) => {
                   const isOwner = currentUserId === userId;
 
                   return (
-                    <View key={idx} style={styles.gridPhotoWrapper}>
-                      <Pressable
+                    <Pressable
+                      key={idx}
+                      style={styles.gridPhotoWrapper}
+                      onPress={() => {
+                        setSelectedPhoto(uri);
+                        setViewerVisible(true);
+                      }}>
+                      <Image
+                        source={{uri}}
                         style={styles.gridPhoto}
-                        onPress={() => {
-                          setSelectedPhoto(uri);
-                          setViewerVisible(true);
-                        }}>
-                        <Image
-                          source={{uri}}
-                          style={styles.gridPhoto}
-                          resizeMode="cover"
-                        />
-                        {/* 📸 Social interaction badges (mini) */}
-                        {isOwner &&
-                          (photoStats.likes > 0 ||
-                            photoStats.commentsCount > 0) && (
-                            <View style={styles.miniStatsOverlay}>
-                              {photoStats.likes > 0 && (
-                                <View style={styles.miniStat}>
-                                  <Icon name="heart" size={10} color="#fff" />
-                                  <Text style={styles.miniStatText}>
-                                    {photoStats.likes}
-                                  </Text>
-                                </View>
-                              )}
-                              {photoStats.commentsCount > 0 && (
-                                <View style={styles.miniStat}>
-                                  <Icon name="comment" size={10} color="#fff" />
-                                  <Text style={styles.miniStatText}>
-                                    {photoStats.commentsCount}
-                                  </Text>
-                                </View>
-                              )}
-                            </View>
-                          )}
-                      </Pressable>
-                    </View>
+                        resizeMode="cover"
+                      />
+                      {/* 📸 Social interaction badges (mini) */}
+                      {isOwner &&
+                        (photoStats.likes > 0 ||
+                          photoStats.commentsCount > 0) && (
+                          <View style={styles.miniStatsOverlay}>
+                            {photoStats.likes > 0 && (
+                              <View style={styles.miniStat}>
+                                <Icon name="heart" size={10} color="#fff" />
+                                <Text style={styles.miniStatText}>
+                                  {photoStats.likes}
+                                </Text>
+                              </View>
+                            )}
+                            {photoStats.commentsCount > 0 && (
+                              <View style={styles.miniStat}>
+                                <Icon name="comment" size={10} color="#fff" />
+                                <Text style={styles.miniStatText}>
+                                  {photoStats.commentsCount}
+                                </Text>
+                              </View>
+                            )}
+                          </View>
+                        )}
+                    </Pressable>
                   );
                 })
               ) : (
@@ -662,8 +661,8 @@ const styles = StyleSheet.create({
   },
   heroSection: {
     alignItems: 'center',
-    paddingTop: 24,
-    paddingBottom: 24,
+    paddingVertical: 32,
+    paddingHorizontal: 20,
   },
   avatarGlowWrapper: {
     padding: 4,
@@ -675,87 +674,90 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   avatarGradientBorder: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     padding: 3,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarInnerContainer: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 100,
+    width: 114,
+    height: 114,
+    borderRadius: 57,
     backgroundColor: '#FFF',
+    padding: 2,
     overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: '#FFF',
   },
   headerAvatar: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
+    borderRadius: 55,
   },
   headerAvatarPlaceholder: {
-    flex: 1,
-    backgroundColor: '#F3F4F6',
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#F9FAFB',
     justifyContent: 'center',
     alignItems: 'center',
   },
   onlineStatusDot: {
     position: 'absolute',
-    bottom: 15,
-    right: 15,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    bottom: 12,
+    right: 12,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
     backgroundColor: '#22C55E',
-    borderWidth: 4,
+    borderWidth: 3,
     borderColor: '#FFF',
-    zIndex: 3,
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   identityBlockOverlay: {
-    marginTop: -40,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: 30,
-    padding: 24,
-    width: SCREEN_WIDTH * 0.85,
     alignItems: 'center',
+    marginTop: -16, // Overlap effect
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 24,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 8},
-    shadowOpacity: 0.1,
-    shadowRadius: 15,
-    elevation: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.6)',
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 5,
+    zIndex: 1,
+    minWidth: '60%',
   },
   nameRowCentered: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    gap: 6,
   },
   heroName: {
-    fontSize: 26,
+    fontSize: 24,
     fontFamily: typography.fontFamilyBold,
-    color: colors.textPrimary,
-    marginRight: 6,
+    color: '#111',
   },
   verificationIcon: {
-    marginLeft: 4,
+    marginTop: 2,
   },
   heroBio: {
-    fontSize: 15,
+    fontSize: 13,
     fontFamily: typography.fontFamilyRegular,
-    color: colors.textSecondary,
+    color: '#71717A',
     textAlign: 'center',
-    lineHeight: 22,
+    marginTop: 4,
+    lineHeight: 18,
   },
   actionButtonsRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 24,
+    marginTop: 20,
     width: '100%',
-    paddingHorizontal: 24,
   },
   matchButtonWrapper: {
     flex: 1,
@@ -763,27 +765,27 @@ const styles = StyleSheet.create({
   },
   primaryCtaBtn: {
     borderRadius: 30,
-    overflow: 'hidden',
-    elevation: 8,
     shadowColor: colors.primary,
-    shadowOffset: {width: 0, height: 8},
-    shadowOpacity: 0.3,
+    shadowOffset: {width: 0, height: 6},
+    shadowOpacity: 0.25,
     shadowRadius: 12,
+    elevation: 8,
   },
   ctaGradient: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 30,
   },
   ctaText: {
-    fontSize: 17,
-    fontFamily: typography.fontFamilyBold,
     color: '#FFF',
+    fontSize: 14,
+    fontFamily: typography.fontFamilyBold,
   },
   intentWrapper: {
-    marginTop: 24,
+    marginTop: 20,
     alignItems: 'center',
   },
   intentBadge: {
@@ -800,53 +802,53 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: 20,
-    marginHorizontal: 20,
+    alignItems: 'center',
     backgroundColor: '#FFF',
+    marginHorizontal: 16,
+    paddingVertical: 20,
     borderRadius: 20,
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 4},
+    shadowOffset: {width: 0, height: 2},
     shadowOpacity: 0.05,
     shadowRadius: 10,
-    elevation: 4,
+    elevation: 2,
   },
   statBox: {
-    alignItems: 'center',
     flex: 1,
+    alignItems: 'center',
   },
   statNumber: {
-    fontSize: 18,
+    fontSize: 20,
     fontFamily: typography.fontFamilyBold,
-    color: colors.textPrimary,
-    marginBottom: 4,
+    color: '#111',
   },
   statEmoji: {
     fontSize: 16,
   },
   statSublabel: {
     fontSize: 12,
-    fontFamily: typography.fontFamilyRegular,
-    color: colors.textSecondary,
+    fontFamily: typography.fontFamilyMedium,
+    color: '#9CA3AF',
+    marginTop: 2,
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
   statDivider: {
     width: 1,
-    height: '60%',
+    height: 24,
     backgroundColor: '#F3F4F6',
-    alignSelf: 'center',
   },
   tabsWrapper: {
     flexDirection: 'row',
-    paddingHorizontal: 24,
-    marginTop: 24,
-    marginBottom: 16,
+    borderTopWidth: 0.5,
+    borderTopColor: '#DBDBDB',
+    marginTop: 10,
   },
   tabBtn: {
     flex: 1,
+    height: 48,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: 12,
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
@@ -856,88 +858,90 @@ const styles = StyleSheet.create({
   photoGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: 10,
   },
   gridPhotoWrapper: {
-    width: SCREEN_WIDTH / 3 - 14,
-    aspectRatio: 1,
-    margin: 7,
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: '#F3F4F6',
+    width: SCREEN_WIDTH / 3,
+    height: SCREEN_WIDTH / 3,
+    padding: 1,
   },
   gridPhoto: {
-    width: '100%',
-    height: '100%',
+    flex: 1,
+    backgroundColor: '#FAFAFA',
   },
   emptyGridPlaceholder: {
-    width: '100%',
-    padding: 60,
-    alignItems: 'center',
+    height: 200,
     justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
   },
   emptyGridText: {
+    textAlign: 'center',
     marginTop: 12,
     fontSize: 14,
+    color: '#8E8E8E',
     fontFamily: typography.fontFamilyRegular,
-    color: colors.textSecondary,
   },
   insightsWrapper: {
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingTop: 16,
   },
   insightSectionTitle: {
     fontSize: 16,
     fontFamily: typography.fontFamilyBold,
-    color: colors.textPrimary,
-    marginBottom: 16,
-    marginTop: 24,
+    color: '#262626',
+    marginBottom: 12,
+    paddingHorizontal: 20,
+    marginTop: 16,
+  },
+  basicsGridSection: {
+    marginBottom: 24,
   },
   basicsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    paddingHorizontal: 20,
     gap: 12,
   },
   basicGridItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F9FAFB',
-    paddingHorizontal: 16,
+    backgroundColor: '#FAFAFA',
+    paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 20,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
+    borderColor: '#EFEFEF',
+    minWidth: (SCREEN_WIDTH - 60) / 2,
   },
   basicGridLabel: {
-    marginLeft: 8,
     fontSize: 14,
     fontFamily: typography.fontFamilyMedium,
-    color: colors.textPrimary,
+    color: '#262626',
+    marginLeft: 8,
   },
   promptsSection: {
-    marginTop: 12,
+    paddingHorizontal: 20,
+    marginTop: 10,
   },
   promptCard: {
-    backgroundColor: colors.primary + '08',
-    borderRadius: 20,
-    padding: 24,
-    marginBottom: 16,
-    borderLeftWidth: 4,
-    borderLeftColor: colors.primary,
+    backgroundColor: '#FAFAFA',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#EFEFEF',
   },
   promptQuestion: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: typography.fontFamilyBold,
-    color: colors.primary,
-    marginBottom: 12,
+    color: '#8E8E8E',
+    marginBottom: 6,
     textTransform: 'uppercase',
-    letterSpacing: 1,
   },
   promptAnswer: {
-    fontSize: 20,
-    fontFamily: typography.fontFamilyBold,
-    color: colors.textPrimary,
-    lineHeight: 28,
+    fontSize: 16,
+    fontFamily: typography.fontFamilyMedium,
+    color: '#262626',
+    lineHeight: 22,
   },
   loadingContainer: {
     flex: 1,

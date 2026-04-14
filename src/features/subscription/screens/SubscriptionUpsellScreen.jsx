@@ -22,6 +22,8 @@ import {
   verifyPaymentAndCreateSubscription,
   getSubscriptionStatus,
 } from '../../../services/subscription/subscriptionService';
+import {useAuth} from '../../../context/AuthContext';
+import {AppRoute} from '../../../constants/routes';
 
 /* ─── Feature list ─────────────────────────────────────────────── */
 const FEATURES = [
@@ -63,6 +65,7 @@ function Content() {
   const route = useRoute();
   const fromOnboarding = route.params?.fromOnboarding;
   const stripe = useStripe();
+  const {completeOnboarding} = useAuth();
 
   const [plans, setPlans] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -138,8 +141,12 @@ function Content() {
             {
               text: 'Awesome!',
               onPress: () => {
-                if (fromOnboarding) navigation.replace('HomeTabs');
-                else navigation.replace('SubscriptionManagement');
+                if (fromOnboarding) {
+                  completeOnboarding();
+                  navigation.replace(AppRoute.HomeTabs);
+                } else {
+                  navigation.replace('SubscriptionManagement');
+                }
               },
             },
           ],
@@ -182,7 +189,14 @@ function Content() {
             colors={['#1a0533', '#2d0853', '#0D0D14']}
             style={s.hero}>
             <Pressable
-              onPress={() => navigation.goBack()}
+              onPress={() => {
+                if (fromOnboarding) {
+                  completeOnboarding();
+                  navigation.replace(AppRoute.HomeTabs);
+                } else {
+                  navigation.goBack();
+                }
+              }}
               style={s.closeBtn}
               hitSlop={12}>
               <MaterialCommunityIcons name="close" size={22} color="#aaa" />

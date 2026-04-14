@@ -28,6 +28,7 @@ import { signUp } from '../../../services/auth';
 import { useLoading } from '../../../context/LoadingContext';
 import { useAuth } from '../../../context/AuthContext';
 import { apiClient } from '../../../services/api/client';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const isEmailSyntaxValid = email => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
@@ -236,9 +237,9 @@ const SignUpScreen = () => {
       });
       if (data?.user) {
         await login(data.user);
-        // New users always have onboardingStep='BASIC_INFO' from server
-        // Pass data.user directly to avoid stale-context race condition
-        const nextScreen = getNextOnboardingScreen(data.user, null);
+        // Navigation is now handled based on authentication status + onboarding history.
+        const status = await AsyncStorage.getItem(`@pryvo_has_seen_onboarding_${data.user.id}`);
+        const nextScreen = getNextOnboardingScreen(data.user, status === 'true');
         navigation.reset({ index: 0, routes: [{ name: nextScreen }] });
       }
     } catch (error) {

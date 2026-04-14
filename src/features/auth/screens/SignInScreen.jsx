@@ -23,6 +23,7 @@ import { signIn } from '../../../services/auth';
 import { useLoading } from '../../../context/LoadingContext';
 import { useAuth } from '../../../context/AuthContext';
 import apiConfig from '../../../config/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SignInScreen = () => {
   const navigation = useNavigation();
@@ -110,8 +111,9 @@ const SignInScreen = () => {
       if (data?.user) {
         const fetchedProfile = await login(data.user);
         
-        // Pass fresh user (with onboardingStep from server) to avoid context race condition
-        const nextScreen = getNextOnboardingScreen(data.user, fetchedProfile);
+        // Navigation is now handled based on authentication status + onboarding history.
+        const status = await AsyncStorage.getItem(`@pryvo_has_seen_onboarding_${data.user.id}`);
+        const nextScreen = getNextOnboardingScreen(data.user, status === 'true');
         console.log('[SignIn] Navigating to next screen:', nextScreen);
 
         navigation.reset({

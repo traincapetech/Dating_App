@@ -22,7 +22,7 @@ import {AppRoute} from '../../../constants/routes';
 import {colors, typography, spacing} from '../../../theme';
 import {
   uploadProfileImage,
-  updateProfileApi,
+  updateProfile as updateProfileApi,
 } from '../../../services/profile/profileService';
 import {decodeJWT} from '../../../utils/safeUtils';
 

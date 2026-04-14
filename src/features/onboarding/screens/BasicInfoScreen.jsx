@@ -28,7 +28,7 @@ import {
   disableNotifications,
   checkNotificationPermission,
 } from '../../../services/notifications';
-import { saveBasicInfo } from '../../../services/profile/profileService';
+import { updateProfile } from '../../../services/profile/profileService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../../../context/AuthContext';
@@ -459,54 +459,28 @@ const BasicInfoScreen = () => {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      // Get user ID from storage
-      const userData = await AsyncStorage.getItem('@pryvo_user');
-      let userId = null;
-
-      if (userData && userData !== 'undefined') {
-        const user = JSON.parse(userData);
-        userId = user.id;
-      } else {
-        // Try to get from token (decode JWT)
-        const token = await AsyncStorage.getItem('@pryvo/token');
-        if (token && token !== 'undefined') {
-          try {
-            const payload = decodeJWT(token);
-            userId = payload?.userId || payload?.id;
-          } catch (e) {
-            console.error('Failed to decode token:', e);
-          }
-        }
-      }
-
-      if (!userId) {
-        CustomAlert.alert('Error', 'User ID not found. Please sign in again.');
-        setIsSubmitting(false);
-        return;
-      }
-
-      // Prepare basic info data
-      const basicInfoData = {
-        userId: userId, // Include userId for server authentication
-        firstName: form.firstName.trim(),
-        lastName: form.lastName.trim(),
-        dob: form.dob.trim(),
-        email: form.email.trim(),
-        location: form.location.trim(),
-        locationDetails: form.locationDetails,
-        gender: form.gender,
-        showGenderOnProfile: form.showGenderOnProfile,
-        notificationsEnabled: form.notificationsEnabled,
-      };
-
-      // Save to backend
-      await saveBasicInfo(basicInfoData);
+      // Save using unified nested schema — no userId in payload (read from JWT)
+      await updateProfile({
+        basicInfo: {
+          firstName: form.firstName.trim(),
+          lastName: form.lastName.trim(),
+          dob: form.dob.trim(),
+          email: form.email.trim(),
+          location: form.location.trim(),
+          locationDetails: form.locationDetails,
+          gender: form.gender,
+          showGenderOnProfile: form.showGenderOnProfile,
+          notificationsEnabled: form.notificationsEnabled,
+        },
+      });
 
       console.log('Basic info saved successfully');
 
-      // Reload profile in context
-      if (userId) {
-        await loadProfile(userId);
+      // Reload global profile context
+      const userData = await AsyncStorage.getItem('@pryvo_user');
+      if (userData) {
+        const user = JSON.parse(userData);
+        await loadProfile(user.id);
       }
 
       navigation.navigate(AppRoute.DatingPreferences);
