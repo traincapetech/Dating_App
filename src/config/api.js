@@ -20,7 +20,7 @@ const LOCAL_API_URL = 'http://192.168.1.159:3000/api';
 const LOCAL_SOCKET_URL = 'http://192.168.1.159:3000';
 
 // Set to true for production, false for local development
-const IS_PRODUCTION = false;
+const IS_PRODUCTION = true;
 
 // Stripe Configuration
 export const STRIPE_PUBLISHABLE_KEY = IS_PRODUCTION 
@@ -45,10 +45,6 @@ const getApiBaseUrl = () => {
     return 'http://localhost:3000/api';
   }
 
-<<<<<<< HEAD
-  // Fallback
-=======
->>>>>>> c8c7e17 (Update gradle for google play store billing)
   return LOCAL_API_URL;
 };
 
@@ -57,13 +53,7 @@ const getSocketUrl = () => {
     return PRODUCTION_SOCKET_URL;
   }
 
-<<<<<<< HEAD
-  if (Platform.OS === 'android') {
-    return LOCAL_SOCKET_URL;
-  }
-=======
   if (Platform.OS === 'android') return 'http://10.0.2.2:3000';
->>>>>>> c8c7e17 (Update gradle for google play store billing)
 
   if (Platform.OS === 'ios') {
     return 'http://localhost:3000';

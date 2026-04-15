@@ -80,14 +80,10 @@ const CustomAlertComponent = forwardRef((props, ref) => {
                     key={index}
                     style={({ pressed }) => [
                       styles.button,
-                      // Apply specific button styles based on type
                       isCancel ? styles.buttonCancel : 
                       isDestructive ? styles.buttonDestructive : 
                       styles.buttonPrimary,
-                      // Give definitive fixed gaps between buttons
-                      index < renderButtons.length - 1 ? { marginRight: isMany ? 12 : 12 } : {},
-                      // Force exact equal sizing and full centering
-                      isMany && { flex: 1, paddingHorizontal: 2, minWidth: 0, paddingVertical: 12, alignItems: 'center' },
+                      isMany && { flex: 1, paddingHorizontal: 4 },
                       pressed && styles.buttonPressed
                     ]}
                     onPress={() => handlePress(btn)}
@@ -95,7 +91,7 @@ const CustomAlertComponent = forwardRef((props, ref) => {
                     <Text 
                       style={[
                         styles.buttonText,
-                        isMany && { fontSize: 11, letterSpacing: 0, textAlign: 'center' },
+                        isMany && { fontSize: 10, letterSpacing: 0.5 },
                         isCancel ? styles.buttonTextCancel : 
                         isDestructive ? styles.buttonTextDestructive : 
                         styles.buttonTextPrimary
@@ -162,6 +158,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     alignItems: 'center',
     width: '100%',
+    gap: 12,
   },
   button: {
     paddingHorizontal: 32,

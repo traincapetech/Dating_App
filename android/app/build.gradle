@@ -5,6 +5,8 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+project.ext.REACT_NATIVE_NODE_MODULES_DIR = file("../../node_modules/react-native").absolutePath
+
 /**
  * React Native configuration
  * Do NOT disable autolinking
@@ -12,6 +14,7 @@ plugins {
 react {
     root = file("../../")
     reactNativeDir = file("../../node_modules/react-native")
+    nodeExecutableAndArgs = ["/usr/local/bin/node"]
     autolinkLibrariesWithApp()
 }
 

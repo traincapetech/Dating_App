@@ -25,6 +25,7 @@ import {initSocket} from '../../../services/socket';
 
 import {useLoading} from '../../../context/LoadingContext';
 import {useInitialLoad} from '../../../context/InitialLoadContext';
+import {useSocket} from '../../../context/SocketContext';
 import FullScreenLoader from '../../../components/layout/FullScreenLoader';
 import ThemeBackground from '../../../components/layout/ThemeBackground';
 
@@ -64,6 +65,7 @@ const EmptyState = () => {
 
 const ChatsScreen = ({navigation}) => {
   const {setLoading: setGlobalLoading} = useLoading();
+  const {onlineUsers} = useSocket();
   const [matches, setMatches] = useState([]);
   const [lastMessages, setLastMessages] = useState({});
   const [streaks, setStreaks] = useState({});
@@ -278,6 +280,9 @@ const ChatsScreen = ({navigation}) => {
                   }}
                   style={styles.avatar}
                 />
+                {onlineUsers.has(theirId) && (
+                  <View style={styles.onlineDot} />
+                )}
                 {unreadCount > 0 && (
                   <View style={styles.unreadBadge}>
                     <Text style={styles.unreadText}>
@@ -399,6 +404,18 @@ const styles = StyleSheet.create({
     height: 60,
     borderRadius: 30,
     backgroundColor: '#F8F8F8',
+  },
+  onlineDot: {
+    position: 'absolute',
+    bottom: 2,
+    right: 2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#4CAF50',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    zIndex: 10,
   },
   unreadBadge: {
     position: 'absolute',

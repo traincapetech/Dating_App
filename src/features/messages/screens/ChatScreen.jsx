@@ -249,9 +249,6 @@ const ChatScreen = ({route, navigation}) => {
         const socket = initSocket(user.id);
         socketRef.current = socket;
 
-        // Join chat room
-        joinChatRoom(matchId, user.id);
-
         // Listen for new messages
         socket.on('receiveMessage', msg => {
           if (msg.matchId === matchId) {
@@ -320,6 +317,13 @@ const ChatScreen = ({route, navigation}) => {
           );
         });
 
+        // Listen for user status changed
+        socket.on('userStatusChanged', data => {
+          if (data.userId === theirId) {
+            setIsUserOnlineNow(data.status === 'online');
+          }
+        });
+
         // Real-time streak updates
         socket.on('streak:update', data => {
           const ourPairId = [user.id, theirId].sort().join('_');
@@ -328,6 +332,9 @@ const ChatScreen = ({route, navigation}) => {
             setShowStreakWarning(false); // New activity clears the warning
           }
         });
+
+        // Join chat room AFTER listeners are set
+        joinChatRoom(matchId, user.id);
       } else {
         navigation.goBack();
       }

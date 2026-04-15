@@ -68,6 +68,7 @@ function Content() {
   const route = useRoute();
   const fromOnboarding = route.params?.fromOnboarding;
   const {initPaymentSheet, presentPaymentSheet} = useStripe();
+  const {completeOnboarding} = useAuth();
 
   const [plans, setPlans] = useState([]);
   const [selected, setSelected] = useState(null);

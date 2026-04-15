@@ -27,7 +27,7 @@ rootProject.name = "Pryvo"
 
 // Robust Autolinking Configuration
 extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
-    ex.autolinkLibrariesFromCommand()
+    ex.autolinkLibrariesFromCommand(["/usr/local/bin/node", "node_modules/@react-native-community/cli/build/bin.js", "config"])
 }
 
 include(":app")
