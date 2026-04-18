@@ -10,6 +10,7 @@ import {
   Switch,
   StatusBar,
   Platform,
+  Linking,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation} from '@react-navigation/native';
@@ -298,7 +299,7 @@ export default function SubscriptionManagementScreen() {
           {/* ── Support ── */}
           <View style={s.support}>
             <Text style={s.supportTxt}>Questions about billing?</Text>
-            <Text style={s.supportEmail}>pryvo@traincapetech.in</Text>
+            <Text style={s.supportEmail} onPress={()=> Linking.openURL('https://pryvo.traincapetech.in')}>pryvo@traincapetech.in</Text>
           </View>
 
         </ScrollView>

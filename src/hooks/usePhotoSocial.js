@@ -52,7 +52,7 @@ export const usePhotoSocial = (targetUserId, onInteraction) => {
         notifySubscribers(targetUserId);
       }
     } catch (e) {
-      console.error('[usePhotoSocial] LoadStats Error:', e);
+      console.warn('[usePhotoSocial] LoadStats Error:', e.message || e);
     } finally {
       setLoading(false);
     }

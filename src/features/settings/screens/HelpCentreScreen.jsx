@@ -149,7 +149,7 @@ const HelpCentreScreen = () => {
             </View>
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => Linking.openURL('mailto:pryvo@traincapetech.in')}
+              onPress={() => navigation.navigate('ReportProblem')}
               style={styles.contactBtn}>
               <Text style={styles.contactBtnText}>Contact Support</Text>
             </TouchableOpacity>

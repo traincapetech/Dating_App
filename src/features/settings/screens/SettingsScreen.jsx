@@ -132,6 +132,8 @@ const SettingsScreen = () => {
             try {
               setLoadingLogoutAll(true);
               await logoutFromAllDevices();
+              await logout(); // Crucial: Update the React AuthContext state!
+              
               Alert.alert(
                 'Success',
                 'You have been logged out from all devices.',

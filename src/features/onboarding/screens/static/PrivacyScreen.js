@@ -194,7 +194,7 @@ const PrivacyScreen = () => {
         <Text style={styles.listItem}>• Right to object to processing</Text>
         <Text style={styles.listItem}>• Right to withdraw consent</Text>
         <Text style={styles.text}>
-          To exercise these rights, please contact us at privacy@pryvo.com.
+          To exercise these rights, please contact us at pryvo@traincapetech.in
         </Text>
 
         <Text style={styles.title}>6. Data Retention and Account Bans</Text>

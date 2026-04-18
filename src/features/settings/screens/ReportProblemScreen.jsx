@@ -58,10 +58,16 @@ const ReportProblemScreen = () => {
   }, []);
 
   const pickImage = () => {
-    launchImageLibrary({mediaType: 'photo', quality: 0.6}, response => {
+    launchImageLibrary({mediaType: 'photo', quality: 0.6, includeBase64: true}, response => {
       if (response.didCancel) return;
       if (response.assets && response.assets.length > 0) {
-        setImageUri(response.assets[0].uri);
+        const asset = response.assets[0];
+        // Store the base64 data with the proper URI scheme
+        if (asset.base64) {
+          setImageUri(`data:${asset.type || 'image/jpeg'};base64,${asset.base64}`);
+        } else {
+          setImageUri(asset.uri);
+        }
       }
     });
   };

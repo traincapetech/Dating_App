@@ -13,6 +13,7 @@ import {SafeAreaView} from 'react-native-safe-area-context';
 import {useNavigation, useRoute} from '@react-navigation/native';
 import {colors, spacing, typography} from '../../../theme';
 import FAQItem from '../components/FAQItem';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
 // Enable LayoutAnimation for Android
 if (
@@ -132,7 +133,7 @@ const CategoryHelpScreen = () => {
           <Text style={styles.backText}>←</Text>
         </Pressable>
         <Text style={styles.headerTitle}>
-          {icon} {category}
+          <MaterialCommunityIcons name={icon} size={20} color={colors.primary} /> {category}
         </Text>
         <View style={{width: 40}} />
       </View>

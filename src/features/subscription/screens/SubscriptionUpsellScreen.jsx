@@ -137,7 +137,9 @@ function Content() {
     return () => {
       if (purchaseUpdateSubscription) purchaseUpdateSubscription.remove();
       if (purchaseErrorSubscription) purchaseErrorSubscription.remove();
-      IAP.endConnection();
+      if (Platform.OS === 'android') {
+        IAP.endConnection();
+      }
     };
   }, [userId]);
 
@@ -467,7 +469,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  scroll: {paddingBottom: 120},
+  scroll: {paddingBottom: 150},
   hero: {
     paddingTop: Platform.OS === 'ios' ? 60 : 48,
     paddingBottom: 40,

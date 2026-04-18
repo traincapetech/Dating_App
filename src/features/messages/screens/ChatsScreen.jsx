@@ -63,7 +63,7 @@ const EmptyState = () => {
   );
 };
 
-const ChatsScreen = ({navigation}) => {
+const ChatsScreen = ({navigation, route}) => {
   const {setLoading: setGlobalLoading} = useLoading();
   const {onlineUsers} = useSocket();
   const [matches, setMatches] = useState([]);
@@ -74,6 +74,28 @@ const ChatsScreen = ({navigation}) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const {visited, markVisited} = useInitialLoad();
+
+  // 🔔 Deep-link from notification tap: auto-open target chat
+  useFocusEffect(
+    useCallback(() => {
+      const targetMatchId = route?.params?.targetMatchId;
+      if (targetMatchId && matches.length > 0) {
+        const targetMatch = matches.find(m => m._id === targetMatchId);
+        if (targetMatch) {
+          const theirId = targetMatch.users.find(u => u !== currentUserId);
+          // Clear the param so it doesn't re-trigger on tab re-focus
+          navigation.setParams({ targetMatchId: undefined });
+          navigation.navigate('ChatScreen', {
+            matchId: targetMatch._id,
+            theirId,
+            theirName: targetMatch.theirName || `User ${theirId?.slice(0, 6) || ''}`,
+            theirPhoto: targetMatch.theirPhoto,
+            theirAge: targetMatch.theirAge,
+          });
+        }
+      }
+    }, [route?.params?.targetMatchId, matches, currentUserId]),
+  );
 
   useFocusEffect(
     useCallback(() => {

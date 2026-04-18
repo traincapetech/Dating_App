@@ -138,12 +138,28 @@ import notifee, { EventType } from '@notifee/react-native';
 import { displayChatNotification, updateNotificationWithReply, displayTimerNotification, showPryvoLiveNotification } from '../notificationHelper.js';
 import { sendSmartMessage } from '../chatSendService.js';
 
+import { countdownManager } from './countdownManager';
+
 // Setup notification handlers
 export function setupNotificationHandlers(navigation) {
+  // 1. Resume any active persisted countdowns
+  countdownManager.resumeTimers();
+  countdownManager.setupEventHandlers();
+
   // Handle FCM foreground notifications (App is open)
   const unsubscribeForeground = getMessaging().onMessage(
     async remoteMessage => {
       console.log('Foreground notification received:', remoteMessage);
+
+      // Handle custom countdown if expiryTime is present
+      if (remoteMessage.data?.expiryTime) {
+        const title = remoteMessage.data.title || remoteMessage.notification?.title || 'Limited Offer';
+        const body = remoteMessage.data.body || remoteMessage.notification?.body || '';
+        const id = remoteMessage.data.notifId || remoteMessage.messageId || 'countdown_timer';
+        await countdownManager.startCountdown(id, title, body, remoteMessage.data.expiryTime);
+        return;
+      }
+
       if (remoteMessage.data?.type === 'chat_message') {
         // Only display if user is not actively chatting with them right now
         // Typically you'd check active route, but for safety we draw it
@@ -177,44 +193,54 @@ export function setupNotificationHandlers(navigation) {
     // Handle standard tap or MATCH NOW button
     if (type === EventType.ACTION_PRESS && (pressAction?.id === 'default' || pressAction?.id === 'match_action')) {
       if (notification?.data?.type === 'chat_message') {
-        navigation?.navigate('Messages');
+        const chatId = notification?.data?.chatId;
+        // Navigate to Messages tab and pass targetMatchId so ChatsScreen auto-opens the correct chat
+        navigation?.navigate('Messages', { targetMatchId: chatId });
       } else if (notification?.data?.type === 'live' || notification?.data?.type === 'timer') {
-        // Navigate to the relevant tab of the dating app (HomeTabs or Discovery)
         navigation?.navigate('HomeTabs');
       }
     }
   });
 
-  // Handle FCM OS-level notification clicks (if not data-only)
+  // Handle FCM OS-level notification clicks (app backgrounded, user taps notification)
   getMessaging().onNotificationOpenedApp(remoteMessage => {
     console.log('Notification opened app (FCM):', remoteMessage);
     if (remoteMessage.data?.type === 'message' || remoteMessage.data?.type === 'chat_message') {
-      navigation?.navigate('Messages');
+      const chatId = remoteMessage.data?.chatId;
+      setTimeout(() => {
+        navigation?.navigate('Messages', { targetMatchId: chatId });
+      }, 300);
     } else if (remoteMessage.data?.type === 'match') {
       navigation?.navigate('HomeTabs');
     }
   });
 
-  // Handle initial boot from FCM notification
+  // Handle initial boot from FCM notification (app was fully killed)
   getMessaging()
     .getInitialNotification()
     .then(remoteMessage => {
       if (remoteMessage) {
         console.log('App opened from notification (FCM Init):', remoteMessage);
         if (remoteMessage.data?.type === 'message' || remoteMessage.data?.type === 'chat_message') {
-          navigation?.navigate('Messages');
+          const chatId = remoteMessage.data?.chatId;
+          setTimeout(() => {
+            navigation?.navigate('Messages', { targetMatchId: chatId });
+          }, 800); // Longer delay to let navigator fully mount after cold boot
         } else if (remoteMessage.data?.type === 'match') {
           navigation?.navigate('HomeTabs');
         }
       }
     });
 
-  // Wait, also check Notifee initial boot in case FCM didn't catch the data-only proxy
+  // Also check Notifee initial boot (data-only proxy or foreground dismiss)
   notifee.getInitialNotification().then(initialNotification => {
     if (initialNotification) {
       console.log('App opened from notification (Notifee Init):', initialNotification);
       if (initialNotification.notification.data?.type === 'chat_message') {
-        setTimeout(() => navigation?.navigate('Messages'), 500); // Small delay to let Nav mount
+        const chatId = initialNotification.notification.data?.chatId;
+        setTimeout(() => {
+          navigation?.navigate('Messages', { targetMatchId: chatId });
+        }, 800);
       }
     }
   });

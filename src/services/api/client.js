@@ -137,7 +137,7 @@ async function request(
         true, // mark as retry so we don't loop
       );
     } catch (refreshErr) {
-      console.error('[API Client] Token refresh failed:', refreshErr);
+      console.warn('[API Client] Token refresh failed:', refreshErr);
       // Refresh failed — fall through to throw the 401 error below
     }
   }

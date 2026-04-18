@@ -17,14 +17,41 @@ export async function getExistingMessages(chatId) {
 
 export async function displayChatNotification(data) {
   const { chatId, senderName, senderPhoto, messageText, timestamp } = data;
-  
+
+  try {
+    if (Platform.OS === 'ios') {
+      // iOS: Use Notifee to create a local notification in the foreground
+      await notifee.requestPermission();
+      await notifee.displayNotification({
+        id: chatId,
+        title: senderName,
+        body: messageText,
+        data: data,
+        ios: {
+          sound: 'default',
+          badgeCount: 1,
+          foregroundPresentationOptions: {
+            banner: true,
+            sound: true,
+            badge: true,
+          },
+        },
+      });
+      return;
+    }
+  } catch (e) {
+    console.error('Failed to display iOS Chat Notification:', e);
+    return;
+  }
+
   if (Platform.OS !== 'android') return;
 
   try {
     const channelId = await notifee.createChannel({
-      id: 'messages_priority',
+      id: 'messages_priority_v2',
       name: 'Direct Messages',
       vibration: true,
+      sound: 'default',
       importance: AndroidImportance.HIGH,
       visibility: AndroidVisibility.PRIVATE,
     });
@@ -235,4 +262,31 @@ export async function showPryvoLiveNotification(payload) {
   } catch (e) {
     console.error('Failed to display Live Pryvo Notification V3:', e);
   }
+}
+
+/**
+ * Formats remaining time into a string like "2h 59m left" or "45s left"
+ * @param {string|number} expiryTime - ISO string or timestamp
+ * @returns {string|null} Formatted string or null if expired
+ */
+export function formatRemainingTime(expiryTime) {
+  const total = new Date(expiryTime).getTime() - Date.now();
+  if (total <= 0) return null;
+
+  const seconds = Math.floor((total / 1000) % 60);
+  const minutes = Math.floor((total / 1000 / 60) % 60);
+  const hours = Math.floor((total / (1000 * 60 * 60)) % 24);
+  const days = Math.floor(total / (1000 * 60 * 60 * 24));
+
+  const parts = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0) parts.push(`${minutes}m`);
+  
+  // Only show seconds if there are no days, hours or minutes left
+  if (parts.length === 0) {
+    parts.push(`${seconds}s`);
+  }
+
+  return parts.join(' ') + ' left';
 }
