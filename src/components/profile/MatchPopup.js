@@ -52,7 +52,11 @@ const MatchPopup = ({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
+    <Modal 
+      visible={visible} 
+      transparent 
+      animationType="fade"
+      onRequestClose={onContinue}>
       <View style={styles.overlay}>
         <LinearGradient
           colors={['rgba(0,0,0,0.85)', 'rgba(0,0,0,0.95)']}
@@ -69,7 +73,10 @@ const MatchPopup = ({
             </View>
           </View>
 
-          <Text style={styles.subtitle}>
+          <Text 
+            style={styles.subtitle}
+            numberOfLines={2}
+            adjustsFontSizeToFit>
             You and {theirName || 'each other'} like each other.
           </Text>
 

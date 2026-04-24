@@ -1,5 +1,5 @@
 import React, {useState, useEffect} from 'react';
-import {Text, View, StyleSheet, Platform, Dimensions} from 'react-native';
+import {Text, View, StyleSheet, Platform, Dimensions, AppState} from 'react-native';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -26,14 +26,27 @@ const TabNavigator = () => {
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
+    // Initial load
     loadLikesCount();
     loadUnreadChatsCount();
-    // Refresh counts every 30 seconds
+
+    // Refresh counts every 2 minutes (Safety fallback, socket handles real-time)
     const interval = setInterval(() => {
       loadLikesCount();
       loadUnreadChatsCount();
-    }, 30000);
-    return () => clearInterval(interval);
+    }, 120000); 
+
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active') {
+        loadLikesCount();
+        loadUnreadChatsCount();
+      }
+    });
+
+    return () => {
+      clearInterval(interval);
+      subscription.remove();
+    };
   }, []);
 
 

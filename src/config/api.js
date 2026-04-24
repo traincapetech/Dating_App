@@ -14,13 +14,20 @@ const PRODUCTION_API_URL = 'https://dating-app-backend-19lb.onrender.com/api';
 const PRODUCTION_SOCKET_URL = 'https://dating-app-backend-19lb.onrender.com';
 
 // For local development - replace with your computer's IP address
-// Example: 'http://192.168.1.100:3000/api'
-// Auto-detected IP: 192.168.1.159 (Updated by Antigravity)
+// Used for physical device connections on the same WiFi network
 const LOCAL_API_URL = 'http://192.168.1.159:3000/api';
 const LOCAL_SOCKET_URL = 'http://192.168.1.159:3000';
 
+// Android emulator uses 10.0.2.2 to access the host machine's localhost
+const EMULATOR_API_URL = 'http://10.0.2.2:3000/api';
+const EMULATOR_SOCKET_URL = 'http://10.0.2.2:3000';
+
 // Set to true for production, false for local development
 const IS_PRODUCTION = true;
+
+// Set to true when testing on Android EMULATOR, false for physical device on WiFi
+// Switch this to false when running on a real physical Android device
+const IS_ANDROID_EMULATOR = false;
 
 // Stripe Configuration
 export const STRIPE_PUBLISHABLE_KEY = IS_PRODUCTION 
@@ -36,9 +43,9 @@ const getApiBaseUrl = () => {
   }
 
   if (Platform.OS === 'android') {
-    // Using the computer's actual IP works for both physical devices and emulators
-    // as long as they are on the same network.
-    return LOCAL_API_URL;
+    // Emulator: use 10.0.2.2 (maps to host machine localhost)
+    // Physical device: use your computer's WiFi IP (192.168.1.159)
+    return IS_ANDROID_EMULATOR ? EMULATOR_API_URL : LOCAL_API_URL;
   }
 
   if (Platform.OS === 'ios') {
@@ -53,7 +60,9 @@ const getSocketUrl = () => {
     return PRODUCTION_SOCKET_URL;
   }
 
-  if (Platform.OS === 'android') return 'http://10.0.2.2:3000';
+  if (Platform.OS === 'android') {
+    return IS_ANDROID_EMULATOR ? EMULATOR_SOCKET_URL : LOCAL_SOCKET_URL;
+  }
 
   if (Platform.OS === 'ios') {
     return 'http://localhost:3000';
