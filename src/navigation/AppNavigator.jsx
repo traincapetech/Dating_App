@@ -49,6 +49,7 @@ import {setupNotificationHandlers, setupTokenRefreshListener, enableNotification
 import {useEffect} from 'react';
 import {SocketProvider} from '../context/SocketContext';
 import GlobalNotification from '../components/layout/GlobalNotification';
+import {BackHandler, ToastAndroid} from 'react-native';
 
 const Stack = createNativeStackNavigator();
 
@@ -70,9 +71,46 @@ const AppNavigator = () => {
       const unsubscribeHandlers = setupNotificationHandlers(navigationRef);
       const unsubscribeRefresh = setupTokenRefreshListener();
 
+      // Android Back Button Handling
+      let backPressCount = 0;
+      const onBackPress = () => {
+        const routeName = navigationRef.getCurrentRoute()?.name;
+
+        // 1. If on HomeTabs (root), handle "Double Tap to Exit"
+        if (routeName === 'HomeTabs') {
+          if (backPressCount === 0) {
+            backPressCount++;
+            ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
+            setTimeout(() => {
+              backPressCount = 0;
+            }, 2000);
+            return true; // Intercept
+          }
+          BackHandler.exitApp();
+          return true;
+        }
+
+        // 2. If on Onboarding or Auth root screens, maybe don't allow back to splash
+        if (['SignIn', 'SignUp', 'Welcome'].includes(routeName)) {
+          // Just let default behavior happen or prevent it if preferred
+          return false;
+        }
+
+        // 3. Default behavior (go back)
+        if (navigationRef.canGoBack()) {
+          navigationRef.goBack();
+          return true;
+        }
+
+        return false;
+      };
+
+      BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
       return () => {
         if (unsubscribeHandlers) unsubscribeHandlers();
         if (unsubscribeRefresh) unsubscribeRefresh();
+        BackHandler.removeEventListener('hardwareBackPress', onBackPress);
       };
     }
   }, [navigationRef]);

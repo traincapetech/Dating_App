@@ -677,7 +677,10 @@ const ProfileDetailsScreen = () => {
 
             <View style={styles.heroText}>
               <View style={styles.nameLine}>
-                <Text style={styles.nameHeader}>
+                <Text
+                  style={styles.nameHeader}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit>
                   {name}
                   {age ? `, ${age}` : ''}
                 </Text>

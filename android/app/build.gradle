@@ -3,6 +3,7 @@ plugins {
     id("org.jetbrains.kotlin.android")
     id("com.facebook.react")
     id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
 }
 
 project.ext.REACT_NATIVE_NODE_MODULES_DIR = file("../../node_modules/react-native").absolutePath
@@ -21,7 +22,7 @@ react {
 /**
  * Proguard
  */
-def enableProguardInReleaseBuilds = false
+def enableProguardInReleaseBuilds = true
 
 /**
  * JavaScriptCore (only used if Hermes is disabled)
@@ -52,6 +53,14 @@ android {
             keyAlias "androiddebugkey"
             keyPassword "android"
         }
+        release {
+            if (project.hasProperty('PRYVO_RELEASE_STORE_FILE')) {
+                storeFile file(PRYVO_RELEASE_STORE_FILE)
+                storePassword PRYVO_RELEASE_STORE_PASSWORD
+                keyAlias PRYVO_RELEASE_KEY_ALIAS
+                keyPassword PRYVO_RELEASE_KEY_PASSWORD
+            }
+        }
     }
 
     buildTypes {
@@ -59,7 +68,9 @@ android {
             signingConfig signingConfigs.debug
         }
         release {
-            signingConfig signingConfigs.debug
+            // Use debug signing if release config is not available yet (for dev parity)
+            signingConfig project.hasProperty('PRYVO_RELEASE_STORE_FILE') ? signingConfigs.release : signingConfigs.debug
+            
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles(
                 getDefaultProguardFile("proguard-android.txt"),

@@ -276,7 +276,10 @@ const ProfileScreen = () => {
             {/* User Identity block with Overlap */}
             <View style={styles.identityBlockOverlay}>
               <View style={styles.nameRowCentered}>
-                <Text style={styles.heroName} numberOfLines={1}>
+                <Text 
+                  style={styles.heroName} 
+                  numberOfLines={1}
+                  adjustsFontSizeToFit>
                   {formatToTitleCase(name)}
                   {age ? `, ${age}` : ''}
                 </Text>
