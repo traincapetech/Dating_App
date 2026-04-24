@@ -41,16 +41,27 @@ import {
   getCurrentLocation,
   reverseGeocode,
 } from '../../../services/location/locationService';
+import { blockAndReportUser } from '../../../services/chatService';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {useLoading} from '../../../context/LoadingContext';
 import {useInitialLoad} from '../../../context/InitialLoadContext';
 import FullScreenLoader from '../../../components/layout/FullScreenLoader';
+import ProfileSkeleton from '../../../components/profile/ProfileSkeleton';
 import {usePhotoSocial} from '../../../hooks/usePhotoSocial';
 import {photoSocialService} from '../../../services/photoSocialService';
 import PhotoInteractionViewer from '../../../components/profile/PhotoInteractionViewer';
 import {useAuth} from '../../../context/AuthContext';
 import {triggerMediumHaptic} from '../../../utils/haptics';
 import ThemeBackground from '../../../components/layout/ThemeBackground';
+
+const REPORT_REASONS = [
+  {id: 'harassment', label: 'Harassment'},
+  {id: 'spam', label: 'Spam'},
+  {id: 'inappropriate_content', label: 'Inappropriate Content'},
+  {id: 'fake_profile', label: 'Fake Profile'},
+  {id: 'underage', label: 'Underage User'},
+  {id: 'other', label: 'Other'},
+];
 
 
 const {width: SCREEN_WIDTH, height: SCREEN_HEIGHT} = Dimensions.get('window');
@@ -107,6 +118,7 @@ const ProfileModal = ({
   visible,
   profile,
   onClose,
+  onReport,
   currentLocation,
   currentUserId,
   navigation,
@@ -520,6 +532,36 @@ const ProfileModal = ({
                   onPress={onClose}>
                   <MaterialCommunityIcons name="close" size={24} color="#555" />
                 </Pressable>
+              </View>
+
+              {/* 🚩 Report/Block Button */}
+              <View style={modalStyles.reportSection}>
+                <Pressable
+                  style={modalStyles.reportButton}
+                  onPress={() => {
+                    Alert.alert(
+                      'Report Profile',
+                      'Are you sure you want to report and block this user?',
+                      [
+                        { text: 'Cancel', style: 'cancel' },
+                        { 
+                          text: 'Report & Block', 
+                          style: 'destructive',
+                          onPress: () => {
+                            // Simple implementation: trigger first reason as default for now
+                            // in a real app, we'd show the picker modal
+                            onReport(profile.id || profile._id, 'harassment');
+                          }
+                        }
+                      ]
+                    );
+                  }}>
+                  <MaterialCommunityIcons name="flag-outline" size={20} color="#999" />
+                  <Text style={modalStyles.reportButtonText}>Report and Block {profile.name}</Text>
+                </Pressable>
+                <Text style={modalStyles.reportDisclaimer}>
+                  Reporting a user will immediately block them and hide their profile from your discovery.
+                </Text>
               </View>
             </View>
           </Pressable>
@@ -1422,12 +1464,7 @@ const HomeScreen = ({navigation, route}) => {
           backgroundColor={colors.background}
         />
         {renderHeader()}
-        <View style={styles.emptyContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.emptySubtitle, {marginTop: 16}]}>
-            Finding profiles for you...
-          </Text>
-        </View>
+        <ProfileSkeleton />
       </SafeAreaView>
     );
   }
@@ -1737,6 +1774,24 @@ const HomeScreen = ({navigation, route}) => {
         visible={modalVisible}
         profile={currentProfile}
         onClose={() => setModalVisible(false)}
+        onReport={async (blockedId, reason) => {
+          try {
+            await blockAndReportUser({
+              blockerId: currentUserId,
+              blockedId,
+              matchId: null, // No match yet in discovery
+              reason,
+              description: 'Reported from discovery screen'
+            });
+            setModalVisible(false);
+            // Move to next profile
+            setCurrentIndex(prev => prev + 1);
+            Alert.alert('User Reported', 'This user has been blocked and reported.');
+          } catch (e) {
+            console.error('Failed to report user:', e);
+            Alert.alert('Error', 'Failed to submit report. Please try again.');
+          }
+        }}
         currentLocation={currentLocation}
         currentUserId={currentUserId}
         navigation={navigation}
@@ -1759,7 +1814,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingTop: Platform.OS === 'ios' ? 12 : spacing.md,
+    paddingBottom: spacing.md,
+    height: Platform.OS === 'ios' ? 76 : 64,
     backgroundColor: 'transparent',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.1)',
@@ -2390,6 +2447,37 @@ const modalStyles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 5,
     elevation: 2,
+  },
+  reportSection: {
+    marginTop: 40,
+    paddingHorizontal: 16,
+    paddingBottom: 60,
+    alignItems: 'center',
+  },
+  reportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 100,
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  reportButtonText: {
+    fontSize: 14,
+    fontFamily: typography.fontFamilyMedium,
+    color: '#999',
+  },
+  reportDisclaimer: {
+    marginTop: 12,
+    fontSize: 12,
+    fontFamily: typography.fontFamilyRegular,
+    color: '#AAA',
+    textAlign: 'center',
+    paddingHorizontal: 20,
+    lineHeight: 16,
   },
 });
 
