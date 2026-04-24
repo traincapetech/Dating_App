@@ -68,7 +68,7 @@ const SplashScreen = ({navigation}) => {
     isAuthenticated,
     user,
     profile,
-    isAppReady,        // ← true only when session + profile are both resolved
+    isAppReady, // ← true only when session + profile are both resolved
     getNextOnboardingScreen,
   } = useAuth();
 
@@ -105,9 +105,9 @@ const SplashScreen = ({navigation}) => {
 
   // Auth Routing — fires ONLY once, and ONLY when app is fully ready
   useEffect(() => {
-    if (!isAppReady) return;          // Wait until session + profile settled
-    if (!isAuthenticated) return;      // Guest: show splash buttons
-    if (hasNavigated.current) return;  // Already navigated — don't re-trigger
+    if (!isAppReady) return; // Wait until session + profile settled
+    if (!isAuthenticated) return; // Guest: show splash buttons
+    if (hasNavigated.current) return; // Already navigated — don't re-trigger
 
     hasNavigated.current = true;
     const nextScreen = getNextOnboardingScreen();

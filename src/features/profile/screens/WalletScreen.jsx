@@ -259,7 +259,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    height: 60,
+    paddingTop: Platform.OS === 'ios' ? 10 : 0, // Added for Dynamic Island safety
+    height: Platform.OS === 'ios' ? 70 : 60,
   },
   headerTitle: {
     fontSize: 20,

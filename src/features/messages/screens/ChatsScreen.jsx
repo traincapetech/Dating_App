@@ -327,7 +327,8 @@ const ChatsScreen = ({navigation, route}) => {
                 <View style={styles.nameRow}>
                   <Text
                     style={[styles.name, unreadCount > 0 && styles.nameBold]}
-                    numberOfLines={1}>
+                    numberOfLines={1}
+                    adjustsFontSizeToFit={true}>
                     {item.theirName || `User ${theirId?.slice(0, 6) || ''}`}
                     {item.theirAge ? `, ${item.theirAge}` : ''}
                   </Text>
