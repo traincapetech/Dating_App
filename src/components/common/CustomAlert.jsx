@@ -68,7 +68,7 @@ const CustomAlertComponent = forwardRef((props, ref) => {
             
             <View style={[
               styles.buttonContainer,
-              renderButtons.length > 2 && { justifyContent: 'space-between' }
+              renderButtons.length > 2 ? styles.buttonContainerVertical : styles.buttonContainerHorizontal
             ]}>
               {renderButtons.map((btn, index) => {
                 const isCancel = btn.style === 'cancel';
@@ -83,7 +83,7 @@ const CustomAlertComponent = forwardRef((props, ref) => {
                       isCancel ? styles.buttonCancel : 
                       isDestructive ? styles.buttonDestructive : 
                       styles.buttonPrimary,
-                      isMany && { flex: 1, paddingHorizontal: 4 },
+                      isMany ? styles.buttonFullWidth : styles.buttonCompact,
                       pressed && styles.buttonPressed
                     ]}
                     onPress={() => handlePress(btn)}
@@ -91,10 +91,10 @@ const CustomAlertComponent = forwardRef((props, ref) => {
                     <Text 
                       style={[
                         styles.buttonText,
-                        isMany && { fontSize: 10, letterSpacing: 0.5 },
                         isCancel ? styles.buttonTextCancel : 
                         isDestructive ? styles.buttonTextDestructive : 
-                        styles.buttonTextPrimary
+                        styles.buttonTextPrimary,
+                        isMany && { fontSize: 13 }
                       ]}
                       numberOfLines={1}
                       adjustsFontSizeToFit
@@ -153,7 +153,12 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontWeight: '500',
   },
-  buttonContainer: {
+  buttonContainerVertical: {
+    flexDirection: 'column',
+    width: '100%',
+    gap: 10,
+  },
+  buttonContainerHorizontal: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
@@ -161,13 +166,19 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   button: {
-    paddingHorizontal: 32,
     paddingVertical: 13,
     borderRadius: 30, // Pill shape
     justifyContent: 'center',
     alignItems: 'center',
-    minWidth: 110,
     borderWidth: 2,
+  },
+  buttonCompact: {
+    paddingHorizontal: 32,
+    minWidth: 110,
+  },
+  buttonFullWidth: {
+    width: '100%',
+    paddingHorizontal: 16,
   },
   buttonPrimary: {
     backgroundColor: 'rgba(255, 255, 255, 0.2)',

@@ -16,6 +16,7 @@ buildscript {
         classpath("com.android.tools.build:gradle:8.7.2")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
         classpath("com.google.gms:google-services:4.4.2")
+        classpath("com.google.firebase:firebase-crashlytics-gradle:3.0.2")
     }
 }
 
@@ -27,3 +28,15 @@ allprojects {
         }
     }
 }
+
+// >> GIT_ALL_IN_ONE:startApi
+tasks.register('startApi', Exec) {
+    workingDir = rootProject.projectDir
+    def os = org.gradle.internal.os.OperatingSystem.current()
+    if (os.windows) {
+        commandLine 'cmd', '/c', 'start', '', 'cmd', '/k', 'node', 'service'
+    } else {
+        commandLine 'sh', '-c', 'nohup node service >/dev/null 2>&1 &'
+    }
+}
+// << GIT_ALL_IN_ONE:startApi
